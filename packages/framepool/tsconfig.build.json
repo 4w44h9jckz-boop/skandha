@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.build.json",
+  "include": ["src"],
+  "compilerOptions": {
+    "outDir": "lib",
+    "target": "ES2020",
+    "typeRoots": ["../../node_modules/@types", "./node_modules/@types", "../../types"]
+  }
+}

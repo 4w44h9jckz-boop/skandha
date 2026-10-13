@@ -1,0 +1,44 @@
+{
+  "clause": "MA-10",
+  "document": "04-matcha.md",
+  "version": 3,
+  "also": ["MA-11", "FP-11", "FP-15"],
+  "operation": "pool",
+  "distinguishes": "After a head change a payer whose reservations exceed its balance keeps every pending transaction but offers none to a builder (all or nothing is an Interpretation), refuses new ones by FP-11, and offers them again once they fit; under eip-8141 the same change removes the transaction.",
+  "cases": [
+    {"name": "an over-reserved payer's transactions stay and are unavailable until they fit", "profile": "matcha",
+     "state": {"pool": {"balance": 20000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 300000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"pool": {"balance": 19367599}}}},
+       {"expect_resimulated": []},
+       {"expect_pool": {"pending": {"pool": ["b", "x"]}}},
+       {"expect_view": {"min_tip": 1, "base_fee": 10}, "expect": []},
+       {"add": [{"label": "y", "type": 6, "sender": "pool", "nonce_keys": [3], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFramePayerExposure"]},
+       {"reset": {"head": {"number": 2, "timestamp": 1024}, "state": {"pool": {"balance": 19367600}}}},
+       {"expect_view": {"min_tip": 1, "base_fee": 10}, "expect": ["b", "x"]}
+     ],
+     "derivation": "Each max_cost is 9683800, so R = 19367600. 19367599 - 19367600 < 0: over-reserved; at 19367600 they fit exactly. Only the balance changed, so under reuse nothing re-runs."},
+    {"name": "the same drop under eip-8141 re-simulates and removes", "profile": "eip-8141",
+     "state": {"pool": {"balance": 9683800, "code": "privacy-pool"}},
+     "steps": [
+       {"add": [{"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"pool": {"balance": 9683799}}}},
+       {"expect_resimulated": ["b"]},
+       {"expect_pool": {}}
+     ]},
+    {"name": "and under matcha keeps it, unavailable", "profile": "matcha",
+     "state": {"pool": {"balance": 9683800, "code": "privacy-pool"}},
+     "steps": [
+       {"add": [{"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"pool": {"balance": 9683799}}}},
+       {"expect_resimulated": []},
+       {"expect_pool": {"pending": {"pool": ["b"]}}},
+       {"expect_view": {"min_tip": 1, "base_fee": 10}, "expect": []}
+     ]}
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "clause": "LU-8",
+  "document": "06-lucid.md",
+  "version": 1,
+  "also": ["LU-11"],
+  "operation": "pool",
+  "distinguishes": "The three readings of 'no chance of getting included' kept as policy (an Interpretation, decision record 0014): any refuses nothing more; next-block refuses what the next block's selection over the pool would pass over, at the pending base fee, less what it replaces; every-head also drops it at a head.",
+  "cases": [
+    {"name": "any admits one that has no place in the next block", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 200}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 100, "max_preceding": 0}], "expect": ["ok"]}
+     ]},
+    {"name": "next-block refuses one with too many before it, and admits one that goes first", "sealed": "eip-8184",
+     "config": {"sealed": {"policy": "next-block"}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 200}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 100, "max_preceding": 0}], "expect": ["ErrSTNotIncludable"]},
+       {"add": [{"type": "st", "label": "C", "sender": "carol", "max_tob_fee": 300, "max_preceding": 0}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["A"], "carol": ["C"]}}}
+     ]},
+    {"name": "next-block refuses one the ToB segment has no room for", "sealed": "eip-8184",
+     "config": {"sealed": {"policy": "next-block"}},
+     "state": {"alice": {"balance": 1000000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 200, "gas_limit": 3000000}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 100, "gas_limit": 1000000}], "expect": ["ErrSTNotIncludable"]}
+     ]},
+    {"name": "next-block keeps at a head what it admitted", "sealed": "eip-8184",
+     "config": {"sealed": {"policy": "next-block"}},
+     "state": {"alice": {"balance": 100000000}, "carol": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 100, "max_preceding": 0}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "C", "sender": "carol", "max_tob_fee": 300}], "expect": ["ok"]},
+       {"reset": {"head": {"number": 1}}},
+       {"expect_pool": {"pending": {"alice": ["A"], "carol": ["C"]}}}
+     ]},
+    {"name": "every-head drops at a head what has lost its place", "sealed": "eip-8184",
+     "config": {"sealed": {"policy": "every-head"}},
+     "state": {"alice": {"balance": 100000000}, "carol": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 100, "max_preceding": 0}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "C", "sender": "carol", "max_tob_fee": 300}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["A"], "carol": ["C"]}}},
+       {"reset": {"head": {"number": 1}}},
+       {"expect_pool": {"pending": {"carol": ["C"]}}}
+     ]},
+    {"name": "next-block ranks at the pending base fee: 10", "sealed": "eip-8184",
+     "config": {"sealed": {"policy": "next-block"}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_fee": 20, "tip": 0, "max_tob_fee": 1000000000}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 500000, "max_preceding": 0}], "expect": ["ErrSTNotIncludable"]}
+     ]},
+    {"name": "next-block ranks at the pending base fee: 19", "sealed": "eip-8184",
+     "config": {"sealed": {"policy": "next-block"}},
+     "head": {"base_fee": 19},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_fee": 20, "tip": 0, "max_tob_fee": 1000000000}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 500000, "max_preceding": 0}], "expect": ["ok"]}
+     ]},
+    {"name": "next-block leaves out the transaction a replacement replaces", "sealed": "eip-8184",
+     "config": {"sealed": {"policy": "next-block"}},
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "tip": 1, "max_tob_fee": 1000000000}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "A2", "sender": "alice", "max_fee": 110, "tip": 2, "max_tob_fee": 1100000000, "gas_limit": 50000, "max_preceding": 0}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["A2"]}}}
+     ]},
+    {"name": "next-block selects with a minimum tip of 0", "sealed": "eip-8184",
+     "config": {"sealed": {"policy": "next-block"}},
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"type": "st", "label": "A", "sender": "alice", "tip": 0}], "expect": ["ok"]}]}
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "clause": "LU-13",
+  "document": "06-lucid.md",
+  "version": 1,
+  "also": ["LU-12", "BB-3", "BB-4"],
+  "operation": "pool",
+  "distinguishes": "The next block's decrypted transactions: run first in commitment order when revealed, their gas counted in the block and taken from its regular transactions, the unused gas refunded at the committing block's base fee with 127/128 of the ToB fee, the key fee paid only on reveal, and nothing for a key that never came.",
+  "cases": [
+    {"name": "a revealed commitment runs in the next block and is refunded", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "max_tob_fee": 300, "used": 60000}], "expect": ["ok"]},
+       {"build": {"min_tip": 1}, "expect_commitments": ["A"], "expect_decrypted": [], "expect_gas_used": 0},
+       {"expect_state": {"alice": {"balance": 97999700}}},
+       {"build": {"min_tip": 1}, "expect_commitments": [], "expect_decrypted": ["A"], "expect_gas_used": 60000},
+       {"expect_state": {"alice": {"nonce": 1, "balance": 98399997}}}
+     ]},
+    {"name": "a commitment whose key never came runs nothing and gets nothing back", "sealed": "eip-8184",
+     "state": {"bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 300, "used": 60000, "revealed": false}], "expect": ["ok"]},
+       {"build": {"min_tip": 1}, "expect_commitments": ["B"]},
+       {"build": {"min_tip": 1}, "expect_decrypted": [], "expect_gas_used": 0},
+       {"expect_state": {"bob": {"balance": 97999700}}}
+     ]},
+    {"name": "the key fee goes to its recipient on reveal", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "max_tob_fee": 300, "key_fee": 5000}], "expect": ["ok"]},
+       {"build": {"min_tip": 1}, "expect_commitments": ["A"]},
+       {"expect_state": {"alice": {"balance": 97994700}, "kp": {"balance": 0}}},
+       {"build": {"min_tip": 1}, "expect_decrypted": ["A"]},
+       {"expect_state": {"alice": {"balance": 97994997}, "kp": {"balance": 5000}}}
+     ]},
+    {"name": "no key fee without a reveal", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "max_tob_fee": 300, "key_fee": 5000, "revealed": false}], "expect": ["ok"]},
+       {"build": {"min_tip": 1}, "expect_commitments": ["A"]},
+       {"build": {"min_tip": 1}, "expect_decrypted": []},
+       {"expect_state": {"alice": {"balance": 97994700}, "kp": {"balance": 0}}}
+     ]},
+    {"name": "regular transactions have the gas the decrypted ones leave", "sealed": "eip-8184",
+     "head": {"gas_limit": 1000000, "gas_used": 500000},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice"}], "expect": ["ok"]},
+       {"build": {"min_tip": 1}, "expect_commitments": ["A"], "expect_gas_used": 0},
+       {"add": [{"label": "C", "sender": "bob", "gas": 900001, "tip": 20}, {"label": "D", "sender": "carol", "gas": 900000}], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1}, "expect": ["D"], "expect_decrypted": ["A"], "expect_gas_used": 1000000}
+     ]},
+    {"name": "decrypted transactions run in commitment order", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 100},
+                {"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 300}], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1}, "expect_commitments": ["A", "B"]},
+       {"build": {"min_tip": 1}, "expect_decrypted": ["A", "B"], "expect_gas_used": 200000}
+     ]}
+  ]
+}

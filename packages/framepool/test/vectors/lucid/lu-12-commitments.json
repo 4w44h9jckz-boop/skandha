@@ -1,0 +1,40 @@
+{
+  "clause": "LU-12",
+  "document": "06-lucid.md",
+  "version": 1,
+  "also": ["LU-3", "LU-7", "BB-3", "BB-4"],
+  "operation": "pool",
+  "distinguishes": "What a builder commits and charges: the selection at the block's base fee and its own minimum tip, each ticket charged its ticket fee with the priority fee to the coinbase, and no gas of the block taken by a ticket (an Interpretation, decision record 0014).",
+  "cases": [
+    {"name": "a ticket is charged and takes no gas; a transfer beside it", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "P", "sender": "bob"}, {"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 300}], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1}, "expect": ["P"], "expect_commitments": ["A"], "expect_gas_used": 21000},
+       {"expect_state": {"alice": {"nonce": 1, "balance": 97999700}, "bob": {"nonce": 1, "balance": 99580000}, "coinbase": {"balance": 1210000}}},
+       {"expect_pool": {"pending": {}}}
+     ]},
+    {"name": "a block of tickets alone uses no gas", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A"}], "expect": ["ok"]},
+       {"build": {"min_tip": 1}, "expect": [], "expect_commitments": ["A"], "expect_gas_used": 0}
+     ]},
+    {"name": "the builder's minimum tip leaves one out, and the pool keeps it", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "tip": 1}], "expect": ["ok"]},
+       {"build": {"min_tip": 10}, "expect_commitments": []},
+       {"expect_pool": {"pending": {"alice": ["A"]}}}
+     ]},
+    {"name": "the commitments are the selection, and what it passes over stays", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 300},
+                {"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 200, "max_preceding": 0},
+                {"type": "st", "label": "C", "sender": "carol", "max_tob_fee": 100, "max_preceding": 1}], "expect": ["ok", "ok", "ok"]},
+       {"build": {"min_tip": 1}, "expect_commitments": ["A", "C"]},
+       {"expect_pool": {"pending": {"bob": ["B"]}}}
+     ]}
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "clause": "MA-4",
+  "document": "04-matcha.md",
+  "version": 3,
+  "also": ["MA-3", "MA-12"],
+  "operation": "pool",
+  "distinguishes": "Width is earned only from finalized frame gas, each block once and in order of number, up to the cap; it is kept while the sender holds nothing and never returned; a pool under eip-8141 ignores finality.",
+  "cases": [
+    {"name": "each block is credited once, in increasing number, up to the cap", "profile": "matcha", "config": {"frame": {"width_cap": 250000}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 100000, "other": 5}}]},
+       {"expect_width": {"pool": 100000, "other": 5}},
+       {"finalize": [{"number": 1, "gas": {"pool": 100000}}]},
+       {"expect_width": {"pool": 100000}},
+       {"finalize": [{"number": 3, "gas": {"pool": 100000}}, {"number": 2, "gas": {"pool": 70000}}]},
+       {"expect_width": {"pool": 250000}},
+       {"finalize": [{"number": 2, "gas": {"pool": 1}}]},
+       {"expect_width": {"pool": 250000, "other": 5}}
+     ],
+     "derivation": "Block 1 again is not above 1 and is skipped. Blocks 2 then 3: 100000 + 70000 = 170000, then min(250000, 270000). Block 2 again is skipped."},
+    {"name": "a sender starts with none", "profile": "matcha",
+     "steps": [{"expect_width": {"pool": 0, "nobody": 0}}]},
+    {"name": "width is kept when the sender has nothing pending, and inclusion returns none of it", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 200000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"pool": {"nonce_seqs": {"1": 1, "2": 1}}}}},
+       {"expect_pool": {}},
+       {"expect_width": {"pool": 106324}},
+       {"add": [{"label": "c", "type": 6, "sender": "pool", "nonce_keys": [3], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_width": {"pool": 106324}}
+     ],
+     "derivation": "x is additional and spends 93676 (ma-02); 200000 - 93676 = 106324. c arrives to an empty pending set and is the baseline."},
+    {"name": "under eip-8141 finality admits nothing more", "profile": "eip-8141",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFrameSenderBusy"]}
+     ]}
+  ]
+}

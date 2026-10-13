@@ -1,0 +1,42 @@
+{
+  "clause": "MA-5",
+  "document": "04-matcha.md",
+  "version": 3,
+  "also": ["MA-12"],
+  "operation": "pool",
+  "distinguishes": "Which transaction is the baseline: the first into an empty pending set, never promoted from the additional ones when it leaves, and available again only once the sender holds nothing.",
+  "cases": [
+    {"name": "the baseline leaves and no transaction takes its place until the set is empty", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 200000}}]},
+       {"add": [{"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_baseline": {"pool": "b"}},
+       {"expect_width": {"pool": 200000}},
+       {"add": [{"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_width": {"pool": 106324}},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"pool": {"nonce_seqs": {"1": 1}}}}},
+       {"expect_pool": {"pending": {"pool": ["x"]}}},
+       {"expect_baseline": {"pool": null}},
+       {"add": [{"label": "y", "type": 6, "sender": "pool", "nonce_keys": [3], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_baseline": {"pool": null}},
+       {"expect_width": {"pool": 12648}},
+       {"reset": {"head": {"number": 2, "timestamp": 1024}, "state": {"pool": {"nonce_seqs": {"2": 1, "3": 1}}}}},
+       {"expect_pool": {}},
+       {"add": [{"label": "z", "type": 6, "sender": "pool", "nonce_keys": [4], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_baseline": {"pool": "z"}},
+       {"expect_width": {"pool": 12648}}
+     ],
+     "derivation": "Each additional transaction spends 93676: 200000 - 93676 = 106324, then 106324 - 93676 = 12648. y is additional although the baseline has gone, so it pays; z arrives to an empty set and pays nothing, though 12648 would not cover a charge."},
+    {"name": "every sender has its own baseline, at no width", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}, "pool2": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"add": [
+         {"label": "p", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "q", "type": 6, "sender": "pool2", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"expect_baseline": {"pool": "p", "pool2": "q"}},
+       {"expect_width": {"pool": 0, "pool2": 0}}
+     ]}
+  ]
+}

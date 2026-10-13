@@ -1,0 +1,49 @@
+{
+  "clause": "FP-5",
+  "document": "02-frame-pool.md",
+  "version": 5,
+  "also": ["FP-4"],
+  "operation": "pool",
+  "distinguishes": "Which validation prefixes the public mempool recognises, where the expiry frame may sit, and the order of the structural refusals.",
+  "cases": [
+    {"name": "no frame can approve payment", "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFrameNoPayer"]}]},
+    {"name": "an expiry frame in second place is refused by name, before the VERIFY-after-prefix rule", "state": {"alice": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [
+       {"mode": 1, "flags": 3, "exec_gas": 30000},
+       {"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 2000},
+       {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFrameExpiryNotFirst"]}]},
+    {"name": "only_verify then self_verify is not a recognised prefix", "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFrameUnrecognizedPrefix"]}]},
+    {"name": "a pay frame with no only_verify before it", "state": {"alice": {"balance": 100000000}, "sponsor": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFrameUnrecognizedPrefix"]}]},
+    {"name": "an atomic batch inside the prefix is refused before the shape is matched", "state": {"alice": {"balance": 100000000}, "factory": {"code": "factory-v1"}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [
+       {"mode": 0, "flags": 4, "target": "factory", "exec_gas": 30000, "installs_code": "account-v1"},
+       {"mode": 0, "target": "factory", "exec_gas": 30000},
+       {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3},
+       {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFrameAtomicInPrefix"]}]},
+    {"name": "a VERIFY frame after the prefix", "state": {"alice": {"balance": 100000000}, "bob": {"code": "checker-v1"}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}, {"mode": 1, "target": "bob", "exec_gas": 10000}]}], "expect": ["ErrFrameVerifyAfterPrefix"]}]},
+    {"name": "the four recognised prefixes, two of them behind an expiry frame",
+     "state": {
+       "a1": {"balance": 100000000}, "a2": {"balance": 100000000}, "a3": {"balance": 100000000}, "a4": {"balance": 100000000},
+       "factory": {"code": "factory-v1"}, "pm": {"balance": 100000000, "code": "canonical-paymaster"},
+       "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [{"add": [
+       {"label": "self", "type": 6, "sender": "a1", "frames": [
+         {"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 2000},
+         {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "deploy-self", "type": 6, "sender": "a2", "frames": [
+         {"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 2000},
+         {"mode": 0, "target": "factory", "exec_gas": 30000, "installs_code": "account-v1"},
+         {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "paymaster", "type": 6, "sender": "a3", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "pm"}], "frames": [
+         {"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "pm", "exec_gas": 30000, "approves": 1}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "deploy-paymaster", "type": 6, "sender": "a4", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "pm"}], "frames": [
+         {"mode": 0, "target": "factory", "exec_gas": 30000, "installs_code": "account-v1"},
+         {"mode": 1, "flags": 2, "exec_gas": 30000, "approves": 2}, {"mode": 1, "flags": 1, "target": "pm", "exec_gas": 30000, "approves": 1}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ok", "ok", "ok"]},
+     {"expect_pool": {"pending": {"a1": ["self"], "a2": ["deploy-self"], "a3": ["paymaster"], "a4": ["deploy-paymaster"]}}}]}
+  ]
+}

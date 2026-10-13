@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.build.json",
+  "include": ["src", "test"],
+  "compilerOptions": {
+    "noEmit": true,
+    "target": "ES2020",
+    "incremental": false,
+    "typeRoots": ["../../node_modules/@types", "./node_modules/@types", "../../types"]
+  }
+}

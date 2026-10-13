@@ -1,0 +1,43 @@
+{
+  "clause": "NP-11",
+  "document": "01-nonce-pool.md",
+  "version": 1,
+  "also": ["NP-12"],
+  "operation": "pool",
+  "distinguishes": "The price bump: both fee fields must rise strictly and reach the floored 110 percent threshold, in pending and in the queue alike.",
+  "cases": [
+    {
+      "name": "exactly 10 percent on both fields replaces; short on either does not",
+      "state": {"alice": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "alice", "max_fee": 100, "tip": 20}], "expect": ["ok"]},
+        {"add": [{"label": "fee-short", "sender": "alice", "max_fee": 109, "tip": 30}], "expect": ["ErrReplaceUnderpriced"]},
+        {"add": [{"label": "tip-short", "sender": "alice", "max_fee": 200, "tip": 21}], "expect": ["ErrReplaceUnderpriced"]},
+        {"add": [{"label": "tip-same", "sender": "alice", "max_fee": 200, "tip": 20}], "expect": ["ErrReplaceUnderpriced"]},
+        {"add": [{"label": "bumped", "sender": "alice", "max_fee": 110, "tip": 22}], "expect": ["ok"]},
+        {"expect_pool": {"pending": {"alice": ["bumped"]}}}
+      ]
+    },
+    {
+      "name": "at wei-level prices the floored threshold is not enough: the fields must still rise",
+      "state": {"alice": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "alice", "max_fee": 5, "tip": 1}], "expect": ["ok"]},
+        {"add": [{"label": "tip-flat", "sender": "alice", "max_fee": 6, "tip": 1}], "expect": ["ErrReplaceUnderpriced"]},
+        {"add": [{"label": "both-up", "sender": "alice", "max_fee": 6, "tip": 2}], "expect": ["ok"]},
+        {"expect_pool": {"pending": {"alice": ["both-up"]}}}
+      ],
+      "derivation": "Thresholds floor(5 * 110 / 100) = 5 and floor(1 * 110 / 100) = 1 are met by 6 and 1, but the tip did not rise."
+    },
+    {
+      "name": "NP-12: the same rule in the queue",
+      "state": {"alice": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a2", "sender": "alice", "nonce": 2}], "expect": ["ok"]},
+        {"add": [{"label": "a2-105", "sender": "alice", "nonce": 2, "max_fee": 105, "tip": 11}], "expect": ["ErrReplaceUnderpriced"]},
+        {"add": [{"label": "a2-110", "sender": "alice", "nonce": 2, "max_fee": 110, "tip": 11}], "expect": ["ok"]},
+        {"expect_pool": {"queued": {"alice": ["a2-110"]}}}
+      ]
+    }
+  ]
+}

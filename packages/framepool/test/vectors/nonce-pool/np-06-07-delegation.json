@@ -1,0 +1,50 @@
+{
+  "clause": "NP-6",
+  "document": "01-nonce-pool.md",
+  "version": 1,
+  "also": ["NP-7"],
+  "operation": "pool",
+  "distinguishes": "Delegated senders, by code or by a pooled authorization, get one in-flight transaction at the exact pending nonce, and an authority with more than one pooled transaction blocks a set code transaction.",
+  "cases": [
+    {
+      "name": "a delegated sender: one in flight, replacement allowed",
+      "state": {"alice": {"balance": 100000000, "code": "0xef0100impl"}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "alice", "nonce": 0}], "expect": ["ok"]},
+        {"add": [{"label": "a1", "sender": "alice", "nonce": 1}], "expect": ["ErrInflightTxLimitReached"]},
+        {"add": [{"label": "a0-bump", "sender": "alice", "nonce": 0, "max_fee": 110, "tip": 11}], "expect": ["ok"]},
+        {"expect_pool": {"pending": {"alice": ["a0-bump"]}}}
+      ]
+    },
+    {
+      "name": "a delegated sender with nothing pending may not open a gap",
+      "state": {"alice": {"balance": 100000000, "code": "0xef0100impl"}},
+      "steps": [
+        {"add": [{"label": "a2", "sender": "alice", "nonce": 2}], "expect": ["ErrOutOfOrderTxFromDelegated"]},
+        {"expect_pool": {}}
+      ]
+    },
+    {
+      "name": "a pooled authorization makes its authority delegated",
+      "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "b0", "sender": "bob", "type": 4, "gas": 46000, "authorities": ["alice"], "delegate": "impl"}], "expect": ["ok"]},
+        {"add": [{"label": "a1", "sender": "alice", "nonce": 1}], "expect": ["ErrOutOfOrderTxFromDelegated"]},
+        {"add": [{"label": "a0", "sender": "alice", "nonce": 0}], "expect": ["ok"]},
+        {"add": [{"label": "a1", "sender": "alice", "nonce": 1}], "expect": ["ErrInflightTxLimitReached"]},
+        {"expect_pool": {"pending": {"alice": ["a0"], "bob": ["b0"]}}}
+      ]
+    },
+    {
+      "name": "NP-7: an authority with two pooled transactions blocks the authorization, with one it does not",
+      "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "alice", "nonce": 0}, {"label": "a1", "sender": "alice", "nonce": 1}, {"label": "c0", "sender": "carol", "nonce": 0}], "expect": ["ok", "ok", "ok"]},
+        {"add": [{"label": "b0", "sender": "bob", "type": 4, "gas": 46000, "authorities": ["alice"], "delegate": "impl"}], "expect": ["ErrAuthorityReserved"]},
+        {"add": [{"label": "b0c", "sender": "bob", "type": 4, "gas": 46000, "authorities": ["carol"], "delegate": "impl"}], "expect": ["ok"]},
+        {"add": [{"label": "c1", "sender": "carol", "nonce": 1}], "expect": ["ErrInflightTxLimitReached"]},
+        {"expect_pool": {"pending": {"alice": ["a0", "a1"], "bob": ["b0c"], "carol": ["c0"]}}}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "clause": "LU-7",
+  "document": "06-lucid.md",
+  "version": 1,
+  "operation": "pool",
+  "distinguishes": "The greedy selection in commitment order: max_preceding counts the commitments already selected, a candidate that does not fit is passed over and the scan goes on, and the count, the ToB segment, the minimum tip and the base fee each bind (an Interpretation, decision record 0014).",
+  "cases": [
+    {"name": "max_preceding passes over the one with too many before it", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 300},
+                {"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 200, "max_preceding": 0},
+                {"type": "st", "label": "C", "sender": "carol", "max_tob_fee": 100, "max_preceding": 1}], "expect": ["ok", "ok", "ok"]},
+       {"expect_selection": {}, "expect": ["A", "C"]}
+     ]},
+    {"name": "max_preceding counts what was selected, not what was considered", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}, "dave": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 300},
+                {"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 200, "max_preceding": 1},
+                {"type": "st", "label": "C", "sender": "carol", "max_tob_fee": 100, "max_preceding": 1},
+                {"type": "st", "label": "D", "sender": "dave", "max_tob_fee": 50, "max_preceding": 2}], "expect": ["ok", "ok", "ok", "ok"]},
+       {"expect_selection": {}, "expect": ["A", "B", "D"]}
+     ]},
+    {"name": "the ToB segment passes over one that does not fit and takes a later one", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 1000000000}, "bob": {"balance": 1000000000}, "carol": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 300, "gas_limit": 2000000},
+                {"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 200, "gas_limit": 2000000},
+                {"type": "st", "label": "C", "sender": "carol", "max_tob_fee": 100, "gas_limit": 1750000}], "expect": ["ok", "ok", "ok"]},
+       {"expect_selection": {}, "expect": ["A", "C"]}
+     ]},
+    {"name": "max_st_commits", "sealed": "eip-8184",
+     "config": {"sealed": {"max_st_commits": 2}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 300},
+                {"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 200},
+                {"type": "st", "label": "C", "sender": "carol", "max_tob_fee": 100}], "expect": ["ok", "ok", "ok"]},
+       {"expect_selection": {}, "expect": ["A", "B"]}
+     ]},
+    {"name": "the minimum tip compares the priority fee with the tip times the gas limit", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 2},
+                {"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 1, "tip": 9}], "expect": ["ok", "ok"]},
+       {"expect_selection": {"min_tip": 10}, "expect": ["A"]},
+       {"expect_selection": {"min_tip": 0}, "expect": ["A", "B"]}
+     ]},
+    {"name": "one that can not pay at the selection's base fee is no candidate", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_fee": 12, "tip": 0},
+                {"type": "st", "label": "B", "sender": "bob"}], "expect": ["ok", "ok"]},
+       {"expect_selection": {"base_fee": 13}, "expect": ["B"]}
+     ]}
+  ]
+}

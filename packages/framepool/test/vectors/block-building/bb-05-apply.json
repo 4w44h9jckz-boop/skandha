@@ -1,0 +1,79 @@
+{
+  "clause": "BB-5",
+  "document": "03-block-building.md",
+  "version": 2,
+  "operation": "pool",
+  "distinguishes": "The state a block leaves behind: who pays what at the effective price, what the coinbase earns, what a set code transaction does to its authorities and which of its authorizations it skips, and a frame transaction whose prefix stops approving inside the block.",
+  "cases": [
+    {"name": "a value transfer at price 20",
+     "state": {"alice": {"balance": 10000000}},
+     "steps": [
+       {"add": [{"label": "a0", "sender": "alice", "to": "bob", "value": 1000}], "expect": ["ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["a0"]},
+       {"expect_state": {"alice": {"nonce": 1, "balance": 9579000}, "bob": {"balance": 1000}, "cb": {"balance": 210000}}}
+     ],
+     "derivation": "price = 10 + min(10, 100 - 10) = 20. alice pays 21000 * 20 + 1000; the coinbase gets 21000 * 10."},
+    {"name": "a set code transaction delegates its authority and bumps its nonce",
+     "state": {"alice": {"balance": 10000000}, "bob": {"balance": 10000000}},
+     "steps": [
+       {"add": [{"label": "b0", "sender": "bob", "type": 4, "gas": 46000, "authorities": ["alice"], "delegate": "impl"}], "expect": ["ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["b0"]},
+       {"expect_state": {"alice": {"nonce": 1, "code": "0xef0100impl", "balance": 10000000}, "bob": {"nonce": 1, "balance": 9080000}}}
+     ]},
+    {"name": "an authorization whose nonce its authority has used by then is skipped, and the transaction still applies",
+     "state": {"alice": {"balance": 10000000}, "bob": {"balance": 10000000}},
+     "steps": [
+       {"add": [{"label": "a0", "sender": "alice", "nonce": 0, "tip": 50},
+                {"label": "b0", "sender": "bob", "type": 4, "gas": 46000, "authorities": [["alice", 0]], "delegate": "impl"}], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["a0", "b0"]},
+       {"expect_state": {"alice": {"nonce": 1, "code": ""}, "bob": {"nonce": 1, "balance": 9080000}}}
+     ],
+     "derivation": "BB-2 takes a0 first, at tip 50 against 10, so alice's nonce is 1 when b0's tuple for nonce 0 is processed: EIP-7702 step 6 fails, the tuple is skipped, and bob still pays 46000 * 20."},
+    {"name": "the same authorization ahead of its authority's own transaction delegates it, and that transaction is then too low",
+     "state": {"alice": {"balance": 10000000}, "bob": {"balance": 10000000}},
+     "steps": [
+       {"add": [{"label": "a0", "sender": "alice", "nonce": 0, "tip": 10},
+                {"label": "b0", "sender": "bob", "type": 4, "gas": 46000, "tip": 50, "authorities": [["alice", 0]], "delegate": "impl"}], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["b0"]},
+       {"expect_state": {"alice": {"nonce": 1, "code": "0xef0100impl", "balance": 10000000}}}
+     ],
+     "derivation": "b0 goes first and its tuple matches alice's nonce 0, so alice is delegated at nonce 1; a0 then fails with ErrNonceTooLow (BB-3) and alice pays nothing."},
+    {"name": "a sender that authorizes itself signs for the nonce after its transaction's",
+     "state": {"alice": {"balance": 10000000}, "carol": {"balance": 10000000}},
+     "steps": [
+       {"add": [{"label": "a0", "sender": "alice", "type": 4, "gas": 46000, "authorities": [["alice", 1]], "delegate": "impl"},
+                {"label": "c0", "sender": "carol", "type": 4, "gas": 46000, "authorities": [["carol", 0]], "delegate": "impl"}], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["a0", "c0"]},
+       {"expect_state": {"alice": {"nonce": 2, "code": "0xef0100impl", "balance": 9080000}, "carol": {"nonce": 1, "code": "", "balance": 9080000}}}
+     ],
+     "derivation": "The list is processed after the sender's nonce is incremented: alice's tuple for 1 matches and moves her to 2; carol's tuple for 0 meets nonce 1 and is skipped. Each pays 46000 * 20."},
+    {"name": "an authority whose code is a contract's is skipped",
+     "state": {"bob": {"balance": 10000000}, "carol": {"code": "account-v1"}, "dave": {"code": "0xef0100old"}},
+     "steps": [
+       {"add": [{"label": "b0", "sender": "bob", "type": 4, "gas": 71000, "authorities": ["carol", "dave"], "delegate": "impl"}], "expect": ["ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["b0"]},
+       {"expect_state": {"carol": {"nonce": 0, "code": "account-v1"}, "dave": {"nonce": 1, "code": "0xef0100impl"}, "bob": {"nonce": 1, "balance": 8580000}}}
+     ],
+     "derivation": "EIP-7702 step 5: carol's code is neither empty nor a delegation indicator, so her tuple is skipped; dave's is a delegation indicator, so it is replaced. Intrinsic gas 21000 + 2 * 25000 = 71000, at price 20."},
+    {"name": "a sponsor pays for a frame transaction",
+     "state": {"alice": {"balance": 1000}, "sponsor": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "f", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["f"]},
+       {"expect_state": {"alice": {"nonce": 1, "balance": 1000}, "sponsor": {"balance": 97370540}, "cb": {"balance": 1314730}}}
+     ],
+     "derivation": "D = 65 + 85 + 3 nonce bytes = 153, so max_gas = 12000 + 3*475 + 16*153 + 2*2800 + 110000 = 131473 (00-model.md version 2); gas_used defaults to it; the sponsor pays 131473 * 20, the coinbase earns 131473 * 10."},
+    {"name": "an earlier transaction in the block changes the slot a prefix reads",
+     "state": {"alice": {"balance": 100000000, "code": "account-v1", "storage": {"1": 42}}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [
+         {"label": "fa", "type": 6, "sender": "alice", "tip": 10, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["alice", 1, 42]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b0", "sender": "bob", "tip": 50, "writes": [["alice", 1, 43]]}
+       ], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["b0"]},
+       {"expect_resimulated": ["fa"]},
+       {"expect_pool": {}},
+       {"expect_state": {"alice": {"nonce": 0}}}
+     ]}
+  ]
+}

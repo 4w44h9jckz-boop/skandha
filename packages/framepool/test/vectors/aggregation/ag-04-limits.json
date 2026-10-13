@@ -1,0 +1,64 @@
+{
+  "clause": "AG-4",
+  "document": "05-aggregation.md",
+  "version": 2,
+  "also": ["AG-6"],
+  "operation": "pool",
+  "distinguishes": "The per-transaction limits count the sorted, deduplicated dependency list across all of a transaction's dependency frames, so a triple declared twice counts once and 16 leanSPHINCS triples pass where 17 do not.",
+  "cases": [
+    {"name": "two distinct leanSTARK triples", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"], [17, "pub-b", "vk-1"]], "exec_gas": 60000, "data_size": 192}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrFrameTooManyDeps"]}
+     ]},
+    {"name": "two distinct leanSTARK triples in two frames", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 3, "deps": [[17, "pub-a", "vk-2"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrFrameTooManyDeps"]}
+     ]},
+    {"name": "one leanSTARK triple declared twice in a frame", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"], [17, "pub-a", "vk-1"]], "exec_gas": 60000, "data_size": 192}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrFrameDepsUnproven"]}
+     ],
+     "derivation": "The deduplicated list has one leanSTARK triple. Gas is charged per declaration, so AG-2 wants 60000."},
+    {"name": "one leanSTARK triple declared in two frames", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrFrameDepsUnproven"]}
+     ]},
+    {"name": "16 leanSPHINCS triples and one leanSTARK", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [
+          [16, "msg-01", "pk-a"], [16, "msg-02", "pk-a"], [16, "msg-03", "pk-a"], [16, "msg-04", "pk-a"],
+          [16, "msg-05", "pk-a"], [16, "msg-06", "pk-a"], [16, "msg-07", "pk-a"], [16, "msg-08", "pk-a"],
+          [16, "msg-09", "pk-a"], [16, "msg-10", "pk-a"], [16, "msg-11", "pk-a"], [16, "msg-12", "pk-a"],
+          [16, "msg-13", "pk-a"], [16, "msg-14", "pk-a"], [16, "msg-15", "pk-a"], [16, "msg-16", "pk-a"],
+          [17, "pub-a", "vk-1"]], "exec_gas": 78000, "data_size": 1632}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrFrameDepsUnproven"]}
+     ],
+     "derivation": "16 * 3000 + 30000 = 78000; 17 * 96 = 1632."},
+    {"name": "17 leanSPHINCS triples", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [
+          [16, "msg-01", "pk-a"], [16, "msg-02", "pk-a"], [16, "msg-03", "pk-a"], [16, "msg-04", "pk-a"],
+          [16, "msg-05", "pk-a"], [16, "msg-06", "pk-a"], [16, "msg-07", "pk-a"], [16, "msg-08", "pk-a"],
+          [16, "msg-09", "pk-a"], [16, "msg-10", "pk-a"], [16, "msg-11", "pk-a"], [16, "msg-12", "pk-a"],
+          [16, "msg-13", "pk-a"], [16, "msg-14", "pk-a"], [16, "msg-15", "pk-a"], [16, "msg-16", "pk-a"],
+          [16, "msg-17", "pk-a"]], "exec_gas": 51000, "data_size": 1632}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrFrameTooManyDeps"]}
+     ]},
+    {"name": "max_starks_per_tx is a parameter", "profile": "eip-8288", "config": {"frame": {"max_starks_per_tx": 2}},
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"], [17, "pub-b", "vk-1"]], "exec_gas": 60000, "data_size": 192}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrFrameDepsUnproven"]}
+     ]}
+  ]
+}

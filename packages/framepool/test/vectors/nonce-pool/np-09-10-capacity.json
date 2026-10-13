@@ -1,0 +1,55 @@
+{
+  "clause": "NP-9",
+  "document": "01-nonce-pool.md",
+  "version": 1,
+  "also": ["NP-10"],
+  "operation": "pool",
+  "distinguishes": "What a full pool does: an equal price is underpriced, the cheapest transaction is evicted, evictions between promotion runs are capped at a quarter of global_slots, a gapped transaction may not evict a pending one, and an eviction that cannot free enough slots evicts nothing.",
+  "cases": [
+    {
+      "name": "below or equal to the cheapest is underpriced; above it evicts the cheapest",
+      "config": {"nonce": {"global_slots": 3, "global_queue": 1}},
+      "state": {"a": {"balance": 100000000}, "b": {"balance": 100000000}, "c": {"balance": 100000000}, "d": {"balance": 100000000}, "eve": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "a", "tip": 10}, {"label": "b0", "sender": "b", "tip": 20}, {"label": "c0", "sender": "c", "tip": 30}, {"label": "d0", "sender": "d", "tip": 40}], "expect": ["ok", "ok", "ok", "ok"]},
+        {"add": [{"label": "e5", "sender": "eve", "tip": 5}, {"label": "e10", "sender": "eve", "tip": 10}, {"label": "e15", "sender": "eve", "tip": 15}], "expect": ["ErrUnderpriced", "ErrUnderpriced", "ok"]},
+        {"expect_pool": {"pending": {"b": ["b0"], "c": ["c0"], "d": ["d0"], "eve": ["e15"]}}}
+      ]
+    },
+    {
+      "name": "more than global_slots / 4 evictions before the next promotion run overflow",
+      "config": {"nonce": {"global_slots": 4, "global_queue": 1}},
+      "state": {"s1": {"balance": 100000000}, "s2": {"balance": 100000000}, "s3": {"balance": 100000000}, "s4": {"balance": 100000000}, "s5": {"balance": 100000000}, "x": {"balance": 100000000}, "y": {"balance": 100000000}, "z": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "s1", "sender": "s1", "tip": 10}, {"label": "s2", "sender": "s2", "tip": 20}, {"label": "s3", "sender": "s3", "tip": 30}, {"label": "s4", "sender": "s4", "tip": 40}, {"label": "s5", "sender": "s5", "tip": 50}], "expect": ["ok", "ok", "ok", "ok", "ok"]},
+        {"add": [{"label": "x", "sender": "x", "tip": 60}, {"label": "y", "sender": "y", "tip": 70}, {"label": "z", "sender": "z", "tip": 80}], "expect": ["ok", "ok", "ErrTxPoolOverflow"]},
+        {"expect_pool": {"pending": {"s3": ["s3"], "s4": ["s4"], "s5": ["s5"], "x": ["x"], "y": ["y"]}}},
+        {"add": [{"label": "z", "sender": "z", "tip": 80}], "expect": ["ok"]},
+        {"expect_pool": {"pending": {"s4": ["s4"], "s5": ["s5"], "x": ["x"], "y": ["y"], "z": ["z"]}}}
+      ]
+    },
+    {
+      "name": "a gapped transaction may not evict a pending one",
+      "config": {"nonce": {"global_slots": 2, "global_queue": 1}},
+      "state": {"a": {"balance": 100000000}, "b": {"balance": 100000000}, "c": {"balance": 100000000}, "eve": {"balance": 100000000}, "frank": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "a", "tip": 10}, {"label": "b0", "sender": "b", "tip": 20}, {"label": "c0", "sender": "c", "tip": 30}], "expect": ["ok", "ok", "ok"]},
+        {"add": [{"label": "e1", "sender": "eve", "nonce": 1, "tip": 50}], "expect": ["ErrFutureReplacePending"]},
+        {"expect_pool": {"pending": {"a": ["a0"], "b": ["b0"], "c": ["c0"]}}},
+        {"add": [{"label": "f0", "sender": "frank", "nonce": 0, "tip": 50}], "expect": ["ok"]},
+        {"expect_pool": {"pending": {"b": ["b0"], "c": ["c0"], "frank": ["f0"]}}}
+      ]
+    },
+    {
+      "name": "an eviction that cannot free enough slots evicts nothing",
+      "config": {"nonce": {"global_slots": 1, "global_queue": 1}},
+      "state": {"a": {"balance": 100000000}, "bob": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "a", "tip": 10}], "expect": ["ok"]},
+        {"add": [{"label": "big", "sender": "bob", "tip": 50, "size": 131072}], "expect": ["ErrTxPoolOverflow"]},
+        {"expect_pool": {"pending": {"a": ["a0"]}}}
+      ],
+      "derivation": "The pool holds 1 slot of 2; the new transaction needs 4, so 3 must be freed and only 1 exists."
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "clause": "IL-3",
+  "document": "07-focil.md",
+  "version": 1,
+  "also": ["IL-5"],
+  "operation": "pool",
+  "distinguishes": "Which frame transactions are Profile 2 candidates and so can be enforced: a recognised prefix shape, no VERIFY frame after the prefix, and a budget at most max_verify_gas_per_tx, which is IL-3's own bound and not the pool's max_verify_gas.",
+  "cases": [
+    {"name": "a candidate a builder leaves out is the omission",
+     "focil": "eip-8369",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"build": {"skip": ["alice"],
+                  "ils": [[{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 20000}, {"mode": 2, "exec_gas": 50000}]}]]},
+        "expect": [], "expect_omission": "f"}
+     ]},
+    {"name": "a VERIFY frame after the prefix: not a candidate, so leaving it out is no omission",
+     "focil": "eip-8369",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"build": {"skip": ["alice"],
+                  "ils": [[{"label": "g", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 20000}, {"mode": 1, "exec_gas": 1000}, {"mode": 2, "exec_gas": 50000}]}]]},
+        "expect": [], "expect_omission": null}
+     ]},
+    {"name": "97200 + 2800 = 100000 is within a max_verify_gas_per_tx of 100000",
+     "focil": "eip-8369",
+     "config": {"focil": {"max_verify_gas_per_tx": 100000}},
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"build": {"skip": ["alice"],
+                  "ils": [[{"label": "at", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 97200}, {"mode": 2, "exec_gas": 50000}]}]]},
+        "expect": [], "expect_omission": "at"}
+     ]},
+    {"name": "one more gas is not",
+     "focil": "eip-8369",
+     "config": {"focil": {"max_verify_gas_per_tx": 100000}},
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"build": {"skip": ["alice"],
+                  "ils": [[{"label": "over", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 97201}, {"mode": 2, "exec_gas": 50000}]}]]},
+        "expect": [], "expect_omission": null}
+     ]},
+    {"name": "a spend of 211828, above the pool's floor, is a candidate under the default bound",
+     "focil": "eip-8369",
+     "state": {"alice": {"balance": 100000000000}},
+     "steps": [
+       {"build": {"skip": ["alice"],
+                  "ils": [[{"label": "spend", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 209028}, {"mode": 2, "exec_gas": 50000}]}]]},
+        "expect": [], "expect_omission": "spend"}
+     ]}
+  ]
+}

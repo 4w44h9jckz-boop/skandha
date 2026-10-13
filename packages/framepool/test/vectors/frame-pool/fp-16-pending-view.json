@@ -1,0 +1,24 @@
+{
+  "clause": "FP-16",
+  "document": "02-frame-pool.md",
+  "version": 5,
+  "also": ["FEE-2", "MD-10"],
+  "operation": "pool",
+  "distinguishes": "Frame transactions are offered by effective tip at the builder's base fee, ties to the earlier one, and below the minimum tip not at all.",
+  "cases": [
+    {"name": "tip order, ties by arrival, at two base fees",
+     "state": {"a": {"balance": 100000000}, "b": {"balance": 100000000}, "c": {"balance": 100000000}, "d": {"balance": 100000000}},
+     "steps": [
+       {"add": [
+         {"label": "a", "type": 6, "sender": "a", "tip": 10, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b", "type": 6, "sender": "b", "tip": 30, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "c", "type": 6, "sender": "c", "tip": 20, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "d", "type": 6, "sender": "d", "tip": 30, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok", "ok", "ok"]},
+       {"expect_view": {"min_tip": 1, "base_fee": 10}, "expect": ["b", "d", "c", "a"]},
+       {"expect_view": {"min_tip": 15, "base_fee": 10}, "expect": ["b", "d", "c"]},
+       {"expect_view": {"min_tip": 1, "base_fee": 85}, "expect": ["b", "c", "d", "a"]}
+     ],
+     "derivation": "At base fee 85 the effective tips are min(tip, 15): a 10, b 15, c 15, d 15, and b, c, d tie in arrival order."}
+  ]
+}

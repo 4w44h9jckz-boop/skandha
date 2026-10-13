@@ -1,0 +1,21 @@
+{
+  "clause": "NP-20",
+  "document": "01-nonce-pool.md",
+  "version": 1,
+  "also": ["FEE-2", "MD-10"],
+  "operation": "pool",
+  "distinguishes": "The builder's view cuts a sender's run at its first transaction below the minimum tip, so a well-paying transaction behind a cheap one is not offered.",
+  "cases": [
+    {
+      "name": "a cheap transaction hides the ones behind it, at the builder's base fee",
+      "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "alice", "nonce": 0, "tip": 10}, {"label": "a1", "sender": "alice", "nonce": 1, "tip": 1}, {"label": "a2", "sender": "alice", "nonce": 2, "tip": 10}, {"label": "b0", "sender": "bob", "tip": 20}], "expect": ["ok", "ok", "ok", "ok"]},
+        {"expect_view": {"min_tip": 5, "base_fee": 10}, "expect": ["b0", "a0"]},
+        {"expect_view": {"min_tip": 5, "base_fee": 95}, "expect": ["a0", "b0"]},
+        {"expect_view": {"min_tip": 5, "base_fee": 96}, "expect": []}
+      ],
+      "derivation": "At base fee 95 both effective tips are 5 and the earlier-received a0 goes first (BB-2). At 96 both are 4."
+    }
+  ]
+}

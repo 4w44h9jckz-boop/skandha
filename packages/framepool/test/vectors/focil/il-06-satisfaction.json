@@ -1,0 +1,53 @@
+{
+  "clause": "IL-6",
+  "document": "07-focil.md",
+  "version": 1,
+  "also": ["IL-8"],
+  "operation": "pool",
+  "distinguishes": "Whether a block satisfies its ILs: a listed transaction it contains, or whose gas limit exceeds the gas it left, is no omission; the first other valid one, in the order of the ILs with duplicates read once, is; and a block with an omission is not canonical, so the chain and the pool stay where they were.",
+  "cases": [
+    {"name": "a listed transaction the block contains",
+     "focil": "eip-7805",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "a0", "sender": "alice"}], "expect": ["ok"]},
+       {"build": {"ils": [[{"label": "a0", "sender": "alice"}]]}, "expect": ["a0"], "expect_omission": null, "expect_canonical": true},
+       {"expect_pool": {}}
+     ]},
+    {"name": "a full block: 10000 gas left excuses a 21000-gas transaction",
+     "focil": "eip-7805",
+     "head": {"gas_limit": 60000, "gas_used": 30000},
+     "state": {"x": {"balance": 100000000}, "y": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "x", "sender": "x", "gas": 50000, "tip": 40}], "expect": ["ok"]},
+       {"build": {"skip": ["y"], "ils": [[{"label": "y", "sender": "y"}]]}, "expect": ["x"], "expect_omission": null, "expect_canonical": true}
+     ]},
+    {"name": "30000 gas left does not, and the block is not canonical",
+     "focil": "eip-7805",
+     "head": {"gas_limit": 80000, "gas_used": 40000},
+     "state": {"x": {"balance": 100000000}, "y": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "x", "sender": "x", "gas": 50000, "tip": 40}], "expect": ["ok"]},
+       {"build": {"skip": ["y"], "ils": [[{"label": "y", "sender": "y"}]]}, "expect": ["x"], "expect_omission": "y", "expect_canonical": false},
+       {"expect_pool": {"pending": {"x": ["x"]}}},
+       {"expect_state": {"x": {"nonce": 0}}}
+     ]},
+    {"name": "the first omission in the ILs' order",
+     "focil": "eip-7805",
+     "state": {"p": {"balance": 100000000}, "q": {"balance": 100000000}},
+     "steps": [
+       {"build": {"skip": ["p", "q"], "ils": [[{"label": "q0", "sender": "q"}], [{"label": "p0", "sender": "p"}, {"label": "q0", "sender": "q"}]]}, "expect": [], "expect_omission": "q0"}
+     ]},
+    {"name": "with the ILs the other way round",
+     "focil": "eip-7805",
+     "state": {"p": {"balance": 100000000}, "q": {"balance": 100000000}},
+     "steps": [
+       {"build": {"skip": ["p", "q"], "ils": [[{"label": "p0", "sender": "p"}], [{"label": "q0", "sender": "q"}]]}, "expect": [], "expect_omission": "p0"}
+     ]},
+    {"name": "under off nothing is checked",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"build": {"skip": ["alice"], "ils": [[{"label": "a0", "sender": "alice"}]]}, "expect": [], "expect_omission": null, "expect_canonical": true}
+     ]}
+  ]
+}

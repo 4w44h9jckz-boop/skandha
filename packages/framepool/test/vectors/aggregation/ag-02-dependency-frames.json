@@ -1,0 +1,100 @@
+{
+  "clause": "AG-2",
+  "document": "05-aggregation.md",
+  "version": 2,
+  "also": ["AG-6"],
+  "operation": "pool",
+  "distinguishes": "Which dependency frames are well formed: one to max_dependencies_per_frame triples of a known scheme, 96 bytes each, no target, value or flags, an execution limit equal to 3000 per leanSPHINCS and 30000 per leanSTARK triple, and no state limit. A well-formed one passes to AG-6, which refuses it alone because nothing proves it.",
+  "cases": [
+    {"name": "one leanSTARK triple is well formed", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrFrameDepsUnproven"]}
+     ]},
+    {"name": "a leanSPHINCS and a leanSTARK triple take 33000", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[16, "msg-a", "pk-a"], [17, "pub-a", "vk-1"]], "exec_gas": 33000, "data_size": 192}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrFrameDepsUnproven"]}
+     ]},
+    {"name": "no triples", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [], "exec_gas": 0, "data_size": 0}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrDepFrameMalformed"]}
+     ]},
+    {"name": "exactly max_dependencies_per_frame triples", "profile": "eip-8288", "config": {"frame": {"max_dependencies_per_frame": 2}},
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[16, "msg-1", "pk-a"], [16, "msg-2", "pk-a"]], "exec_gas": 6000, "data_size": 192}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrFrameDepsUnproven"]}
+     ]},
+    {"name": "one triple more than max_dependencies_per_frame", "profile": "eip-8288", "config": {"frame": {"max_dependencies_per_frame": 2}},
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[16, "msg-1", "pk-a"], [16, "msg-2", "pk-a"], [16, "msg-3", "pk-a"]], "exec_gas": 9000, "data_size": 288}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrDepFrameMalformed"]}
+     ]},
+    {"name": "a scheme that is neither 0x10 nor 0x11", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[18, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrDepFrameMalformed"]}
+     ]},
+    {"name": "a scheme of 0", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[0, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrDepFrameMalformed"]}
+     ]},
+    {"name": "data that is not 96 bytes a triple", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 95}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrDepFrameMalformed"]}
+     ]},
+    {"name": "a target, even the sender", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "target": "alice", "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrDepFrameMalformed"]}
+     ]},
+    {"name": "flags", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "flags": 1, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrDepFrameMalformed"]}
+     ]},
+    {"name": "a value", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "value": 1, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrDepFrameMalformed"]}
+     ]},
+    {"name": "an execution limit one below the sum", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 29999, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrDepFrameMalformed"]}
+     ]},
+    {"name": "a leanSTARK triple priced as a leanSPHINCS one", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrDepFrameMalformed"]}
+     ]},
+    {"name": "a state limit", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "state_gas": 1, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrDepFrameMalformed"]}
+     ]},
+    {"name": "mode 3 under a profile without dependency frames", "profile": "eip-8141",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrFrameMalformed"]}
+     ]}
+  ]
+}

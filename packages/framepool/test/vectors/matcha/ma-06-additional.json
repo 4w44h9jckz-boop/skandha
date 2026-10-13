@@ -1,0 +1,92 @@
+{
+  "clause": "MA-6",
+  "document": "04-matcha.md",
+  "version": 3,
+  "also": ["MA-2"],
+  "operation": "pool",
+  "distinguishes": "An additional transaction's four checks and their order after FP-11: keys non-zero and disjoint on both sides (an Interpretation), a fee cap covering the pending base fee, a deadline a child can meet (an Interpretation), and width covering the charge, which is then deducted. The baseline needs none of them.",
+  "cases": [
+    {"name": "with no width the baseline is admitted and an additional transaction is not", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFrameInsufficientWidth"]},
+       {"expect_pool": {"pending": {"pool": ["b"]}}},
+       {"expect_width": {"pool": 0}}
+     ]},
+    {"name": "width equal to the charge suffices, one less does not", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}, "pool2": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 93676, "pool2": 93675}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b2", "type": 6, "sender": "pool2", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x2", "type": 6, "sender": "pool2", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok", "ok", "ErrFrameInsufficientWidth"]},
+       {"expect_width": {"pool": 0, "pool2": 93675}}
+     ],
+     "derivation": "The charge is 93676 (ma-02)."},
+    {"name": "key 0 on either side, or a shared key, keeps one transaction per sender", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}, "pool2": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000, "pool2": 1000000}}]},
+       {"add": [
+         {"label": "b0", "type": 6, "sender": "pool", "nonce_keys": [0], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b12", "type": 6, "sender": "pool2", "nonce_keys": [1, 2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x0", "type": 6, "sender": "pool2", "nonce_keys": [0], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "y23", "type": 6, "sender": "pool2", "nonce_keys": [2, 3], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "z3", "type": 6, "sender": "pool2", "nonce_keys": [3], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFrameSenderBusy", "ok", "ErrFrameSenderBusy", "ErrFrameSenderBusy", "ok"]},
+       {"expect_width": {"pool": 1000000, "pool2": 906324}}
+     ],
+     "derivation": "b0 is a baseline on key 0, which bars every additional transaction from pool. z3 is the only additional transaction admitted, and spends 93676."},
+    {"name": "an additional transaction's fee cap must cover the pending base fee, the baseline's need not", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000}}]},
+       {"add": [
+         {"label": "b9", "type": 6, "sender": "pool", "nonce_keys": [1], "max_fee": 9, "tip": 1, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x9", "type": 6, "sender": "pool", "nonce_keys": [2], "max_fee": 9, "tip": 1, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x10", "type": 6, "sender": "pool", "nonce_keys": [3], "max_fee": 10, "tip": 1, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFeeCapTooLow", "ok"]},
+       {"expect_width": {"pool": 906324}}
+     ],
+     "derivation": "The default head's pending base fee is 10 (FEE-1 at gas_used equal to the target)."},
+    {"name": "an additional transaction's deadline must lie above the head's timestamp, the baseline's need not", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1000, "exec_gas": 100}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1000, "exec_gas": 100}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "y", "type": 6, "sender": "pool", "nonce_keys": [3], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1001, "exec_gas": 100}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFrameExpired", "ok"]},
+       {"expect_width": {"pool": 904918}}
+     ],
+     "derivation": "The head's timestamp is 1000. FP-8 admits a deadline of 1000; MA-6 does not for an additional transaction. y: D = 8 + 65 + 3 = 76, a = 12000 + 3*475 + 16*76 + 2800 + 100 + 30000 = 47541, charge 95082; 1000000 - 95082 = 904918."},
+    {"name": "the checks run in order: keys, then fee cap, then deadline, then width", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "k12", "type": 6, "sender": "pool", "nonce_keys": [1, 2], "max_fee": 9, "tip": 1, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "low", "type": 6, "sender": "pool", "nonce_keys": [3], "max_fee": 9, "tip": 1, "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1000, "exec_gas": 100}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "late", "type": 6, "sender": "pool", "nonce_keys": [4], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1000, "exec_gas": 100}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFrameSenderBusy", "ErrFeeCapTooLow", "ErrFrameExpired"]}
+     ],
+     "derivation": "The sender has no width, so every one of these would also fail the last check."},
+    {"name": "FP-11's payer accounting comes before width", "profile": "matcha",
+     "state": {"pool": {"balance": 19367599, "code": "privacy-pool"}},
+     "steps": [
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFramePayerExposure"]}
+     ],
+     "derivation": "max_cost = 96838 * 100 = 9683800 (FEE-4, version 2). For x, 19367599 - 9683800 = 9683799 < 9683800."}
+  ]
+}

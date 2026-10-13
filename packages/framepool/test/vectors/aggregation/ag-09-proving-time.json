@@ -1,0 +1,1454 @@
+{
+ "clause": "AG-9",
+ "document": "05-aggregation.md",
+ "version": 2,
+ "also": [
+  "AG-7"
+ ],
+ "operation": "pool",
+ "distinguishes": "What an aggregate costs to prove and what a node lists under a proving budget: a recursive STARK taken as an input costs once however many of its transactions are kept, a triple verified directly costs by its scheme, each triple is covered by the previous aggregate, then the received aggregate it is listed from, then its direct proof, then the first aggregate that covered it, and a transaction that would take the aggregate over the budget is passed over. The linear count, the budget per aggregate and the kept aggregates are an Interpretation (decision record 0034).",
+ "cases": [
+  {
+   "name": "without a budget everything is listed, and the proving time is still counted",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "prove_base": 100,
+     "prove_recursive": 300,
+     "prove_sig": 10,
+     "prove_stark": 200
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-b",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-c",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "A",
+      "B",
+      "C"
+     ],
+     "expect_time": 700
+    }
+   ],
+   "derivation": "prove_base 100 and three leanSTARK triples verified directly at 200 each."
+  },
+  {
+   "name": "under a budget, by tip until one does not fit",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "prove_base": 100,
+     "prove_recursive": 300,
+     "prove_sig": 10,
+     "prove_stark": 200,
+     "proving_budget": 500
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "tip": 20,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-c",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-b",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "C",
+      "A"
+     ],
+     "expect_time": 500
+    }
+   ],
+   "derivation": "C at tip 20 first, 100 + 200 = 300; A, admitted before B, makes 500; B would make 700."
+  },
+  {
+   "name": "a transaction that does not fit is passed over and a cheaper one after it is listed",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "prove_base": 100,
+     "prove_recursive": 300,
+     "prove_sig": 10,
+     "prove_stark": 200,
+     "proving_budget": 450
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "tip": 20,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-c",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "msg-b",
+            "pk-b"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "C",
+      "B"
+     ],
+     "expect_time": 310
+    }
+   ],
+   "derivation": "C makes 300; A would make 500, over 450; B's leanSPHINCS triple makes 310."
+  },
+  {
+   "name": "a budget below one transaction lists nothing",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "prove_base": 100,
+     "prove_recursive": 300,
+     "prove_sig": 10,
+     "prove_stark": 200,
+     "proving_budget": 250
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": null
+    }
+   ],
+   "derivation": "100 + 200 = 300, over 250, and an aggregate that lists nothing is not sent."
+  },
+  {
+   "name": "a received aggregate costs one input however many transactions it carries",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "prove_base": 100,
+     "prove_recursive": 300,
+     "prove_sig": 10,
+     "prove_stark": 200,
+     "proving_budget": 500
+    }
+   },
+   "state": {
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    },
+    "frank": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 1,
+      "from": "peer-1",
+      "txs": [
+       {
+        "label": "D",
+        "type": 6,
+        "sender": "dave",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-d",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       },
+       {
+        "label": "E",
+        "type": 6,
+        "sender": "erin",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-e",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       },
+       {
+        "label": "F",
+        "type": 6,
+        "sender": "frank",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-f",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok",
+      "ok",
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "D",
+      "E",
+      "F"
+     ],
+     "expect_time": 400
+    }
+   ],
+   "derivation": "One recursive input, 100 + 300; verified directly the three would cost 700."
+  },
+  {
+   "name": "the previous aggregate is one input for everything it listed",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "prove_base": 100,
+     "prove_recursive": 300,
+     "prove_sig": 10,
+     "prove_stark": 200,
+     "proving_budget": 1000
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "tip": 20,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-c",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "C",
+      "A"
+     ],
+     "expect_time": 500
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-b",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "C",
+      "A",
+      "B"
+     ],
+     "expect_hashed": [
+      "C",
+      "A"
+     ],
+     "expect_time": 600
+    }
+   ],
+   "derivation": "The second aggregate takes the first as an input, 100 + 300, and verifies B's triple, 200."
+  },
+  {
+   "name": "a received aggregate that does not fit is passed over, and its transactions cost it again later",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "prove_base": 100,
+     "prove_recursive": 300,
+     "prove_sig": 10,
+     "prove_stark": 200,
+     "proving_budget": 350
+    }
+   },
+   "state": {
+    "gina": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "G",
+        "type": 6,
+        "sender": "gina",
+        "tip": 50,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "msg-g",
+            "pk-g"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 1,
+      "from": "peer-1",
+      "txs": [
+       {
+        "label": "D",
+        "type": 6,
+        "sender": "dave",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-d",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       },
+       {
+        "label": "E",
+        "type": 6,
+        "sender": "erin",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-e",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok",
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "G"
+     ],
+     "expect_time": 110
+    }
+   ],
+   "derivation": "Step 2: D through the received aggregate would make 400, over 350, and so would E. Step 3: G at tip 50 makes 110; D and E, proven only by that aggregate, would make 410."
+  },
+  {
+   "name": "an aggregate received earlier is taken as an input once there is room",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "prove_base": 100,
+     "prove_recursive": 300,
+     "prove_sig": 10,
+     "prove_stark": 200,
+     "proving_budget": 450
+    }
+   },
+   "state": {
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "tip": 20,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-c",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "C"
+     ],
+     "expect_time": 300
+    },
+    {
+     "wrapper": {
+      "mode": 1,
+      "from": "peer-1",
+      "txs": [
+       {
+        "label": "D",
+        "type": 6,
+        "sender": "dave",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-d",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       },
+       {
+        "label": "E",
+        "type": 6,
+        "sender": "erin",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-e",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok",
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "C"
+     ],
+     "expect_hashed": [
+      "C"
+     ],
+     "expect_time": 400
+    },
+    {
+     "reset": {
+      "state": {
+       "carol": {
+        "nonce": 1
+       }
+      }
+     }
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "D",
+      "E"
+     ],
+     "expect_hashed": [],
+     "expect_time": 400
+    }
+   ],
+   "derivation": "The second aggregate is its previous one, 400, and the received one would make 700. Once C leaves, nothing was received since, and in step 3 D's triple is covered by the first aggregate that covered it, which then covers E's too."
+  },
+  {
+   "name": "a direct proof is preferred to an aggregate it was not listed from",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "prove_base": 100,
+     "prove_recursive": 300,
+     "prove_sig": 10,
+     "prove_stark": 200,
+     "proving_budget": 450
+    }
+   },
+   "state": {
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "tip": 20,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-c",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "C"
+     ],
+     "expect_time": 300
+    },
+    {
+     "wrapper": {
+      "mode": 1,
+      "from": "peer-1",
+      "txs": [
+       {
+        "label": "D",
+        "type": 6,
+        "sender": "dave",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-d",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "D",
+        "type": 6,
+        "sender": "dave",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-d",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ErrAlreadyKnown"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "C"
+     ],
+     "expect_time": 400
+    },
+    {
+     "reset": {
+      "state": {
+       "carol": {
+        "nonce": 1
+       }
+      }
+     }
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "D"
+     ],
+     "expect_time": 300
+    }
+   ],
+   "derivation": "The mode 0 wrapper passes AG-5, so D's triple is proven directly (AG-6) though the pool already holds D. In the last aggregate D is in step 3: its direct proof costs 200, the aggregate would cost 300."
+  },
+  {
+   "name": "a triple two transactions share is verified once",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "prove_base": 100,
+     "prove_recursive": 300,
+     "prove_sig": 10,
+     "prove_stark": 200
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "gina": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "G",
+        "type": 6,
+        "sender": "gina",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "A",
+      "G"
+     ],
+     "expect_time": 300
+    }
+   ]
+  },
+  {
+   "name": "with cap_aggregates true the limits and the budget both bind",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": true,
+     "prove_base": 100,
+     "prove_recursive": 300,
+     "prove_sig": 10,
+     "prove_stark": 200,
+     "proving_budget": 520
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dan": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "tip": 20,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-c",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "msg-b",
+            "pk-b"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "D",
+        "type": 6,
+        "sender": "dan",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "msg-d",
+            "pk-d"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "C",
+      "B",
+      "D"
+     ],
+     "expect_time": 320
+    }
+   ],
+   "derivation": "C takes the one leanSTARK place, 300; A breaks the limit; B and D add 10 each."
+  }
+ ]
+}

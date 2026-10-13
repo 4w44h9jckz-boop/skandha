@@ -1,0 +1,57 @@
+{
+  "clause": "NP-19",
+  "document": "01-nonce-pool.md",
+  "version": 1,
+  "also": ["NP-13", "NP-17"],
+  "operation": "pool",
+  "distinguishes": "What a new head does to the pool: included nonces leave, a queued transaction that became executable is promoted, an unaffordable pending transaction is dropped and demotes every higher nonce of its sender, and checks are per transaction, not cumulative.",
+  "cases": [
+    {
+      "name": "an included nonce leaves",
+      "state": {"alice": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "alice", "nonce": 0}, {"label": "a1", "sender": "alice", "nonce": 1}], "expect": ["ok", "ok"]},
+        {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"alice": {"nonce": 1}}}},
+        {"expect_pool": {"pending": {"alice": ["a1"]}}}
+      ]
+    },
+    {
+      "name": "the account nonce jumps past a gap: the queued transaction is promoted",
+      "state": {"alice": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "alice", "nonce": 0}, {"label": "a2", "sender": "alice", "nonce": 2}], "expect": ["ok", "ok"]},
+        {"expect_pool": {"pending": {"alice": ["a0"]}, "queued": {"alice": ["a2"]}}},
+        {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"alice": {"nonce": 2}}}},
+        {"expect_pool": {"pending": {"alice": ["a2"]}}}
+      ]
+    },
+    {
+      "name": "NP-13: an unaffordable pending transaction is dropped and demotes the nonces above it",
+      "state": {"alice": {"balance": 10000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "alice", "nonce": 0}, {"label": "a1", "sender": "alice", "nonce": 1, "max_fee": 200}, {"label": "a2", "sender": "alice", "nonce": 2}], "expect": ["ok", "ok", "ok"]},
+        {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"alice": {"balance": 3000000}}}},
+        {"expect_pool": {"pending": {"alice": ["a0"]}, "queued": {"alice": ["a2"]}}}
+      ],
+      "derivation": "Costs 2100000, 4200000, 2100000. Against 3000000 only a1 is unaffordable on its own; a0 and a2 together are not checked."
+    },
+    {
+      "name": "a queued transaction that became unaffordable is dropped",
+      "state": {"alice": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a5", "sender": "alice", "nonce": 5}], "expect": ["ok"]},
+        {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"alice": {"balance": 1000000}}}},
+        {"expect_pool": {}}
+      ]
+    },
+    {
+      "name": "a lowered block gas limit drops what no longer fits",
+      "state": {"alice": {"balance": 10000000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "alice", "nonce": 0}, {"label": "a1", "sender": "alice", "nonce": 1, "gas": 15000000}], "expect": ["ok", "ok"]},
+        {"reset": {"head": {"number": 1, "timestamp": 1012, "gas_limit": 10000000, "gas_used": 5000000}}},
+        {"expect_pool": {"pending": {"alice": ["a0"]}}}
+      ]
+    }
+  ]
+}

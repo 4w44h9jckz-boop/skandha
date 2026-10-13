@@ -1,0 +1,89 @@
+{
+  "clause": "FP-12",
+  "document": "02-frame-pool.md",
+  "version": 5,
+  "operation": "pool",
+  "distinguishes": "One pending frame transaction per sender under the specification, several on disjoint non-zero keys under the testnet profile, replacement by identity with the price bump, and a replacement's reservation leaving the old one out. Under `static_first` a copy or a second transaction is refused before its prefix runs, and a copy that pays the bump is still run.",
+  "cases": [
+    {"name": "a second transaction from the sender on another key is refused", "profile": "eip-8141",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [
+       {"label": "k0", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "k5", "type": 6, "sender": "alice", "nonce_keys": [5], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFrameSenderBusy"]}]},
+    {"name": "disjoint keys do not help under the specification", "profile": "eip-8141",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [
+       {"label": "k5", "type": 6, "sender": "alice", "nonce_keys": [5], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "k6", "type": 6, "sender": "alice", "nonce_keys": [6], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFrameSenderBusy"]}]},
+    {"name": "the testnet profile admits disjoint non-zero key sets, and only those", "profile": "hegota-testnet",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [
+       {"label": "k5", "type": 6, "sender": "alice", "nonce_keys": [5], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "k6", "type": 6, "sender": "alice", "nonce_keys": [6], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "k5-6", "type": 6, "sender": "alice", "nonce_keys": [5, 6], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "k0", "type": 6, "sender": "alice", "nonce_keys": [0], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ok", "ErrFrameSenderBusy", "ErrFrameSenderBusy"]},
+     {"expect_pool": {"pending": {"alice": ["k5", "k6"]}}}]},
+    {"name": "replacement by identity needs the bump", "profile": "eip-8141",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "f0", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"add": [{"label": "f0-105", "type": 6, "sender": "alice", "max_fee": 105, "tip": 11, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrReplaceUnderpriced"]},
+       {"add": [{"label": "f0-110", "type": 6, "sender": "alice", "max_fee": 110, "tip": 11, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["f0-110"]}}}
+     ]},
+    {"name": "a replacement's exposure does not count the transaction it replaces", "profile": "eip-8141",
+     "state": {"alice": {"balance": 100000000}, "sponsor": {"balance": 15000000}},
+     "steps": [
+       {"add": [{"label": "f0", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"add": [{"label": "f0-110", "type": 6, "sender": "alice", "max_fee": 110, "tip": 11, "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["f0-110"]}}}
+     ],
+     "derivation": "The replacement's max_cost is 131425 * 110 = 14456750; 15000000 - 0 covers it, 15000000 - 13142500 would not."},
+    {"name": "a replacement may move to another payer, releasing the first", "profile": "hegota-testnet",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "pm2": {"balance": 100000000, "code": "paymaster-v1"}},
+     "steps": [
+       {"add": [{"label": "a-pm2", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "pm2", "exec_gas": 30000, "approves": 1}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"add": [{"label": "a-self", "type": 6, "sender": "alice", "max_fee": 110, "tip": 11, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"add": [{"label": "b-pm2", "type": 6, "sender": "bob", "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "pm2", "exec_gas": 30000, "approves": 1}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["a-self"], "bob": ["b-pm2"]}}}
+     ]},
+    {"name": "the specification runs a copy's prefix before it compares fees", "profile": "eip-8141",
+     "state": {"pool": {"balance": 100000000, "code": "account-v1"}},
+     "steps": [
+       {"add": [{"label": "k7", "type": 6, "sender": "pool", "nonce_keys": [7], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"add": [{"label": "k7-copy", "type": 6, "sender": "pool", "nonce_keys": [7], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reverts": true}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFramePrefixReverted"]}
+     ]},
+    {"name": "static_first: a copy at the same fees is refused as underpriced before its prefix runs", "profile": "eip-8141",
+     "config": {"frame": {"static_first": true}},
+     "state": {"pool": {"balance": 100000000, "code": "account-v1"}},
+     "steps": [
+       {"add": [{"label": "k7", "type": 6, "sender": "pool", "nonce_keys": [7], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"add": [{"label": "k7-copy", "type": 6, "sender": "pool", "nonce_keys": [7], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reverts": true}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrReplaceUnderpriced"]}
+     ]},
+    {"name": "static_first: a copy that pays the bump still runs its prefix, so the pool admits what it did", "profile": "eip-8141",
+     "config": {"frame": {"static_first": true}},
+     "state": {"pool": {"balance": 100000000, "code": "account-v1"}},
+     "steps": [
+       {"add": [{"label": "k7", "type": 6, "sender": "pool", "nonce_keys": [7], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"add": [{"label": "k7-110-reverts", "type": 6, "sender": "pool", "nonce_keys": [7], "max_fee": 110, "tip": 11, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reverts": true}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFramePrefixReverted"]},
+       {"add": [{"label": "k7-110", "type": 6, "sender": "pool", "nonce_keys": [7], "max_fee": 110, "tip": 11, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"pool": ["k7-110"]}}}
+     ]},
+    {"name": "static_first: a second transaction from a busy sender is refused before its prefix runs", "profile": "eip-8141",
+     "config": {"frame": {"static_first": true}},
+     "state": {"a1": {"balance": 100000000, "code": "account-v1"}},
+     "steps": [{"add": [
+       {"label": "k0", "type": 6, "sender": "a1", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "k5-reverts", "type": 6, "sender": "a1", "nonce_keys": [5], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reverts": true}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFrameSenderBusy"]}]},
+    {"name": "without static_first the same second transaction gets the prefix's answer", "profile": "eip-8141",
+     "state": {"a1": {"balance": 100000000, "code": "account-v1"}},
+     "steps": [{"add": [
+       {"label": "k0", "type": 6, "sender": "a1", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "k5-reverts", "type": 6, "sender": "a1", "nonce_keys": [5], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reverts": true}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFramePrefixReverted"]}]}
+  ]
+}

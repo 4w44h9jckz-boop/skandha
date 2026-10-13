@@ -1,0 +1,68 @@
+{
+  "clause": "FEE-4",
+  "document": "00-model.md",
+  "version": 5,
+  "operation": "frame_gas",
+  "distinguishes": "The frame transaction gas formulas: per-frame cost, signature bytes and verification cost in both the intrinsic and the floor, the value-transfer charge, state limits added on both sides of the max, and the length of the RLP-encoded nonce fields at each of its boundaries.",
+  "cases": [
+    {
+      "name": "simple transaction: [self_verify, sender] with one secp256k1 signature",
+      "tx": {"type": 6, "sender": "alice", "frames": [
+        {"mode": 1, "flags": 3, "exec_gas": 30000},
+        {"mode": 2, "exec_gas": 50000, "data_size": 100}
+      ]},
+      "expect": {"intrinsic": 18438, "floor": 26502, "max_gas": 98438, "max_cost": 9843800},
+      "derivation": "N = 2 (the list [0]: 0xc1 0x80) + 1 (nonce_seq 0: 0x80) = 3. D = 100 + 65 + 3 = 168. intrinsic = 12000 + 2*475 + 16*168 + 2800 = 18438. standard = 18438 + 30000 + 50000 = 98438. floor = 12000 + 950 + 2800 + 64*168 = 26502. max_gas = max(98438, 26502 + 0)."
+    },
+    {
+      "name": "data heavy with an explicit signer: the floor binds and state gas is added to it",
+      "tx": {"type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1", "signer": "alice"}], "frames": [
+        {"mode": 1, "flags": 3, "exec_gas": 5000},
+        {"mode": 2, "exec_gas": 1000, "state_gas": 100, "data_size": 1000}
+      ]},
+      "expect": {"intrinsic": 33158, "floor": 85382, "max_gas": 85482, "max_cost": 8548200},
+      "derivation": "D = 1000 + 20 + 65 + 3 = 1088. intrinsic = 12000 + 950 + 17408 + 2800 = 33158. standard = 33158 + 6000 + 100 = 39258. floor = 12000 + 950 + 2800 + 64*1088 = 85382. max_gas = max(39258, 85382 + 100)."
+    },
+    {
+      "name": "a value-carrying frame to another address costs 6000 on both sides",
+      "tx": {"type": 6, "sender": "alice", "max_fee": 7, "frames": [
+        {"mode": 1, "flags": 3, "exec_gas": 30000},
+        {"mode": 2, "target": "bob", "value": 5, "exec_gas": 50000}
+      ]},
+      "expect": {"intrinsic": 22838, "floor": 26102, "max_gas": 102838, "max_cost": 719866},
+      "derivation": "D = 65 + 3 = 68. intrinsic = 12000 + 950 + 1088 + 2800 + 6000 = 22838. standard = 102838. floor = 12000 + 950 + 2800 + 6000 + 4352 = 26102. max_cost = 102838 * 7."
+    },
+    {
+      "name": "p256 and a non-canonical message",
+      "tx": {"type": 6, "sender": "alice", "signatures": [{"scheme": "p256", "signer": "alice", "canonical_msg": false}], "frames": [
+        {"mode": 1, "flags": 3, "exec_gas": 10000}
+      ]},
+      "expect": {"intrinsic": 22103, "floor": 30887, "max_gas": 32103, "max_cost": 3210300},
+      "derivation": "D = 20 + 32 + 128 + 3 = 183. intrinsic = 12000 + 475 + 16*183 + 6700 = 22103. standard = 22103 + 10000 = 32103. floor = 12000 + 475 + 6700 + 64*183 = 30887."
+    },
+    {
+      "name": "several keys of different lengths, and a sequence of 128 or more",
+      "tx": {"type": 6, "sender": "alice", "nonce_keys": [5, 200, 70000], "nonce_seq": 300, "frames": [
+        {"mode": 1, "flags": 3, "exec_gas": 30000}
+      ]},
+      "expect": {"intrinsic": 16491, "floor": 20139, "max_gas": 46491, "max_cost": 4649100},
+      "derivation": "Items: 5 is 1 byte, 200 is 0x81 0xc8 (2), 70000 = 0x011170 is 0x83 and 3 bytes (4); the list holds 7 bytes, so 8. nonce_seq 300 = 0x012c is 0x82 and 2 bytes (3). N = 11, D = 65 + 11 = 76. intrinsic = 12000 + 475 + 16*76 + 2800 = 16491. standard = 46491. floor = 12000 + 475 + 2800 + 64*76 = 20139."
+    },
+    {
+      "name": "a list of exactly 55 bytes takes a one-byte prefix, and a sequence of 127 one byte",
+      "tx": {"type": 6, "sender": "alice", "nonce_keys": [1461501637330902918203684832716283019655932542976, 115792089237316195423570985008687907853269984665640564039457584007913129639935], "nonce_seq": 127, "frames": [
+        {"mode": 1, "flags": 3, "exec_gas": 30000}
+      ]},
+      "expect": {"intrinsic": 17227, "floor": 23083, "max_gas": 47227, "max_cost": 4722700},
+      "derivation": "Keys 2^160 (161 bits, 21 bytes, so 22) and 2^256 - 1 (32 bytes, so 33): the list holds 55 bytes, so 1 + 55 = 56. nonce_seq 127 is the single byte 0x7f (1). N = 57, D = 65 + 57 = 122. intrinsic = 12000 + 475 + 16*122 + 2800 = 17227. standard = 47227. floor = 12000 + 475 + 2800 + 64*122 = 23083."
+    },
+    {
+      "name": "a list of more than 55 bytes takes a length of its length",
+      "tx": {"type": 6, "sender": "alice", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639934, 115792089237316195423570985008687907853269984665640564039457584007913129639935], "nonce_seq": 128, "frames": [
+        {"mode": 1, "flags": 3, "exec_gas": 30000}
+      ]},
+      "expect": {"intrinsic": 17435, "floor": 23915, "max_gas": 47435, "max_cost": 4743500},
+      "derivation": "Keys 2^256 - 2 and 2^256 - 1, 33 bytes each: the list holds 66 bytes, so 0xf8 0x42 and 66 (68). nonce_seq 128 is 0x81 0x80 (2). N = 70, D = 65 + 70 = 135. intrinsic = 12000 + 475 + 16*135 + 2800 = 17435. standard = 47435. floor = 12000 + 475 + 2800 + 64*135 = 23915."
+    }
+  ]
+}

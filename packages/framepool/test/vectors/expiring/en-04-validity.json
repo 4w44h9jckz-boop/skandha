@@ -1,0 +1,45 @@
+{
+  "clause": "EN-4",
+  "document": "09-expiring-nonces.md",
+  "version": 1,
+  "also": ["FP-7", "FP-8"],
+  "operation": "pool",
+  "distinguishes": "In the mode the deadline replaces the nonce: it must exist, be at least the pool's now and at most sixty seconds past it, with now FP-8's head timestamp plus margin; the sender's sequences are not read; and a hash consumed with a deadline at or after now is refused.",
+  "cases": [
+    {"name": "a deadline is required, at least now and at most now plus 60", "profile": "eip-8266",
+     "state": {"a1": {"balance": 100000000}, "a2": {"balance": 100000000}, "a3": {"balance": 100000000}, "a4": {"balance": 100000000}, "a5": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [{"add": [
+       {"label": "none", "type": 6, "sender": "a1", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "past", "type": 6, "sender": "a2", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 999}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "now", "type": 6, "sender": "a3", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1000}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "sixty", "type": 6, "sender": "a4", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1060}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "sixty-one", "type": 6, "sender": "a5", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1061}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ErrFrameExpiryMissing", "ErrFrameExpired", "ok", "ok", "ErrFrameExpiryTooFar"]}],
+     "derivation": "Head timestamp 1000, expiry_margin 0: now is 1000 and the bound 1060."},
+    {"name": "now is the head's timestamp plus expiry_margin, for both bounds", "profile": "eip-8266", "config": {"frame": {"expiry_margin": 5}},
+     "state": {"a1": {"balance": 100000000}, "a2": {"balance": 100000000}, "a3": {"balance": 100000000}, "a4": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [{"add": [
+       {"label": "below", "type": 6, "sender": "a1", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1004}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "now", "type": 6, "sender": "a2", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1005}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "sixty", "type": 6, "sender": "a3", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1065}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "sixty-one", "type": 6, "sender": "a4", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1066}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ErrFrameExpired", "ok", "ok", "ErrFrameExpiryTooFar"]}]},
+    {"name": "the sender's nonce and its sequence for the reserved key are not read", "profile": "eip-8266",
+     "state": {"alice": {"nonce": 5, "balance": 100000000, "nonce_seqs": {"115792089237316195423570985008687907853269984665640564039457584007913129639935": 3}}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [{"add": [
+       {"label": "m", "type": 6, "sender": "alice", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1030}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok"]}]},
+    {"name": "a consumed hash is refused while its deadline is at or after now, and is expired after", "profile": "eip-8266",
+     "state": {"alice": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [
+       {"add": [{"label": "x", "type": 6, "sender": "alice", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1030}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"build": {}, "expect": ["x"]},
+       {"add": [{"label": "x", "type": 6, "sender": "alice", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1030}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrNonceTooLow"]},
+       {"reset": {"head": {"timestamp": 1030}}},
+       {"add": [{"label": "x", "type": 6, "sender": "alice", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1030}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrNonceTooLow"]},
+       {"reset": {"head": {"timestamp": 1031}}},
+       {"add": [{"label": "x", "type": 6, "sender": "alice", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1030}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFrameExpired"]}
+     ],
+     "derivation": "The block is at 1012 and writes seen(x) = 1030 (EN-7). At 1012 and at 1030, seen(x) >= now; at 1031 the deadline is below now, which is checked first."}
+  ]
+}

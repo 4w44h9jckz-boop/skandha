@@ -1,0 +1,65 @@
+{
+  "clause": "FP-8",
+  "document": "02-frame-pool.md",
+  "version": 5,
+  "operation": "pool",
+  "distinguishes": "What simulating the prefix decides: the expiry verifier's code and deadline, against the head's timestamp plus expiry_margin, the default code's signature lookup by scope, a contract's own outcome, the deploy frame's obligation to install code, and the payer's raw balance at APPROVE.",
+  "cases": [
+    {"name": "an expiry frame with no verifier code reverts", "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 2000}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFramePrefixReverted"]}]},
+    {"name": "a deadline below the head's timestamp is expired, equal is not", "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [{"add": [
+       {"label": "late", "type": 6, "sender": "alice", "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 999}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "on-time", "type": 6, "sender": "bob", "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1000}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ErrFrameExpired", "ok"]}]},
+    {"name": "default code needs a secp256k1 signature by the target over the canonical hash, at index 0 for execution scope",
+     "state": {"a1": {"balance": 100000000}, "a2": {"balance": 100000000}, "a3": {"balance": 100000000}},
+     "steps": [{"add": [
+       {"label": "p256", "type": 6, "sender": "a1", "signatures": [{"scheme": "p256"}], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "other-signer", "type": 6, "sender": "a2", "signatures": [{"scheme": "secp256k1", "signer": "bob"}], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "explicit-msg", "type": 6, "sender": "a3", "signatures": [{"scheme": "secp256k1", "canonical_msg": false}], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ErrFramePrefixReverted", "ErrFramePrefixReverted", "ErrFramePrefixReverted"]}]},
+    {"name": "a default-code sponsor's pay frame looks at index 1", "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "sponsor": {"balance": 100000000}},
+     "steps": [{"add": [
+       {"label": "missing", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "present", "type": 6, "sender": "bob", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ErrFramePrefixReverted", "ok"]}]},
+    {"name": "a contract account decides by its own outcome",
+     "state": {"a1": {"balance": 100000000, "code": "account-v1"}, "a2": {"balance": 100000000, "code": "account-v1"}, "a3": {"balance": 100000000, "code": "account-v1"}, "a4": {"balance": 100000000, "code": "account-v1"}},
+     "steps": [{"add": [
+       {"label": "approves", "type": 6, "sender": "a1", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "wrong-scope", "type": 6, "sender": "a2", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 2}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "never", "type": 6, "sender": "a3", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "reverts", "type": 6, "sender": "a4", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reverts": true}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFrameMissingApprove", "ErrFrameMissingApprove", "ErrFramePrefixReverted"]}]},
+    {"name": "a read with an expected value approves only while the slot holds it",
+     "state": {"a1": {"balance": 100000000, "code": "account-v1", "storage": {"1": 42}}, "a2": {"balance": 100000000, "code": "account-v1", "storage": {"1": 42}}},
+     "steps": [{"add": [
+       {"label": "holds", "type": 6, "sender": "a1", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["a1", 1, 42]]}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "differs", "type": 6, "sender": "a2", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["a2", 1, 41]]}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFramePrefixReverted"]}]},
+    {"name": "a deploy frame must install code at a sender that has none, through a factory that has code",
+     "state": {"a1": {"balance": 100000000}, "a2": {"balance": 100000000, "code": "account-v1"}, "a3": {"balance": 100000000}, "a4": {"balance": 100000000}, "factory": {"code": "factory-v1"}},
+     "steps": [{"add": [
+       {"label": "deploys", "type": 6, "sender": "a1", "frames": [{"mode": 0, "target": "factory", "exec_gas": 30000, "installs_code": "account-v1"}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "already-deployed", "type": 6, "sender": "a2", "frames": [{"mode": 0, "target": "factory", "exec_gas": 30000, "installs_code": "account-v1"}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "no-factory", "type": 6, "sender": "a3", "frames": [{"mode": 0, "target": "nofactory", "exec_gas": 30000, "installs_code": "account-v1"}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "installs-nothing", "type": 6, "sender": "a4", "frames": [{"mode": 0, "target": "factory", "exec_gas": 30000}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFrameDeployNoCode", "ErrFrameDeployNoCode", "ErrFrameDeployNoCode"]}]},
+    {"name": "the payer cannot cover max_cost", "state": {"alice": {"balance": 9683799}, "bob": {"balance": 9683800}},
+     "steps": [{"add": [
+       {"label": "short", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "exact", "type": 6, "sender": "bob", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ErrInsufficientFunds", "ok"]}],
+     "derivation": "D = 65 + 3 nonce bytes = 68 (00-model.md version 2). max_gas = 12000 + 2*475 + 16*68 + 2800 + 30000 + 50000 = 96838, so max_cost = 9683800."},
+    {"name": "expiry_margin 12: a deadline below the head's timestamp plus the margin is expired, equal is not",
+     "config": {"frame": {"expiry_margin": 12}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [
+       {"add": [{"label": "at-head", "type": 6, "sender": "alice", "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1000}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+                {"label": "late", "type": 6, "sender": "bob", "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1011}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+                {"label": "on-time", "type": 6, "sender": "carol", "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1012}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}],
+        "expect": ["ErrFrameExpired", "ErrFrameExpired", "ok"]}
+     ]}
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "clause": "IL-4",
+  "document": "07-focil.md",
+  "version": 1,
+  "operation": "pool",
+  "distinguishes": "The budget fill: each IL read in order against max_verify_gas_per_il, a frame transaction over what is left ignored in that IL but admitted by another, and an invalid signature keeping only its signature's debit.",
+  "cases": [
+    {"name": "the budget left cannot hold the second transaction, and no other IL lists it",
+     "focil": "eip-8369",
+     "config": {"focil": {"max_verify_gas_per_il": 100000}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"build": {"skip": ["bob"],
+                  "ils": [[{"label": "f1", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 60000}, {"mode": 2, "exec_gas": 50000}]},
+                           {"label": "f2", "type": 6, "sender": "bob", "frames": [{"mode": 1, "flags": 3, "exec_gas": 60000}, {"mode": 2, "exec_gas": 50000}]}]]},
+        "expect": ["f1"], "expect_omission": null}
+     ]},
+    {"name": "another IL that lists it first admits it",
+     "focil": "eip-8369",
+     "config": {"focil": {"max_verify_gas_per_il": 100000}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"build": {"skip": ["bob"],
+                  "ils": [[{"label": "f1", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 60000}, {"mode": 2, "exec_gas": 50000}]},
+                           {"label": "f2", "type": 6, "sender": "bob", "frames": [{"mode": 1, "flags": 3, "exec_gas": 60000}, {"mode": 2, "exec_gas": 50000}]}],
+                          [{"label": "f2", "type": 6, "sender": "bob", "frames": [{"mode": 1, "flags": 3, "exec_gas": 60000}, {"mode": 2, "exec_gas": 50000}]}]]},
+        "expect": ["f1"], "expect_omission": "f2"}
+     ]},
+    {"name": "an invalid signature keeps only its 2800, so what follows still fits",
+     "focil": "eip-8369",
+     "config": {"focil": {"max_verify_gas_per_il": 100000}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"build": {"skip": ["bob"],
+                  "ils": [[{"label": "bad", "type": 6, "sender": "alice", "signatures": [{"valid": false}], "frames": [{"mode": 1, "flags": 3, "exec_gas": 90000}, {"mode": 2, "exec_gas": 50000}]},
+                           {"label": "f2", "type": 6, "sender": "bob", "frames": [{"mode": 1, "flags": 3, "exec_gas": 60000}, {"mode": 2, "exec_gas": 50000}]}]]},
+        "expect": [], "expect_omission": "f2"}
+     ]},
+    {"name": "the same transaction with a valid signature takes 92800 and leaves no room",
+     "focil": "eip-8369",
+     "config": {"focil": {"max_verify_gas_per_il": 100000}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"build": {"skip": ["alice", "bob"],
+                  "ils": [[{"label": "good", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 90000}, {"mode": 2, "exec_gas": 50000}]},
+                           {"label": "f2", "type": 6, "sender": "bob", "frames": [{"mode": 1, "flags": 3, "exec_gas": 60000}, {"mode": 2, "exec_gas": 50000}]}]]},
+        "expect": [], "expect_omission": "good"}
+     ]}
+  ]
+}

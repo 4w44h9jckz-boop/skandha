@@ -1,0 +1,24 @@
+{
+  "clause": "EN-3",
+  "document": "09-expiring-nonces.md",
+  "version": 1,
+  "also": ["FP-3", "FP-7"],
+  "operation": "pool",
+  "distinguishes": "Under the profile the reserved key alone selects the mode, and beside another key or with a sequence it is malformed; without the profile it is an ordinary key whose sequence FP-7 reads.",
+  "cases": [
+    {"name": "the reserved key alone, at sequence 0, is the mode; beside another key, or at sequence 1, it is malformed", "profile": "eip-8266",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [{"add": [
+       {"label": "alone", "type": 6, "sender": "alice", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1030}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "beside", "type": 6, "sender": "bob", "nonce_keys": [7, 115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1030}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "sequenced", "type": 6, "sender": "carol", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "nonce_seq": 1, "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1030}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFrameMalformed", "ErrFrameMalformed"]}]},
+    {"name": "without the profile the key is ordinary: no deadline needed, beside another key allowed, and its sequence read", "profile": "eip-8141",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+     "steps": [{"add": [
+       {"label": "alone", "type": 6, "sender": "alice", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "beside", "type": 6, "sender": "bob", "nonce_keys": [7, 115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "sequenced", "type": 6, "sender": "carol", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "nonce_seq": 1, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ok", "ErrNonceTooHigh"]}]}
+  ]
+}

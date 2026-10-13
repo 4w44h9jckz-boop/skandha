@@ -1,0 +1,22 @@
+{
+  "clause": "NP-14",
+  "document": "01-nonce-pool.md",
+  "version": 1,
+  "operation": "pool",
+  "distinguishes": "Promotion moves the run of consecutive nonces into pending and caps each sender's queue at account_queue by dropping its highest nonces; dropped transactions were still answered ok.",
+  "cases": [
+    {
+      "name": "the queue is capped after admission, and filling the gap promotes the rest",
+      "config": {"nonce": {"account_queue": 2}},
+      "state": {"alice": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a2", "sender": "alice", "nonce": 2}, {"label": "a3", "sender": "alice", "nonce": 3}, {"label": "a4", "sender": "alice", "nonce": 4}, {"label": "a5", "sender": "alice", "nonce": 5}], "expect": ["ok", "ok", "ok", "ok"]},
+        {"expect_pool": {"queued": {"alice": ["a2", "a3"]}}},
+        {"add": [{"label": "a0", "sender": "alice", "nonce": 0}], "expect": ["ok"]},
+        {"expect_pool": {"pending": {"alice": ["a0"]}, "queued": {"alice": ["a2", "a3"]}}},
+        {"add": [{"label": "a1", "sender": "alice", "nonce": 1}], "expect": ["ok"]},
+        {"expect_pool": {"pending": {"alice": ["a0", "a1", "a2", "a3"]}}}
+      ]
+    }
+  ]
+}

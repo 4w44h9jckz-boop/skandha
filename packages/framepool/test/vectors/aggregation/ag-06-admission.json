@@ -1,0 +1,88 @@
+{
+  "clause": "AG-6",
+  "document": "05-aggregation.md",
+  "version": 2,
+  "also": ["AG-5", "FP-2"],
+  "operation": "pool",
+  "distinguishes": "A transaction with dependencies is admitted only once a wrapper that passes AG-5 has proven them, however it arrives; the check sits after FP-6 and before FP-7; and a triple stays proven when the pool refuses or drops the transaction that brought it, which is an Interpretation (decision record 0012).",
+  "cases": [
+    {"name": "alone and unproven", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrFrameDepsUnproven"]},
+       {"expect_pool": {"pending": {}}}
+     ]},
+    {"name": "in a wrapper that proves it", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]},
+        "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["A"]}}}
+     ]},
+    {"name": "once proven, a replacement may come alone", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]},
+        "expect": ["ok"]},
+       {"add": [{"label": "A2", "type": 6, "sender": "alice", "max_fee": 200, "tip": 20, "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["A2"]}}}
+     ]},
+    {"name": "proven although the pool refuses the transaction", "profile": "eip-8288",
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]},
+        "expect": ["ErrInsufficientFunds"]},
+       {"reset": {"state": {"alice": {"balance": 1000000000}}}},
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ok"]}
+     ],
+     "derivation": "alice starts with no balance, so FP-8 refuses A, but the wrapper's proof verified and pub-a is proven."},
+    {"name": "a wrapper that fails AG-5 proves nothing", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "proofs": [false]},
+        "expect": "ErrWrapperProof"},
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrFrameDepsUnproven"]}
+     ]},
+    {"name": "a mode 1 wrapper admits only what its deps cover", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "carol": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 1, "from": "peer-1", "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "C", "type": 6, "sender": "carol", "frames": [{"mode": 3, "deps": [[17, "pub-c", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[17, "pub-a", "vk-1"]], "stark": {"covers": [[17, "pub-a", "vk-1"]], "valid": true}},
+        "expect": ["ok", "ErrFrameDepsUnproven"]}
+     ]},
+    {"name": "a transaction already held", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]},
+        "expect": ["ok"]},
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]},
+        "expect": ["ErrAlreadyKnown"]}
+     ]},
+    {"name": "a transaction without dependencies needs no wrapper", "profile": "eip-8288",
+     "state": {"dan": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "P", "type": 6, "sender": "dan", "frames": [{"mode": 1, "flags": 3}]}],
+        "expect": ["ok"]}
+     ]},
+    {"name": "the prefix's shape is checked first", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 1}]}],
+        "expect": ["ErrFrameUnrecognizedPrefix"]}
+     ],
+     "derivation": "Without the dependency frame the prefix is one pay frame, which FP-5 does not recognise; FP-5 comes before AG-6."},
+    {"name": "the nonce is checked after", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "nonce_seq": 5, "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrFrameDepsUnproven"]}
+     ],
+     "derivation": "alice's nonce is 0, so FP-7 would answer ErrNonceTooHigh; AG-6 comes before it."}
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "clause": "MA-9",
+  "document": "04-matcha.md",
+  "version": 3,
+  "also": ["FP-15"],
+  "operation": "pool",
+  "distinguishes": "Which transactions a head change re-runs and who pays: nothing re-runs for a change to balances alone under reuse; otherwise the baseline re-runs free (an Interpretation), each additional transaction in arrival order spends its charge before its re-run, and one its sender cannot cover leaves without a re-run.",
+  "cases": [
+    {"name": "under reuse a balance change re-runs nothing", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "y", "type": 6, "sender": "pool", "nonce_keys": [3], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok", "ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"pool": {"balance": 999999999999999999}}}},
+       {"expect_resimulated": []},
+       {"expect_pool": {"pending": {"pool": ["b", "x", "y"]}}},
+       {"expect_width": {"pool": 812648}}
+     ],
+     "derivation": "Two charges of 93676: 1000000 - 187352 = 812648."},
+    {"name": "without reuse the same change re-runs all three and charges the additional two", "profile": "matcha", "config": {"frame": {"reuse_balance": false}},
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "y", "type": 6, "sender": "pool", "nonce_keys": [3], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok", "ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"pool": {"balance": 999999999999999999}}}},
+       {"expect_resimulated": ["b", "x", "y"]},
+       {"expect_pool": {"pending": {"pool": ["b", "x", "y"]}}},
+       {"expect_width": {"pool": 625296}}
+     ],
+     "derivation": "812648 after admission, then two more charges: 812648 - 187352 = 625296."},
+    {"name": "a changed slot re-runs while width lasts and drops the rest unrun", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool", "storage": {"1": 7}}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 374704}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 1, null]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 1, null]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "y", "type": 6, "sender": "pool", "nonce_keys": [3], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 1, null]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "z", "type": 6, "sender": "pool", "nonce_keys": [4], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 1, null]]}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok", "ok", "ok"]},
+       {"expect_width": {"pool": 93676}},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"pool": {"balance": 999999999999999999, "storage": {"1": 8}}}}},
+       {"expect_resimulated": ["b", "x"]},
+       {"expect_pool": {"pending": {"pool": ["b", "x"]}}},
+       {"expect_width": {"pool": 0}}
+     ],
+     "derivation": "374704 = 4 * 93676; three admissions leave one charge. The slot changed as well as the balance, so reuse does not apply. b re-runs free; x spends the last charge and re-runs; y and z find 0 and leave."},
+    {"name": "a re-run that fails removes the transaction after its charge is spent", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool", "storage": {"1": 7}}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 374704}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 1, 7]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 1, 7]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "y", "type": 6, "sender": "pool", "nonce_keys": [3], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 1, 7]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "z", "type": 6, "sender": "pool", "nonce_keys": [4], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 1, 7]]}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok", "ok", "ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"pool": {"storage": {"1": 8}}}}},
+       {"expect_resimulated": ["b", "x"]},
+       {"expect_pool": {}},
+       {"expect_baseline": {"pool": null}},
+       {"expect_width": {"pool": 0}}
+     ]}
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "clause": "FP-15",
+  "document": "02-frame-pool.md",
+  "version": 5,
+  "operation": "pool",
+  "distinguishes": "A new head removes included and expired transactions, expired against its timestamp plus expiry_margin, re-simulates exactly those whose recorded dependencies changed (a payer's balance rising by one wei among them), and re-checks payer reservations in arrival order; under reuse_balance a change to non-zero balances alone re-simulates nothing and leaves the payer check to step 4.",
+  "cases": [
+    {"name": "an included nonce leaves",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "f0", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"alice": {"nonce": 1}}}},
+       {"expect_pool": {}}
+     ]},
+    {"name": "a deadline equal to the new timestamp stays, below it goes",
+     "state": {"alice": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [
+       {"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1012}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}}},
+       {"expect_pool": {"pending": {"alice": ["f"]}}},
+       {"reset": {"head": {"number": 2, "timestamp": 1024}}},
+       {"expect_pool": {}}
+     ]},
+    {"name": "only transactions whose dependencies changed are re-simulated",
+     "state": {"alice": {"balance": 100000000, "code": "account-v1", "storage": {"1": 42}}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [
+         {"label": "fa", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["alice", 1, 42]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "fb", "type": 6, "sender": "bob", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"carol": {"storage": {"9": 9}}, "alice": {"storage": {"2": 7}}}}},
+       {"expect_resimulated": []},
+       {"reset": {"head": {"number": 2, "timestamp": 1024}, "state": {"bob": {"balance": 99000000}}}},
+       {"expect_resimulated": ["fb"]},
+       {"expect_pool": {"pending": {"alice": ["fa"], "bob": ["fb"]}}},
+       {"reset": {"head": {"number": 3, "timestamp": 1036}, "state": {"alice": {"storage": {"1": 43}}}}},
+       {"expect_resimulated": ["fa"]},
+       {"expect_pool": {"pending": {"bob": ["fb"]}}}
+     ]},
+    {"name": "a payer's balance falls: both re-simulate, the later one loses its reservation",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "sponsor": {"balance": 30000000}},
+     "steps": [
+       {"add": [
+         {"label": "fa", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "fb", "type": 6, "sender": "bob", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"sponsor": {"balance": 20000000}}}},
+       {"expect_resimulated": ["fa", "fb"]},
+       {"expect_pool": {"pending": {"alice": ["fa"]}}}
+     ]},
+    {"name": "reuse_balance: a payer's balance falls, nothing re-simulates, and step 4 still removes the later one",
+     "config": {"frame": {"reuse_balance": true}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "sponsor": {"balance": 30000000}},
+     "steps": [
+       {"add": [
+         {"label": "fa", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "fb", "type": 6, "sender": "bob", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"sponsor": {"balance": 20000000}}}},
+       {"expect_resimulated": []},
+       {"expect_pool": {"pending": {"alice": ["fa"]}}}
+     ],
+     "derivation": "Each max_cost is (12000 + 3 * 475 + 16 * (65 + 85 + 3) + 2 * 2800 + 110000) * 100 = 13147300. 20000000 - 13147300 < 13147300, so fb no longer fits, as in the case above, but only the balance changed and it stayed above zero."},
+    {"name": "a payer's balance rises by one wei: every dependant re-simulates",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "sponsor": {"balance": 30000000}},
+     "steps": [
+       {"add": [
+         {"label": "fa", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "fb", "type": 6, "sender": "bob", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"sponsor": {"balance": 30000001}}}},
+       {"expect_resimulated": ["fa", "fb"]},
+       {"expect_pool": {"pending": {"alice": ["fa"], "bob": ["fb"]}}}
+     ]},
+    {"name": "reuse_balance: the same rise re-simulates nothing",
+     "config": {"frame": {"reuse_balance": true}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "sponsor": {"balance": 30000000}},
+     "steps": [
+       {"add": [
+         {"label": "fa", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "fb", "type": 6, "sender": "bob", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"sponsor": {"balance": 30000001}}}},
+       {"expect_resimulated": []},
+       {"expect_pool": {"pending": {"alice": ["fa"], "bob": ["fb"]}}}
+     ]},
+    {"name": "reuse_balance: a sender's balance leaving or reaching zero re-runs, a move between non-zero values does not",
+     "config": {"frame": {"reuse_balance": true}},
+     "state": {"sponsor": {"balance": 30000000}},
+     "steps": [
+       {"add": [{"label": "fa", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"alice": {"balance": 1}}}},
+       {"expect_resimulated": ["fa"]},
+       {"reset": {"head": {"number": 2, "timestamp": 1024}, "state": {"alice": {"balance": 2}}}},
+       {"expect_resimulated": []},
+       {"reset": {"head": {"number": 3, "timestamp": 1036}, "state": {"alice": {"balance": 0}}}},
+       {"expect_resimulated": ["fa"]},
+       {"expect_pool": {"pending": {"alice": ["fa"]}}}
+     ]},
+    {"name": "reuse_balance: a balance change with any other change re-runs",
+     "config": {"frame": {"reuse_balance": true}},
+     "state": {"alice": {"balance": 100000000, "code": "account-v1", "storage": {"1": 42}}},
+     "steps": [
+       {"add": [{"label": "fa", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["alice", 1, 42]]}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"alice": {"balance": 99000000, "storage": {"1": 43}}}}},
+       {"expect_resimulated": ["fa"]},
+       {"expect_pool": {}}
+     ]},
+    {"name": "expiry_margin 12: a deadline stays while it is at least the new timestamp plus the margin",
+     "config": {"frame": {"expiry_margin": 12}},
+     "state": {"alice": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [
+       {"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1024}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}}},
+       {"expect_pool": {"pending": {"alice": ["f"]}}},
+       {"reset": {"head": {"number": 2, "timestamp": 1024}}},
+       {"expect_pool": {}}
+     ]}
+  ]
+}

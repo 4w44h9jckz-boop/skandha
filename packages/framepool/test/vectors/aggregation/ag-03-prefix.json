@@ -1,0 +1,58 @@
+{
+  "clause": "AG-3",
+  "document": "05-aggregation.md",
+  "version": 2,
+  "also": ["FP-5", "FP-6", "FP-3"],
+  "operation": "pool",
+  "distinguishes": "Dependency frames are invisible to the validation prefix: they may sit before, inside or after it, their gas is outside max_verify_gas and inside max_gas, and a transaction of dependency frames alone has no payer. Placing and pricing them so is an Interpretation (decision record 0012).",
+  "cases": [
+    {"name": "a dependency frame before the verify frame that reads it", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]},
+        "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["A"]}}}
+     ],
+     "derivation": "EIP-8288 Test Case 1's order. Without the dependency frame the prefix is the self_verify frame alone, a recognised shape."},
+    {"name": "a dependency frame after the prefix", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3}, {"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}]}]},
+        "expect": ["ok"]}
+     ]},
+    {"name": "a dependency frame between a deploy frame and the verify frame", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "factory": {"code": "factory-code"}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 0, "target": "factory", "installs_code": "wallet", "opcodes": ["CREATE2"]}, {"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3, "approves": 3}]}]},
+        "expect": ["ok"]}
+     ],
+     "derivation": "Without the dependency frame the prefix is deploy, self_verify, a recognised shape; the deployed code approves."},
+    {"name": "its gas is not verification gas", "profile": "eip-8288", "config": {"frame": {"max_verify_gas": 30000}},
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]},
+        "expect": ["ok"]}
+     ],
+     "derivation": "FP-6 counts the self_verify frame's 0 and the secp256k1 signature's 2800, so 2800 <= 30000; with the dependency frame it would be 32800."},
+    {"name": "the budget still binds the rest of the prefix", "profile": "eip-8288", "config": {"frame": {"max_verify_gas": 30000}},
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3, "exec_gas": 27201}]}]},
+        "expect": ["ErrFrameVerifyGas"]}
+     ],
+     "derivation": "27201 + 2800 = 30001 > 30000. The wrapper itself passes AG-5."},
+    {"name": "its gas is in max_gas", "profile": "eip-8288", "head": {"gas_limit": 48373},
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+        "expect": ["ErrGasLimit"]}
+     ],
+     "derivation": "FEE-4: D = 96 + 65 + 3 = 164; fixed = 12000 + 2*475 + 2800 = 15750; intrinsic 15750 + 16*164 = 18374; floor 15750 + 64*164 = 26246; max_gas = max(18374 + 30000, 26246) = 48374 > 48373. Without the dependency frame's 30000 it would be 26246. FP-3 refuses before AG-6 is reached."},
+    {"name": "dependency frames alone have no payer", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}]}],
+        "expect": ["ErrFrameNoPayer"]}
+     ]}
+  ]
+}

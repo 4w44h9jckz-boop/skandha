@@ -1,0 +1,201 @@
+{
+  "clause": "AG-5",
+  "document": "05-aggregation.md",
+  "version": 2,
+  "also": ["AG-6"],
+  "operation": "pool",
+  "distinguishes": "The checks on a wrapper, in their order: its mode and proof count, hashes a mode 0 wrapper cannot resolve, its deps against its transactions or its STARK's public input, the limits, then the proofs. Whether the limits bind a mode 1 wrapper is cap_aggregates, an Interpretation (decision record 0012).",
+  "cases": [
+    {"name": "mode 0 with its deps and valid proofs", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "bob": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "B", "type": 6, "sender": "bob", "frames": [{"mode": 3, "deps": [[16, "msg-b", "pk-b"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[16, "msg-b", "pk-b"], [17, "pub-a", "vk-1"]], "proofs": [true, true]},
+        "expect": ["ok", "ok"]},
+       {"expect_pool": {"pending": {"alice": ["A"], "bob": ["B"]}}}
+     ]},
+    {"name": "a mode other than 0 and 1", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 2, "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[17, "pub-a", "vk-1"]], "proofs": [true]},
+        "expect": "ErrWrapperMalformed"},
+       {"expect_pool": {"pending": {}}}
+     ]},
+    {"name": "mode 0 with fewer proofs than deps", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "bob": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "B", "type": 6, "sender": "bob", "frames": [{"mode": 3, "deps": [[16, "msg-b", "pk-b"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[16, "msg-b", "pk-b"], [17, "pub-a", "vk-1"]], "proofs": [true]},
+        "expect": "ErrWrapperMalformed"}
+     ]},
+    {"name": "mode 0 naming by hash a transaction the node does not hold", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "bob": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [
+          {"hash": {"label": "B", "type": 6, "sender": "bob", "frames": [{"mode": 3, "deps": [[16, "msg-b", "pk-b"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}},
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[16, "msg-b", "pk-b"], [17, "pub-a", "vk-1"]], "proofs": [true, true]},
+        "expect": "ErrWrapperUnknownTx"},
+       {"expect_pool": {"pending": {}}}
+     ]},
+    {"name": "mode 0 naming by hash a transaction the node holds", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "bob": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [
+          {"label": "B", "type": 6, "sender": "bob", "frames": [{"mode": 3, "deps": [[16, "msg-b", "pk-b"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[16, "msg-b", "pk-b"]], "proofs": [true]},
+        "expect": ["ok"]},
+       {"wrapper": {"mode": 0, "txs": [
+          {"hash": {"label": "B", "type": 6, "sender": "bob", "frames": [{"mode": 3, "deps": [[16, "msg-b", "pk-b"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}},
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[16, "msg-b", "pk-b"], [17, "pub-a", "vk-1"]], "proofs": [true, true]},
+        "expect": ["ErrAlreadyKnown", "ok"]}
+     ]},
+    {"name": "mode 0 whose deps miss one", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "bob": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "B", "type": 6, "sender": "bob", "frames": [{"mode": 3, "deps": [[16, "msg-b", "pk-b"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[17, "pub-a", "vk-1"]], "proofs": [true]},
+        "expect": "ErrWrapperDeps"}
+     ]},
+    {"name": "mode 0 whose deps have one more", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[16, "msg-x", "pk-x"], [17, "pub-a", "vk-1"]], "proofs": [true, true]},
+        "expect": "ErrWrapperDeps"}
+     ]},
+    {"name": "mode 0 whose deps are not sorted", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "bob": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "B", "type": 6, "sender": "bob", "frames": [{"mode": 3, "deps": [[16, "msg-b", "pk-b"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[17, "pub-a", "vk-1"], [16, "msg-b", "pk-b"]], "proofs": [true, true]},
+        "expect": "ErrWrapperDeps"}
+     ]},
+    {"name": "mode 0 whose deps repeat one", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[17, "pub-a", "vk-1"], [17, "pub-a", "vk-1"]], "proofs": [true, true]},
+        "expect": "ErrWrapperDeps"}
+     ]},
+    {"name": "mode 0 over the leanSTARK limit", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "carol": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "C", "type": 6, "sender": "carol", "frames": [{"mode": 3, "deps": [[17, "pub-c", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[17, "pub-a", "vk-1"], [17, "pub-c", "vk-1"]], "proofs": [true, true]},
+        "expect": "ErrWrapperTooManyDeps"}
+     ]},
+    {"name": "mode 0 over the leanSPHINCS limit", "profile": "eip-8288", "config": {"frame": {"max_sig_deps_per_wrapper": 1}},
+     "state": {"bob": {"balance": 1000000000}, "dave": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [
+          {"label": "B", "type": 6, "sender": "bob", "frames": [{"mode": 3, "deps": [[16, "msg-b", "pk-b"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "D", "type": 6, "sender": "dave", "frames": [{"mode": 3, "deps": [[16, "msg-d", "pk-d"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[16, "msg-b", "pk-b"], [16, "msg-d", "pk-d"]], "proofs": [true, true]},
+        "expect": "ErrWrapperTooManyDeps"}
+     ]},
+    {"name": "mode 0 is limited even when aggregates are not", "profile": "eip-8288", "config": {"frame": {"cap_aggregates": false}},
+     "state": {"alice": {"balance": 1000000000}, "carol": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "C", "type": 6, "sender": "carol", "frames": [{"mode": 3, "deps": [[17, "pub-c", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[17, "pub-a", "vk-1"], [17, "pub-c", "vk-1"]], "proofs": [true, true]},
+        "expect": "ErrWrapperTooManyDeps"}
+     ]},
+    {"name": "mode 0 with a proof that does not verify", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "bob": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "B", "type": 6, "sender": "bob", "frames": [{"mode": 3, "deps": [[16, "msg-b", "pk-b"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[16, "msg-b", "pk-b"], [17, "pub-a", "vk-1"]], "proofs": [true, false]},
+        "expect": "ErrWrapperProof"},
+       {"expect_pool": {"pending": {}}}
+     ]},
+    {"name": "the limits are checked before the proofs", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "carol": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "C", "type": 6, "sender": "carol", "frames": [{"mode": 3, "deps": [[17, "pub-c", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[17, "pub-a", "vk-1"], [17, "pub-c", "vk-1"]], "proofs": [false, false]},
+        "expect": "ErrWrapperTooManyDeps"}
+     ]},
+    {"name": "mode 1 whose STARK proves its deps", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "bob": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 1, "from": "peer-1", "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "B", "type": 6, "sender": "bob", "frames": [{"mode": 3, "deps": [[16, "msg-b", "pk-b"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[16, "msg-b", "pk-b"], [17, "pub-a", "vk-1"]],
+          "stark": {"covers": [[16, "msg-b", "pk-b"], [17, "pub-a", "vk-1"]], "valid": true}},
+        "expect": ["ok", "ok"]}
+     ]},
+    {"name": "mode 1 whose STARK's public input is another list", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "bob": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 1, "from": "peer-1", "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "B", "type": 6, "sender": "bob", "frames": [{"mode": 3, "deps": [[16, "msg-b", "pk-b"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[16, "msg-b", "pk-b"], [17, "pub-a", "vk-1"]],
+          "stark": {"covers": [[17, "pub-a", "vk-1"]], "valid": true}},
+        "expect": "ErrWrapperDeps"}
+     ]},
+    {"name": "mode 1 whose STARK does not verify", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 1, "from": "peer-1", "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[17, "pub-a", "vk-1"]],
+          "stark": {"covers": [[17, "pub-a", "vk-1"]], "valid": false}},
+        "expect": "ErrWrapperProof"}
+     ]},
+    {"name": "mode 1 over the leanSTARK limit", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "carol": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 1, "from": "peer-1", "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "C", "type": 6, "sender": "carol", "frames": [{"mode": 3, "deps": [[17, "pub-c", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[17, "pub-a", "vk-1"], [17, "pub-c", "vk-1"]],
+          "stark": {"covers": [[17, "pub-a", "vk-1"], [17, "pub-c", "vk-1"]], "valid": true}},
+        "expect": "ErrWrapperTooManyDeps"}
+     ]},
+    {"name": "mode 1 over the leanSTARK limit when aggregates are not limited", "profile": "eip-8288", "config": {"frame": {"cap_aggregates": false}},
+     "state": {"alice": {"balance": 1000000000}, "carol": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 1, "from": "peer-1", "txs": [
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "C", "type": 6, "sender": "carol", "frames": [{"mode": 3, "deps": [[17, "pub-c", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[17, "pub-a", "vk-1"], [17, "pub-c", "vk-1"]],
+          "stark": {"covers": [[17, "pub-a", "vk-1"], [17, "pub-c", "vk-1"]], "valid": true}},
+        "expect": ["ok", "ok"]}
+     ]},
+    {"name": "mode 1 naming by hash a transaction the node does not hold", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "bob": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 1, "from": "peer-1", "txs": [
+          {"hash": {"label": "B", "type": 6, "sender": "bob", "frames": [{"mode": 3, "deps": [[16, "msg-b", "pk-b"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}},
+          {"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}],
+          "deps": [[16, "msg-b", "pk-b"], [17, "pub-a", "vk-1"]],
+          "stark": {"covers": [[16, "msg-b", "pk-b"], [17, "pub-a", "vk-1"]], "valid": true}},
+        "expect": ["ErrWrapperUnknownTx", "ok"]},
+       {"expect_pool": {"pending": {"alice": ["A"]}}}
+     ]}
+  ]
+}
