@@ -6,6 +6,7 @@ export interface IFramesArgs {
   "frames.profile": string;
   "frames.rpc"?: string;
   "frames.handoff": boolean;
+  "frames.claims": boolean;
   "frames.log"?: string;
   "frames.name"?: string;
 }
@@ -35,6 +36,13 @@ export const options: ICliCommandOptions<IFramesArgs> = {
     type: "boolean",
     description:
       "Hand every admitted frame transaction to the client's eth_sendRawTransaction (SF-9)",
+    default: false,
+    group: "frames",
+  },
+  "frames.claims": {
+    type: "boolean",
+    description:
+      "Claim-gated admission (CG-1): read the ticket a transaction carries to a ticket paymaster, recognised by its code with eth_getCode, and check it before the client is asked",
     default: false,
     group: "frames",
   },

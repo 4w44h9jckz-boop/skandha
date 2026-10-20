@@ -8,6 +8,12 @@
  *
  * Admissions and head changes run one at a time, so a verdict, the state the
  * pool reads and the head they belong to always agree.
+ *
+ * With `claims` (`10-claim-gated-admission.md`, CG-1) a ticket a transaction
+ * carries is read and checked before the client is asked (SF-3's `claim`,
+ * SF-4): a ticket paymaster is any account whose code is the template, a key
+ * and a denomination (CG-10), found by `eth_getCode`, with nothing to
+ * configure.
  */
 import { appendFileSync } from "node:fs";
 import {
@@ -24,6 +30,9 @@ import {
   SurfaceConfig,
   addressForm,
   buildIl,
+  paymasterKey,
+  verifyTargets,
+  withChanges,
   costs,
   decode,
   headNextBaseFee,
@@ -38,6 +47,7 @@ export interface FrameServiceOptions {
   rpcUrl: string;
   profile: string; // a frame pool profile with a surface (SF-1): eip-8141 or hegota-testnet
   handoff: boolean; // SF-9
+  claims?: boolean; // CG-1: claim-gated admission, the ticket checked before the client is asked
   logFile?: string; // one JSON object a line for every admission, head and hand-off
   pollMs?: number;
   name?: string; // how this node names itself in its log
@@ -81,6 +91,10 @@ export class FrameService {
 
   private queue: Promise<unknown> = Promise.resolve();
   private readonly raws = new Map<string, string>(); // the chain's hash to the bytes, for SF-8's questions
+  /** SF-3's `claim`: the ticket paymasters found, by address; their code changes only in a reorganisation. */
+  private readonly paymasters = new Map<string, Uint8Array>();
+  /** The code of every other target read at this head, read again at the next. */
+  private headCodes = new Map<string, Uint8Array>();
   private timer?: NodeJS.Timeout;
 
   constructor(readonly opts: FrameServiceOptions) {
@@ -126,7 +140,9 @@ export class FrameService {
     const profile = PROFILES.get(this.opts.profile);
     if (profile === undefined)
       throw new Error(`no frame pool profile ${this.opts.profile}`);
-    const cfg = addressForm(profile);
+    const cfg = addressForm(
+      this.opts.claims ? withChanges(profile, { claims: true }) : profile
+    );
     this.pool = new FramePool(
       FrameService.toHead(this.head),
       new State(),
@@ -139,6 +155,7 @@ export class FrameService {
       profile: this.opts.profile,
       head: this.head.number,
       handoff: this.opts.handoff,
+      claims: cfg.claims,
     });
     this.timer = setInterval(() => void this.poll(), this.opts.pollMs ?? 1000);
   }
@@ -171,10 +188,41 @@ export class FrameService {
     );
   }
 
+  /**
+   * SF-3's `claim`: the code at the head of each target of the transaction's
+   * VERIFY frames, from the client. A ticket paymaster is kept; any other
+   * target is read again at the next head, since an account may gain code.
+   */
+  private async codes(
+    raw: Uint8Array,
+    block: string
+  ): Promise<Map<string, Uint8Array>> {
+    const out = new Map<string, Uint8Array>();
+    await Promise.all(
+      verifyTargets(raw, this.surfaceConfig).map(async (addr) => {
+        let code = this.paymasters.get(addr) ?? this.headCodes.get(addr);
+        if (code === undefined) {
+          const got = await this.client.call<string>("eth_getCode", [
+            addr,
+            block,
+          ]);
+          code = Buffer.from(got.slice(2), "hex");
+          if (paymasterKey(code) !== null) this.paymasters.set(addr, code);
+          else this.headCodes.set(addr, code);
+        }
+        out.set(addr, code);
+      })
+    );
+    return out;
+  }
+
   /** SF-2 to SF-4 and `add`, for bytes from JSON-RPC or from a peer: the same steps either way (SF-7). */
-  private admit(
-    raw: Uint8Array
-  ): Promise<{ result: string; hash?: string; text?: string }> {
+  private admit(raw: Uint8Array): Promise<{
+    result: string;
+    hash?: string;
+    text?: string;
+    claim?: Record<string, unknown>;
+  }> {
     return this.serial(async () => {
       const rawHex = "0x" + Buffer.from(raw).toString("hex");
       let tx: FrameTx;
@@ -186,13 +234,25 @@ export class FrameService {
       }
       const block = this.block();
       await this.load(tx, this.pool.state, block);
-      const prepared = this.surface.prepare(raw);
+      const codes = this.pool.config.claims
+        ? await this.codes(raw, block)
+        : undefined;
+      const prepared = this.surface.prepare(raw, codes);
+      const c = prepared.claim ?? null;
+      const claim =
+        c === null
+          ? undefined
+          : { epoch: c.epoch, salt: c.salt, valid: c.valid };
       if (prepared.tx === undefined)
-        return { result: prepared.result as string, hash: prepared.hash };
+        return {
+          result: prepared.result as string,
+          hash: prepared.hash,
+          claim,
+        };
       const answer = await this.client.simulate(rawHex, block);
       const result = this.surface.admit(prepared.tx, answer, Date.now() / 1000);
       if (result === OK) this.raws.set(tx.label, rawHex);
-      return { result, hash: tx.label, text: answer.text };
+      return { result, hash: tx.label, text: answer.text, claim };
     });
   }
 
@@ -223,7 +283,8 @@ export class FrameService {
       event: "rpc",
       hash: out.hash,
       result: out.result,
-      client: out.text,
+      client: out.text, // absent when the client was not asked (SF-4)
+      claim: out.claim,
       head: this.head.number,
     });
     if (out.result !== OK)
@@ -314,7 +375,8 @@ export class FrameService {
       from: peer,
       hash: out.hash,
       result: out.result,
-      client: out.text,
+      client: out.text, // absent when the client was not asked (SF-4)
+      claim: out.claim,
       outcome,
       head: this.head.number,
     });
@@ -364,6 +426,7 @@ export class FrameService {
       answers.set(hash, a);
     }
     this.head = h;
+    this.headCodes = new Map();
     this.surface.head(FrameService.toHead(h), next, answers, Date.now() / 1000); // step 3
     const left = new Set(this.surface.pending());
     const gone = pending.filter((x) => !left.has(x));

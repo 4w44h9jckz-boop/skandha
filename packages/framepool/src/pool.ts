@@ -345,12 +345,14 @@ export class FramePool {
   }
 
   /**
-   * SF-4: FP-2 to FP-7, the checks a node runs before it asks a client about
-   * the prefix. Throws the first failure and changes nothing.
+   * SF-4: FP-2 to FP-7, and CG-2, CG-4 and CG-6 under `claims`, the checks a
+   * node runs before it asks a client about the prefix. Throws the first
+   * failure and changes nothing.
    */
   beforePrefix(tx: FrameTx): void {
     if (this.entries.has(tx.hash)) throw new TxError(E.ErrAlreadyKnown); // FP-2
     const prefix = checkStatic(tx, this.head, this.config); // FP-3 to FP-6
+    if (this.config.claims) this.checkClaim(tx); // CG-2, CG-4, CG-6
     if (expiring(tx, this.config))
       checkExpiring(
         tx,

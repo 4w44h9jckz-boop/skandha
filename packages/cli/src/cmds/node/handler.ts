@@ -101,6 +101,7 @@ export async function nodeHandler(args: IGlobalArgs): Promise<void> {
           rpcUrl: args["frames.rpc"] ?? config.config.rpcEndpoint,
           profile: args["frames.profile"],
           handoff: args["frames.handoff"],
+          claims: args["frames.claims"],
           logFile: args["frames.log"],
           name: args["frames.name"],
         }

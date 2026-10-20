@@ -8,7 +8,7 @@
   "SF-4"
  ],
  "document": "11-surface.md",
- "version": 2,
+ "version": 3,
  "operation": "surface",
  "distinguishes": "At a new head the node asks the client about every transaction still pending, reads the state its dependencies name, and resets the pool with both, so that a changed verdict removes a transaction and an included one leaves without being asked about.",
  "cases": [

@@ -16,6 +16,7 @@ import { keccak256 } from "./keccak.js";
 import { Head, State } from "./model.js";
 import { FramePool } from "./pool.js";
 import {
+  Claim,
   Frame,
   FrameTx,
   RootReference,
@@ -23,6 +24,7 @@ import {
   frame,
   signature,
 } from "./tx.js";
+import { carriedTicket } from "./claimticket.js";
 
 export const FRAME_TX_TYPE = 0x06;
 const SCHEMES: Readonly<Record<number, string>> = {
@@ -290,11 +292,70 @@ export function txHash(raw: Uint8Array): string {
   return hex(keccak256(raw));
 }
 
-/** SF-2 and SF-3: the model transaction, or a TxError with the first failure. */
+/** The code at the pool's head of each address a node knows it for (SF-3's `claim`); one it leaves out has none. */
+export type Codes = ReadonlyMap<string, Uint8Array>;
+const NO_CODES: Codes = new Map();
+
+/** SF-3's `claim`: CG-10's, from the code of each frame's target. */
+function claimOf(t: Wire, keys: bigint[], codes: Codes): Claim | null {
+  const sender = hex(t.sender);
+  const found = carriedTicket(
+    {
+      chainId: t.chainId,
+      epoch: 0n,
+      sender: t.sender,
+      nonceSeq: t.nonceSeq,
+      nonceKeys: keys,
+      salt: new Uint8Array(0),
+    },
+    t.frames.map((f) => ({
+      mode: Number(f.mode),
+      target: f.target.length > 0 ? hex(f.target) : sender,
+      data: f.data,
+    })),
+    codes
+  );
+  if (found === null) return null;
+  return {
+    sender,
+    nonceKeys: keys,
+    nonceSeq: t.nonceSeq,
+    epoch: Number(found.epoch ?? 0n),
+    valid: found.valid,
+    salt: found.salt === null ? "" : hex(found.salt),
+  };
+}
+
+/**
+ * The targets of a transaction's VERIFY frames, the addresses SF-3's `claim`
+ * needs the code of, or none if the bytes do not decode.
+ */
+export function verifyTargets(raw: Uint8Array, cfg: SurfaceConfig): string[] {
+  if (raw.length === 0 || raw[0] !== FRAME_TX_TYPE) return [];
+  let t: Wire;
+  try {
+    t = parse(raw.subarray(1), cfg.envelope);
+  } catch (err) {
+    if (err instanceof Malformed) return [];
+    throw err;
+  }
+  if (t.sender.length !== 20) return [];
+  const targets = t.frames
+    .filter((f) => f.mode === 1n && [0, 20].includes(f.target.length))
+    .map((f) => hex(f.target.length > 0 ? f.target : t.sender));
+  return [...new Set(targets)];
+}
+
+/**
+ * SF-2 and SF-3: the model transaction, or a TxError with the first failure.
+ * `codes` is the code the client answers at the pool's head for the
+ * targets of its VERIFY frames, read under a profile with `claims`.
+ */
 export function decode(
   raw: Uint8Array,
   frameCfg: FramePoolConfig,
-  cfg: SurfaceConfig
+  cfg: SurfaceConfig,
+  codes: Codes = NO_CODES
 ): FrameTx {
   if (raw.length === 0 || raw[0] !== FRAME_TX_TYPE)
     throw new TxError(E.ErrTxTypeNotSupported);
@@ -357,6 +418,7 @@ export function decode(
     size: raw.length,
     label: txHash(raw),
     zeroBytes: counted.reduce((n, b) => n + zeros(b), 0),
+    claim: frameCfg.claims ? claimOf(t, keys, codes) : null,
   });
 }
 
@@ -395,7 +457,8 @@ export function verdict(answer: ClientAnswer): string {
 export interface Prepared {
   readonly tx?: FrameTx; // set when the client is to be asked
   readonly hash?: string; // set when the bytes decode
-  readonly result?: string; // set when SF-2 or FP-2 to FP-7 refused it
+  readonly claim?: Claim | null; // SF-3's, set when the bytes decode
+  readonly result?: string; // set when SF-2, FP-2 to FP-7 or CG-2, CG-4 and CG-6 refused it
 }
 
 export interface Outcome {
@@ -418,14 +481,20 @@ export class Surface {
   constructor(
     readonly pool: FramePool,
     readonly cfg: SurfaceConfig,
-    readonly peers: string[] = []
+    readonly peers: string[] = [],
+    /** SF-3's `claim`: the client's code at the head, by address. */
+    public codes: Codes = NO_CODES
   ) {}
 
-  /** SF-2, SF-3, then FP-2 to FP-7: whether the client is to be asked. */
-  prepare(raw: Uint8Array): Prepared {
+  /**
+   * SF-2, SF-3, then FP-2 to FP-7, and CG-2, CG-4 and CG-6 under `claims`:
+   * whether the client is to be asked. `codes`, when given, replaces the
+   * surface's for this transaction.
+   */
+  prepare(raw: Uint8Array, codes: Codes = this.codes): Prepared {
     let tx: FrameTx;
     try {
-      tx = decode(raw, this.pool.config, this.cfg);
+      tx = decode(raw, this.pool.config, this.cfg, codes);
     } catch (err) {
       if (err instanceof TxError) return { result: err.code };
       throw err;
@@ -433,10 +502,11 @@ export class Surface {
     try {
       this.pool.beforePrefix(tx); // the model hash covers the label, so FP-2 refuses the same bytes twice
     } catch (err) {
-      if (err instanceof TxError) return { result: err.code, hash: tx.label };
+      if (err instanceof TxError)
+        return { result: err.code, hash: tx.label, claim: tx.claim };
       throw err;
     }
-    return { tx, hash: tx.label };
+    return { tx, hash: tx.label, claim: tx.claim };
   }
 
   /** SF-4 and `add`, with the client's answer for a prepared transaction. */

@@ -789,6 +789,10 @@ function modelJson(tx: FrameTx): Json {
       valid: s.valid,
       length: s.length,
     })),
+    claim:
+      tx.claim === null
+        ? null
+        : { epoch: tx.claim.epoch, salt: tx.claim.salt, valid: tx.claim.valid },
   };
 }
 
@@ -817,12 +821,18 @@ function runSurface(c: Json): void {
   const headD = { ...DEFAULT_HEAD, ...(c.head ?? {}) };
   let state = mergeState(null, c.state);
   const pool = new FramePool(makeHead(headD), state, cfg, new Reserver());
-  const node = new Surface(pool, scfg, c.peers ?? []);
+  const codes = new Map<string, Uint8Array>( // SF-3's `claim`
+    Object.entries(c.codes ?? {}).map(([a, code]) => [
+      a.toLowerCase(),
+      Buffer.from((code as string).slice(2), "hex"),
+    ])
+  );
+  const node = new Surface(pool, scfg, c.peers ?? [], codes);
   const focil = focilConfig(c);
   const named = new Map<string, FrameTx>(
     Object.entries(c.txs ?? {}).map(([l, raw]) => [
       l,
-      decode(Buffer.from((raw as string).slice(2), "hex"), cfg, scfg),
+      decode(Buffer.from((raw as string).slice(2), "hex"), cfg, scfg, codes),
     ])
   );
   const byLabels = (labels: string[]): FrameTx[] =>
@@ -837,7 +847,12 @@ function runSurface(c: Json): void {
     if ("decode" in step) {
       let got: Json;
       try {
-        const tx = decode(Buffer.from(step.decode.slice(2), "hex"), cfg, scfg);
+        const tx = decode(
+          Buffer.from(step.decode.slice(2), "hex"),
+          cfg,
+          scfg,
+          codes
+        );
         got = {
           result: "ok",
           hash: tx.label,
