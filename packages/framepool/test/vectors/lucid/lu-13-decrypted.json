@@ -1,10 +1,10 @@
 {
   "clause": "LU-13",
   "document": "06-lucid.md",
-  "version": 1,
+  "version": 2,
   "also": ["LU-12", "BB-3", "BB-4"],
   "operation": "pool",
-  "distinguishes": "The next block's decrypted transactions: run first in commitment order when revealed, their gas counted in the block and taken from its regular transactions, the unused gas refunded at the committing block's base fee with 127/128 of the ToB fee, the key fee paid only on reveal, and nothing for a key that never came.",
+  "distinguishes": "The next block's decrypted transactions: run first in commitment order when revealed, their gas counted in the block and taken from its regular transactions, the unused gas refunded at the committing block's base fee with 127/128 of the ToB fee, the key fee paid only on reveal, and nothing for a key that never came; and what a revealed one pulls and pays, applied at the top of the next block, a pull a spend in the committing block uncovered reverting it at the gas it declares, and a spend sent after the commitment finding the unit gone.",
   "cases": [
     {"name": "a revealed commitment runs in the next block and is refunded", "sealed": "eip-8184",
      "state": {"alice": {"balance": 100000000}},
@@ -56,6 +56,43 @@
                 {"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 300}], "expect": ["ok", "ok"]},
        {"build": {"min_tip": 1}, "expect_commitments": ["A", "B"]},
        {"build": {"min_tip": 1}, "expect_decrypted": ["A", "B"], "expect_gas_used": 200000}
-     ]}
+     ]},
+    {"name": "a revealed round pulls and pays at the top of the next block", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "i1": {"balance": 1000000}, "i2": {"balance": 1000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "to": "round", "used": 60000,
+                 "pulls": [["i1", 1000000], ["i2", 1000000]], "pays": [["o1", 1000000], ["o2", 1000000]]}], "expect": ["ok"]},
+       {"build": {"min_tip": 1}, "expect_commitments": ["A"], "expect_decrypted": [], "expect_gas_used": 0},
+       {"expect_state": {"alice": {"nonce": 1, "balance": 98000000}, "i1": {"balance": 1000000}, "o1": {"balance": 0}}},
+       {"build": {"min_tip": 1}, "expect_commitments": [], "expect_decrypted": ["A"], "expect_gas_used": 60000},
+       {"expect_state": {"alice": {"nonce": 1, "balance": 98400000}, "i1": {"balance": 0}, "i2": {"balance": 0},
+                         "o1": {"balance": 1000000}, "o2": {"balance": 1000000}, "round": {"balance": 0}}}
+     ],
+     "derivation": "The ticket costs 10 * 100000 + 10 * 100000 = 2000000 and moves nothing. The next block runs A first: both pulls are covered, both pays made, and alice is refunded 10 * (100000 - 60000)."},
+    {"name": "a spend in the committing block uncovers a pull, and the round reverts at the top of the next block at the gas it declares", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "i1": {"balance": 1000000}, "i2": {"balance": 500000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "to": "round", "used": 60000, "revert_used": 40000,
+                 "pulls": [["i1", 500000], ["i2", 500000]], "pays": [["o1", 500000], ["o2", 500000]]},
+                {"label": "g0", "sender": "i1", "to": "fresh", "value": 500000, "max_fee": 20}], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1}, "expect_commitments": ["A"], "expect": ["g0"], "expect_gas_used": 21000},
+       {"build": {"min_tip": 1}, "expect_decrypted": ["A"], "expect": [], "expect_gas_used": 40000},
+       {"expect_state": {"alice": {"nonce": 1, "balance": 98600000}, "i1": {"nonce": 1, "balance": 80000}, "i2": {"balance": 500000},
+                         "o1": {"balance": 0}, "fresh": {"balance": 500000}}}
+     ],
+     "derivation": "g0, at price 10 + min(10, 20 - 10) = 20, leaves i1 1000000 - 420000 - 500000 = 80000 in the committing block, after the tickets. At the top of the next block A's first pull is not covered, so A reverts and takes 40000 gas; alice is refunded 10 * (100000 - 40000) = 600000 of her 2000000."},
+    {"name": "a spend sent after the commitment comes too late: the round runs first and the spend finds the unit gone", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "i1": {"balance": 1000000}, "i2": {"balance": 500000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "to": "round", "used": 60000, "revert_used": 40000,
+                 "pulls": [["i1", 500000], ["i2", 500000]], "pays": [["o1", 500000], ["o2", 500000]]}], "expect": ["ok"]},
+       {"build": {"min_tip": 1}, "expect_commitments": ["A"]},
+       {"add": [{"label": "g0", "sender": "i1", "to": "fresh", "value": 500000, "max_fee": 20}], "expect": ["ok"]},
+       {"build": {"min_tip": 1}, "expect_decrypted": ["A"], "expect": [], "expect_failed": [["g0", "ErrInsufficientFunds"]],
+        "expect_gas_used": 60000},
+       {"expect_state": {"alice": {"balance": 98400000}, "i1": {"nonce": 0, "balance": 500000}, "i2": {"balance": 0},
+                         "o1": {"balance": 500000}, "o2": {"balance": 500000}}}
+     ],
+     "derivation": "A runs before any transaction of the block that follows its commitment, so its pulls are covered. g0 then needs 21000 * 20 + 500000 = 920000 and i1 holds 500000, so it fails."}
   ]
 }

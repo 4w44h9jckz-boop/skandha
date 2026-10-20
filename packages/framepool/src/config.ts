@@ -73,6 +73,12 @@ export interface FramePoolConfig {
   readonly maxExpirySecs: number;
   readonly expiringNonceGas: bigint;
   readonly expiringPerSender: "many" | "one"; // EN-6
+  // CG-1, read only when claims is true
+  readonly claims: boolean;
+  readonly claimEpoch: number; // seconds; a head's epoch is its timestamp divided by this
+  readonly claimMemory: "slot" | "claim" | "none"; // CG-4
+  readonly signedProofs: boolean; // CG-3: whether a sender's signature covers its wrapper's proofs
+  readonly verifies: boolean; // CG-7: false makes the node a relay, which verifies no proof
 }
 
 export const EIP_8141: FramePoolConfig = Object.freeze({
@@ -124,6 +130,11 @@ export const EIP_8141: FramePoolConfig = Object.freeze({
   maxExpirySecs: 60,
   expiringNonceGas: 13_000n,
   expiringPerSender: "many",
+  claims: false,
+  claimEpoch: 384,
+  claimMemory: "slot",
+  signedProofs: false,
+  verifies: true,
 });
 
 export function withChanges(
@@ -140,6 +151,7 @@ export const HEGOTA_TESTNET = withChanges(EIP_8141, {
   capCodelessPayers: true,
   perSender: "disjoint-keys",
   expiryVerifier: EXPIRY_VERIFIER_TESTNET,
+  recentRoots: true, // RR-1's hegota-testnet column: the testnet runs EIP-8272, at eip-8272's constants
 });
 
 export const MATCHA = withChanges(EIP_8141, {
@@ -163,9 +175,19 @@ export const EIP_8266 = withChanges(EIP_8141, {
   expiring: true,
 });
 
+export const CLAIM_GATED = withChanges(EIP_8288, {
+  name: "claim-gated",
+  claims: true,
+});
+
 export const PROFILES: ReadonlyMap<string, FramePoolConfig> = new Map(
-  [EIP_8141, HEGOTA_TESTNET, MATCHA, EIP_8288, EIP_8272, EIP_8266].map((c) => [
-    c.name,
-    c,
-  ])
+  [
+    EIP_8141,
+    HEGOTA_TESTNET,
+    MATCHA,
+    EIP_8288,
+    EIP_8272,
+    EIP_8266,
+    CLAIM_GATED,
+  ].map((c) => [c.name, c])
 );

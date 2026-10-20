@@ -1,0 +1,54 @@
+{
+  "clause": "BB-7",
+  "document": "03-block-building.md",
+  "version": 4,
+  "also": ["BB-3", "BB-5", "LU-13"],
+  "operation": "pool",
+  "distinguishes": "A builder that drops what would revert: the round an earlier spend broke left out with its sender's next transaction and the state untouched, so the round stays in the pool, where the default builder includes it reverted; a round whose inputs can pay included as by any builder; and a decrypted sealed round executed and charged even so.",
+  "cases": [
+    {"name": "a builder that drops what reverts leaves out the round an earlier spend broke, with its sender's next transaction",
+     "state": {"pub": {"balance": 100000000}, "i1": {"balance": 5000000}, "i2": {"balance": 1000000}},
+     "steps": [
+       {"add": [{"label": "g0", "sender": "i1", "to": "fresh", "value": 3500000, "max_fee": 60, "tip": 50},
+                {"label": "r0", "sender": "pub", "to": "round", "gas": 100000, "revert_gas_used": 70000,
+                 "pulls": [["i1", 1000000], ["i2", 1000000]], "pays": [["o1", 1000000], ["o2", 1000000]]},
+                {"label": "r1", "sender": "pub", "nonce": 1}], "expect": ["ok", "ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb", "drop_reverting": true}, "expect": ["g0"],
+        "expect_failed": [["r0", "ErrExecutionReverted"]], "expect_gas_used": 21000},
+       {"expect_state": {"pub": {"nonce": 0, "balance": 100000000}, "i1": {"nonce": 1, "balance": 240000}, "i2": {"balance": 1000000}}},
+       {"expect_pool": {"pending": {"pub": ["r0", "r1"]}}}
+     ],
+     "derivation": "g0 leaves i1 240000 (bb-05), so r0 would revert; this builder treats that as an error, drops r0 and pub's r1 from the block, and leaves pub as it was. The pool runs no code, so both stay pending."},
+    {"name": "the default builder includes the same round, reverted, and the sender's next after it",
+     "state": {"pub": {"balance": 100000000}, "i1": {"balance": 5000000}, "i2": {"balance": 1000000}},
+     "steps": [
+       {"add": [{"label": "g0", "sender": "i1", "to": "fresh", "value": 3500000, "max_fee": 60, "tip": 50},
+                {"label": "r0", "sender": "pub", "to": "round", "gas": 100000, "revert_gas_used": 70000,
+                 "pulls": [["i1", 1000000], ["i2", 1000000]], "pays": [["o1", 1000000], ["o2", 1000000]]},
+                {"label": "r1", "sender": "pub", "nonce": 1}], "expect": ["ok", "ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["g0", "r0", "r1"], "expect_gas_used": 112000},
+       {"expect_state": {"pub": {"nonce": 2, "balance": 98180000}, "i2": {"balance": 1000000}, "o1": {"balance": 0}}}
+     ],
+     "derivation": "r0 reverts at 70000 and r1 follows it: pub pays 70000 * 20 + 21000 * 20 = 1820000. Gas used 21000 + 70000 + 21000."},
+    {"name": "a round whose inputs can pay is included by a builder that drops what reverts",
+     "state": {"pub": {"balance": 100000000}, "i1": {"balance": 1000000}, "i2": {"balance": 1000000}},
+     "steps": [
+       {"add": [{"label": "r0", "sender": "pub", "to": "round", "gas": 100000, "revert_gas_used": 70000,
+                 "pulls": [["i1", 1000000], ["i2", 1000000]], "pays": [["o1", 1000000], ["o2", 1000000]]}], "expect": ["ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb", "drop_reverting": true}, "expect": ["r0"], "expect_failed": []},
+       {"expect_state": {"pub": {"nonce": 1, "balance": 98000000}, "o1": {"balance": 1000000}, "o2": {"balance": 1000000}}}
+     ]},
+    {"name": "a decrypted sealed round is executed and charged even by a builder that drops what reverts",
+     "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "i1": {"balance": 1000000}, "i2": {"balance": 500000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "to": "round", "used": 60000, "revert_used": 40000,
+                 "pulls": [["i1", 500000], ["i2", 500000]], "pays": [["o1", 500000], ["o2", 500000]]},
+                {"label": "g0", "sender": "i1", "to": "fresh", "value": 500000, "max_fee": 20}], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1, "drop_reverting": true}, "expect_commitments": ["A"], "expect": ["g0"]},
+       {"build": {"min_tip": 1, "drop_reverting": true}, "expect_decrypted": ["A"], "expect": [], "expect_gas_used": 40000},
+       {"expect_state": {"alice": {"nonce": 1, "balance": 98600000}, "i1": {"balance": 80000}, "i2": {"balance": 500000}, "o1": {"balance": 0}}}
+     ],
+     "derivation": "g0 lands in the committing block and leaves i1 1000000 - 21000 * 20 - 500000 = 80000. At the top of the next block A's pull from i1 is not covered, so it reverts at 40000; it is committed, so it runs anyway. alice paid the ticket, 10 * 100000 + 10 * 100000 = 2000000, and is refunded 10 * (100000 - 40000) = 600000."}
+  ]
+}

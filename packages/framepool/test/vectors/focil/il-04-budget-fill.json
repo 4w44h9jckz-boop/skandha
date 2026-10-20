@@ -1,7 +1,7 @@
 {
   "clause": "IL-4",
   "document": "07-focil.md",
-  "version": 1,
+  "version": 2,
   "operation": "pool",
   "distinguishes": "The budget fill: each IL read in order against max_verify_gas_per_il, a frame transaction over what is left ignored in that IL but admitted by another, and an invalid signature keeping only its signature's debit.",
   "cases": [

@@ -1,7 +1,7 @@
 {
   "clause": "IL-5",
   "document": "07-focil.md",
-  "version": 1,
+  "version": 2,
   "operation": "pool",
   "distinguishes": "Valid at the end of the payload: the sender's nonce, a balance covering gas limit times fee cap plus value, a fee cap at least the block's base fee, no frame transaction under eip-7805, and under eip-8369 a frame transaction whose prefix still simulates against the post-state.",
   "cases": [

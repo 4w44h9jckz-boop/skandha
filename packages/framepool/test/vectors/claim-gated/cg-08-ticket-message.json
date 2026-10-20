@@ -1,0 +1,266 @@
+{
+ "clause": "CG-8",
+ "document": "10-claim-gated-admission.md",
+ "version": 4,
+ "operation": "claim_ticket",
+ "distinguishes": "The 132 bytes a ticket signs: chain ID, sender, EIP-8250's nonce_keys_hash, sequence number, epoch and salt at fixed widths, and no message for a field that does not fit its width. An encoder that hashes the keys without their count, writes integers little-endian, swaps the epoch and the sequence number, or truncates a field rather than refusing it, fails here.",
+ "provenance": "Written from CG-8: each message is the concatenation the clause gives, with nonce_keys_hash computed by @noble/hashes' keccak_256, not by this repository's keccak. Two cases are tickets the Hegota testnet mined, whose message their paymaster rebuilt from the transaction: one from the first run of exp-frames experiment 36 (f0749cb), whose signature verifies over this message under that run's namespace, and one from its re-run under FRAME_TICKET_V1 (kohaku-rs eea02a3, tests/fixtures/record.json), whose signature verifies under this one. Integers are 0x-prefixed hexadecimal strings.",
+ "cases": [
+  {
+   "name": "one key",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111"
+   },
+   "expect": {
+    "message": "0x0000000000000000000000000000000000000000000000000000000000001fcd73e47a8da2c83beb802708fc473b5b7d094f3ee633fff8dbf08d5a299322746ab5499d108e5e1cb3b4a7d374131b6f34d774240700000000000000000000000000472eaa1111111111111111111111111111111111111111111111111111111111111111"
+   }
+  },
+  {
+   "name": "key 0 at sequence 0",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x0"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111"
+   },
+   "expect": {
+    "message": "0x0000000000000000000000000000000000000000000000000000000000001fcd73e47a8da2c83beb802708fc473b5b7d094f3ee6ada5013122d395ba3c54772283fb069b10426056ef8ca54750cb9bb552a59e7d00000000000000000000000000472eaa1111111111111111111111111111111111111111111111111111111111111111"
+   }
+  },
+  {
+   "name": "no key: the hash of a count of zero",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111"
+   },
+   "expect": {
+    "message": "0x0000000000000000000000000000000000000000000000000000000000001fcd73e47a8da2c83beb802708fc473b5b7d094f3ee6290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e56300000000000000000000000000472eaa1111111111111111111111111111111111111111111111111111111111111111"
+   }
+  },
+  {
+   "name": "three keys, the last 2^256 - 1",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x1",
+     "0x2",
+     "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111"
+   },
+   "expect": {
+    "message": "0x0000000000000000000000000000000000000000000000000000000000001fcd73e47a8da2c83beb802708fc473b5b7d094f3ee6ad739ce1750c6e143d4d615e41e60aabf62c8baa597138e58ac5404be8a698db00000000000000000000000000472eaa1111111111111111111111111111111111111111111111111111111111111111"
+   }
+  },
+  {
+   "name": "sequence number and epoch at 2^64 - 1",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0xffffffffffffffff",
+    "epoch": "0xffffffffffffffff",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111"
+   },
+   "expect": {
+    "message": "0x0000000000000000000000000000000000000000000000000000000000001fcd73e47a8da2c83beb802708fc473b5b7d094f3ee633fff8dbf08d5a299322746ab5499d108e5e1cb3b4a7d374131b6f34d7742407ffffffffffffffffffffffffffffffff1111111111111111111111111111111111111111111111111111111111111111"
+   }
+  },
+  {
+   "name": "chain ID 2^256 - 1",
+   "claim": {
+    "chain_id": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111"
+   },
+   "expect": {
+    "message": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff73e47a8da2c83beb802708fc473b5b7d094f3ee633fff8dbf08d5a299322746ab5499d108e5e1cb3b4a7d374131b6f34d774240700000000000000000000000000472eaa1111111111111111111111111111111111111111111111111111111111111111"
+   }
+  },
+  {
+   "name": "a key of 2^256",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x10000000000000000000000000000000000000000000000000000000000000000"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111"
+   },
+   "expect": {
+    "message": null
+   }
+  },
+  {
+   "name": "chain ID 2^256",
+   "claim": {
+    "chain_id": "0x10000000000000000000000000000000000000000000000000000000000000000",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111"
+   },
+   "expect": {
+    "message": null
+   }
+  },
+  {
+   "name": "sequence number 2^64",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x10000000000000000",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111"
+   },
+   "expect": {
+    "message": null
+   }
+  },
+  {
+   "name": "epoch 2^64",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x10000000000000000",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111"
+   },
+   "expect": {
+    "message": null
+   }
+  },
+  {
+   "name": "a sender of 19 bytes",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3e",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111"
+   },
+   "expect": {
+    "message": null
+   }
+  },
+  {
+   "name": "a sender of 21 bytes",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee600",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111"
+   },
+   "expect": {
+    "message": null
+   }
+  },
+  {
+   "name": "a salt of 31 bytes",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x11111111111111111111111111111111111111111111111111111111111111"
+   },
+   "expect": {
+    "message": null
+   }
+  },
+  {
+   "name": "a salt of 33 bytes",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x111111111111111111111111111111111111111111111111111111111111111111"
+   },
+   "expect": {
+    "message": null
+   }
+  },
+  {
+   "name": "a ticket mined on the Hegota testnet, 0x31181599",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x4acd63b0259cb940e5b59ecb408174fbd995d330",
+    "nonce_keys": [
+     "0x0"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x473a12",
+    "salt": "0x81c327626655d9101d873272e0229aeeb6f289e588f02c90f0dcb511e516a055"
+   },
+   "expect": {
+    "message": "0x0000000000000000000000000000000000000000000000000000000000001fcd4acd63b0259cb940e5b59ecb408174fbd995d330ada5013122d395ba3c54772283fb069b10426056ef8ca54750cb9bb552a59e7d00000000000000000000000000473a1281c327626655d9101d873272e0229aeeb6f289e588f02c90f0dcb511e516a055"
+   }
+  },
+  {
+   "name": "a ticket the Hegota testnet mined under FRAME_TICKET_V1, 0x0bba93ca",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0xb0006caa2627a718cd831a50fda5152f14b0df1b",
+    "nonce_keys": [
+     "0x0"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x473a18",
+    "salt": "0x41d2f247f2e8185c1ca7f82dab65e5f4fda2ebbf96eb8ad8328e566316c32b73"
+   },
+   "expect": {
+    "message": "0x0000000000000000000000000000000000000000000000000000000000001fcdb0006caa2627a718cd831a50fda5152f14b0df1bada5013122d395ba3c54772283fb069b10426056ef8ca54750cb9bb552a59e7d00000000000000000000000000473a1841d2f247f2e8185c1ca7f82dab65e5f4fda2ebbf96eb8ad8328e566316c32b73"
+   }
+  }
+ ]
+}

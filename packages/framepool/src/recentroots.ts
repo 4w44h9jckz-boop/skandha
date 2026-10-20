@@ -1,10 +1,10 @@
 /**
- * Recent roots: emem `docs/spec/08-recent-roots.md`, RR-3 to RR-6 (EIP-8272).
+ * Recent roots: exp-mempool-l2s `docs/spec/08-recent-roots.md`, RR-3 to RR-6 (EIP-8272).
  *
  * The EIP derives a source id, an entry and its storage key with keccak256
  * over fixed-width encodings. Here, as in the reference, they are injective
  * functions of the same inputs, which is the property the EIP uses the
- * hashes for (RR-3, emem decision record 0023).
+ * hashes for (RR-3, exp-mempool-l2s decision record 0023).
  */
 import { createHash } from "node:crypto";
 import * as E from "./errors.js";

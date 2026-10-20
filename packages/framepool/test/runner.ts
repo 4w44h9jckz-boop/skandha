@@ -1,11 +1,11 @@
 /**
- * Plays emem's conformance vectors against this package, as emem's
+ * Plays exp-mempool-l2s's conformance vectors against this package, as exp-mempool-l2s's
  * `conformance/run.py` plays them against its reference. It reads vectors and
  * never writes them: there is no regeneration mode.
  *
  * A case is played when this package has everything it uses, and skipped
  * otherwise with what it needs. Which is decided from the case's contents,
- * never from a list of names (emem decision record 0035).
+ * never from a list of names (exp-mempool-l2s decision record 0035).
  */
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -13,6 +13,8 @@ import { join } from "node:path";
 import {
   Dependency,
   EIP_8141,
+  FOCIL_PROFILES,
+  FocilConfig,
   Frame,
   FramePool,
   FramePoolConfig,
@@ -22,17 +24,36 @@ import {
   Read,
   Reserver,
   RootReference,
+  Claim,
   Signature,
   State,
+  TicketClaim,
+  TicketFrame,
+  Wrapper,
   Tx,
+  Surface,
+  SURFACE_PROFILES,
+  TxError,
   Write,
+  addressForm,
+  admitted,
+  buildIl,
   builderOrder,
+  carriedTicket,
+  decode,
+  replay,
+  verdict,
   floorDataGas,
+  omission,
   frame,
   intrinsicGas,
   nextBaseFee,
+  receive,
   recentroots,
   signature,
+  ticketMessage,
+  ticketValid,
+  union,
   withChanges,
 } from "../src/index.js";
 
@@ -155,7 +176,7 @@ export function vectorFiles(): string[] {
       .digest("hex");
     if (actual !== sum)
       throw new Error(
-        `${path} differs from emem ${VECTORS_COMMIT}; vectors are never edited here`
+        `${path} differs from exp-mempool-l2s ${VECTORS_COMMIT}; vectors are never edited here`
       );
     files.push(path);
   }
@@ -204,7 +225,7 @@ const ACCOUNT_FIELDS = [
   "withdrawal",
 ];
 
-/** Field-wise merge of an account map over a state (emem `conformance/README.md`). */
+/** Field-wise merge of an account map over a state (exp-mempool-l2s `conformance/README.md`). */
 function mergeState(
   state: State | null,
   d: Record<string, Json> | undefined
@@ -314,7 +335,7 @@ function makeFrame(d: Record<string, Json>): Frame {
     ),
     calls: d.calls,
     installsCode: d.installs_code,
-    deadline: opt("deadline", num),
+    deadline: opt("deadline", big),
     deps: opt("deps", makeDeps),
     roots: opt("roots", (x: Json[]) =>
       x.map(([s, slot, root]): RootReference => [s, num(slot), root])
@@ -336,7 +357,31 @@ const FRAME_TX_FIELDS = [
   "gas_used",
   "label",
   "root_writes",
+  "zero_bytes",
+  "verdict",
+  "claim",
 ];
+
+const CLAIM_FIELDS = [
+  "sender",
+  "nonce_keys",
+  "nonce_seq",
+  "epoch",
+  "valid",
+  "salt",
+];
+
+function makeClaim(d: Record<string, Json>): Claim {
+  only(d, CLAIM_FIELDS, "claim");
+  return {
+    sender: d.sender,
+    nonceKeys: (d.nonce_keys ?? [0]).map(big),
+    nonceSeq: big(d.nonce_seq),
+    epoch: num(d.epoch),
+    valid: d.valid ?? true,
+    salt: d.salt ?? "",
+  };
+}
 
 function makeFrameTx(d: Record<string, Json>): FrameTx {
   only(d, FRAME_TX_FIELDS, "frame transaction");
@@ -357,7 +402,38 @@ function makeFrameTx(d: Record<string, Json>): FrameTx {
     gasUsed: d.gas_used === undefined ? undefined : big(d.gas_used),
     label: d.label,
     rootWrites: d.root_writes,
+    zeroBytes: d.zero_bytes === undefined ? undefined : num(d.zero_bytes),
+    verdict: d.verdict,
+    claim: d.claim === undefined ? undefined : makeClaim(d.claim),
   });
+}
+
+/** AG-5; `deps`, `proofs` and `stark` default to an honest wrapper's (`conformance/README.md`). */
+function makeWrapper(d: Json): Wrapper {
+  const entries: (FrameTx | string)[] = [];
+  const txs: FrameTx[] = [];
+  for (const t of d.txs) {
+    const tx = makeFrameTx("hash" in t ? t.hash : t);
+    entries.push("hash" in t ? tx.hash : tx);
+    txs.push(tx);
+  }
+  const deps = d.deps !== undefined ? makeDeps(d.deps) : union(txs);
+  const stark =
+    d.mode === 0
+      ? null
+      : {
+          covers:
+            d.stark?.covers !== undefined ? makeDeps(d.stark.covers) : deps,
+          valid: d.stark?.valid ?? true,
+        };
+  return {
+    txs: entries,
+    mode: d.mode,
+    deps,
+    proofs: d.mode === 0 ? d.proofs ?? deps.map(() => true) : [],
+    stark,
+    signed: d.signed ?? [],
+  };
 }
 
 const TX_FIELDS = [
@@ -438,30 +514,48 @@ function frameConfig(
   return withChanges(profile, changes);
 }
 
+/** The IL-1 profile a case names, with its `focil` overrides, written with IL-1's parameter names. */
+function focilConfig(c: Json): FocilConfig {
+  const profile = FOCIL_PROFILES.get(c.focil ?? "off");
+  if (profile === undefined)
+    throw new Error(`unknown focil profile ${c.focil}`);
+  const changes: Record<string, Json> = {};
+  for (const [snake, value] of Object.entries(c.config?.focil ?? {})) {
+    const key = snake.replace(/_([a-z])/g, (_, ch: string) => ch.toUpperCase());
+    if (!(key in profile)) throw new Error(`unknown focil parameter ${snake}`);
+    changes[key] =
+      key === "maxVerifyGasPerIl" || key === "maxVerifyGasPerTx"
+        ? big(value)
+        : value;
+  }
+  return { ...profile, ...changes } as FocilConfig;
+}
+
 // --- what a case needs --------------------------------------------------------------
 
 const STEP_NEEDS: Readonly<Record<string, string>> = {
-  wrapper: "an aggregator (AG-5 to AG-9)",
-  aggregate: "an aggregator (AG-5 to AG-9)",
+  aggregate: "an aggregator (AG-7 to AG-9)",
   build: "block building (03-block-building.md)",
   expect_state: "block building (03-block-building.md)",
-  il: "inclusion lists (07-focil.md)",
   expect_selection: "the sealed pool (06-lucid.md)",
 };
+
+/** Profiles of exp-mempool-l2s's specification this package does not have, with where each is specified. */
+const PROFILE_NEEDS: Readonly<Record<string, string>> = {};
 
 /** What this package lacks to play `c`, as a sorted list; empty when it can play it. */
 export function needs(operation: string, c: Json): string[] {
   const out = new Set<string>();
   if (operation === "ticket_fee") out.add("the sealed pool (06-lucid.md)");
-  if (operation !== "pool") return [...out];
+  if (operation !== "pool" && operation !== "surface" && operation !== "replay")
+    return [...out];
+  if (c.profile !== undefined && !PROFILES.has(c.profile))
+    out.add(PROFILE_NEEDS[c.profile] ?? `the ${c.profile} profile`);
+  if (operation !== "pool") return [...out].sort();
   if (c.sealed !== undefined && c.sealed !== "off")
     out.add("the sealed pool (06-lucid.md)");
-  if (c.focil !== undefined && c.focil !== "off")
-    out.add("inclusion lists (07-focil.md)");
-  for (const part of ["sealed", "focil"]) {
-    if (Object.keys(c.config?.[part] ?? {}).length > 0)
-      out.add(`a ${part} configuration`);
-  }
+  if (Object.keys(c.config?.sealed ?? {}).length > 0)
+    out.add("a sealed configuration");
   for (const step of c.steps) {
     for (const key of Object.keys(step))
       if (key in STEP_NEEDS) out.add(STEP_NEEDS[key]);
@@ -554,13 +648,35 @@ function runPool(c: Json): void {
       now = step.now ?? now;
       const got = pool.add(step.add.map(makeFrameTx), now);
       if ("expect" in step) same(step.expect, got, `${where} add`);
+    } else if ("wrapper" in step) {
+      now = step.now ?? now;
+      const got = receive(pool, makeWrapper(step.wrapper), now);
+      if ("expect" in step) same(step.expect, got, `${where} wrapper`);
     } else if ("reset" in step) {
       now = step.now ?? now;
       Object.assign(headD, step.reset.head ?? {});
       head = makeHead(headD);
       state = mergeState(state, step.reset.state);
       writeRoots(state, cfg, step.reset.roots);
-      pool.reset(head, state, now);
+      const byLabel = new Map(
+        [...pool.content().values()].flat().map((tx) => [label(tx), tx.hash])
+      );
+      const verdicts = new Map<string, string>(
+        Object.entries(step.reset.verdicts ?? {}).map(([l, v]) => [
+          byLabel.get(l) as string,
+          v as string,
+        ])
+      ); // MD-8
+      pool.reset(head, state, now, verdicts);
+    } else if ("il" in step) {
+      const focil = focilConfig(c);
+      const baseFee =
+        step.il.base_fee !== undefined ? big(step.il.base_fee) : undefined;
+      same(
+        step.expect,
+        buildIl(pool, focil, baseFee).map(label),
+        `${where} il`
+      );
     } else if ("tick" in step) {
       now = step.tick;
       pool.tick(now);
@@ -627,11 +743,323 @@ function runPool(c: Json): void {
   });
 }
 
+/** Every key `want` names must match; a null expects the field absent. */
+function partial(want: Json, got: Json, where: string): void {
+  if (want !== null && typeof want === "object" && !Array.isArray(want)) {
+    if (got === null || typeof got !== "object")
+      throw new Mismatch(`${where} expected an object, got ${String(got)}`);
+    for (const [k, v] of Object.entries(want))
+      partial(v, got[k], `${where}.${k}`);
+  } else if (
+    Array.isArray(want) &&
+    want.length > 0 &&
+    typeof want[0] === "object"
+  ) {
+    if (!Array.isArray(got) || got.length !== want.length)
+      throw new Mismatch(`${where} expected ${want.length} entries`);
+    want.forEach((w, i) => partial(w, got[i], `${where}[${i}]`));
+  } else same(want, got ?? null, where);
+}
+
+/** SF-3's model transaction, in the vectors' names. */
+function modelJson(tx: FrameTx): Json {
+  return {
+    sender: tx.sender,
+    nonce_keys: [...tx.nonceKeys],
+    nonce_seq: tx.nonceSeq,
+    tip: tx.tip,
+    max_fee: tx.maxFee,
+    size: tx.size,
+    zero_bytes: tx.zeroBytes,
+    frames: tx.frames.map((f) => ({
+      mode: f.mode,
+      flags: f.flags,
+      target: f.target,
+      exec_gas: f.execGas,
+      state_gas: f.stateGas,
+      value: f.value,
+      data_size: f.dataSize,
+      deadline: f.deadline,
+      roots: f.roots.map((r) => [...r]),
+    })),
+    signatures: tx.signatures.map((s) => ({
+      scheme: s.scheme,
+      signer: s.signer,
+      canonical_msg: s.canonicalMsg,
+      valid: s.valid,
+      length: s.length,
+    })),
+    claim:
+      tx.claim === null
+        ? null
+        : { epoch: tx.claim.epoch, salt: tx.claim.salt, valid: tx.claim.valid },
+  };
+}
+
+const answerOf = (
+  a: Json
+): { valid: boolean; violation?: string } | undefined =>
+  a === undefined ? undefined : { valid: a.valid, violation: a.violation };
+
+/** exp-mempool-l2s `docs/spec/11-surface.md`: one node's surface over the pool of `runPool`. */
+function runSurface(c: Json): void {
+  const name = c.profile ?? EIP_8141.name;
+  const profile = PROFILES.get(name);
+  const base = SURFACE_PROFILES.get(name);
+  if (profile === undefined || base === undefined)
+    throw new Error(`unknown profile ${name}`);
+  const cfg = addressForm(frameConfig(profile, c.config?.frame ?? {}));
+  const sc = c.config?.surface ?? {};
+  const scfg = {
+    ...base,
+    ...(sc.envelope !== undefined ? { envelope: sc.envelope } : {}),
+    ...(sc.chain_id !== undefined ? { chainId: big(sc.chain_id) } : {}),
+    ...(sc.max_tx_size !== undefined ? { maxTxSize: num(sc.max_tx_size) } : {}),
+    ...(sc.relay !== undefined ? { relay: sc.relay } : {}),
+    ...(sc.handoff !== undefined ? { handoff: sc.handoff } : {}),
+  };
+  const headD = { ...DEFAULT_HEAD, ...(c.head ?? {}) };
+  let state = mergeState(null, c.state);
+  const pool = new FramePool(makeHead(headD), state, cfg, new Reserver());
+  const codes = new Map<string, Uint8Array>( // SF-3's `claim`
+    Object.entries(c.codes ?? {}).map(([a, code]) => [
+      a.toLowerCase(),
+      Buffer.from((code as string).slice(2), "hex"),
+    ])
+  );
+  const node = new Surface(pool, scfg, c.peers ?? [], codes);
+  const focil = focilConfig(c);
+  const named = new Map<string, FrameTx>(
+    Object.entries(c.txs ?? {}).map(([l, raw]) => [
+      l,
+      decode(Buffer.from((raw as string).slice(2), "hex"), cfg, scfg, codes),
+    ])
+  );
+  const byLabels = (labels: string[]): FrameTx[] =>
+    labels.map((l) => named.get(l) as FrameTx);
+  const alias = new Map<string, string>();
+  const names = (hashes: string[]): string[] =>
+    hashes.map((h) => [...alias].find(([, x]) => x === h)?.[0] ?? h);
+  let now = 0;
+  c.steps.forEach((step: Json, n: number) => {
+    const where = `step ${n}:`;
+    now = step.now ?? now;
+    if ("decode" in step) {
+      let got: Json;
+      try {
+        const tx = decode(
+          Buffer.from(step.decode.slice(2), "hex"),
+          cfg,
+          scfg,
+          codes
+        );
+        got = {
+          result: "ok",
+          hash: tx.label,
+          tx: modelJson(tx),
+          gas: { max_gas: tx.maxGas, max_cost: tx.maxCost },
+        };
+      } catch (err) {
+        if (!(err instanceof TxError)) throw err;
+        got = { result: err.code };
+      }
+      partial(step.expect, got, `${where} decode`);
+    } else if ("verdict" in step) {
+      same(
+        step.expect,
+        verdict(answerOf(step.verdict) as { valid: boolean }),
+        `${where} verdict`
+      );
+    } else if ("rpc" in step || "peer" in step) {
+      let got: Json;
+      try {
+        got =
+          "rpc" in step
+            ? node.rpc(step.rpc, answerOf(step.client), now)
+            : node.peer(step.peer, step.from, answerOf(step.client), now);
+      } catch (err) {
+        throw new Mismatch(
+          `${where} ${err instanceof Error ? err.message : err}`
+        );
+      }
+      if ("as" in step) {
+        const raw = Buffer.from((step.rpc ?? step.peer).slice(2), "hex");
+        alias.set(
+          step.as,
+          (got.hash as string) ?? decode(raw, cfg, scfg).label
+        );
+      }
+      partial(step.expect, got, where);
+    } else if ("head" in step) {
+      Object.assign(headD, step.head);
+      state = mergeState(state, step.state);
+      const answers = new Map(
+        Object.entries(step.client ?? {}).map(([k, v]) => [
+          alias.get(k) ?? k,
+          answerOf(v) as { valid: boolean },
+        ])
+      );
+      let asked: string[];
+      try {
+        asked = node.head(makeHead(headD), state, answers, now);
+      } catch (err) {
+        throw new Mismatch(
+          `${where} ${err instanceof Error ? err.message : err}`
+        );
+      }
+      if ("expect_asked" in step)
+        same(step.expect_asked, names(asked), `${where} asked`);
+      if ("expect_resimulated" in step)
+        same(
+          step.expect_resimulated,
+          names(pool.resimulated.map((tx) => tx.label)),
+          `${where} resimulated`
+        );
+      if ("expect_pending" in step)
+        same(step.expect_pending, names(node.pending()), `${where} pending`);
+    } else if ("il" in step) {
+      const baseFee =
+        step.il.base_fee !== undefined ? big(step.il.base_fee) : undefined;
+      const got = names(buildIl(pool, focil, baseFee).map((tx) => tx.label));
+      same(step.expect, got, `${where} il`);
+    } else if ("inclusion" in step) {
+      const inc = step.inclusion;
+      const ils = (inc.ils as string[][]).map(byLabels);
+      let delivered: FrameTx[] | undefined;
+      if (inc.delivered !== undefined) {
+        const all = [...new Set((inc.ils as string[][]).flat())].sort();
+        if (JSON.stringify([...inc.delivered].sort()) !== JSON.stringify(all))
+          throw new Mismatch(
+            `${where} delivered is not the ILs' transactions, each once`
+          );
+        delivered = byLabels(inc.delivered);
+      }
+      const labelOf = new Map([...named].map(([l, tx]) => [tx.hash, l]));
+      const got = admitted(ils, pool.head, cfg, focil, delivered).map(
+        (h) => labelOf.get(h) as string
+      );
+      if ("expect_admitted" in step)
+        same(step.expect_admitted, got, `${where} admitted`);
+      if (inc.block !== undefined) {
+        const valid = new Set(byLabels(inc.valid ?? []).map((tx) => tx.hash));
+        const missing = omission(
+          byLabels(inc.block),
+          big(inc.gas_left),
+          ils,
+          pool.head,
+          cfg,
+          focil,
+          valid,
+          delivered
+        );
+        same(
+          step.expect_omission ?? null,
+          missing === null ? null : (labelOf.get(missing.hash) as string),
+          `${where} omission`
+        );
+      }
+    } else {
+      throw new Error(`${where} unknown step ${Object.keys(step).sort()}`);
+    }
+  });
+}
+
+/** exp-mempool-l2s `docs/spec/12-replay.md`: one fixture under one profile. */
+function runReplay(c: Json): void {
+  const name = c.profile ?? EIP_8141.name;
+  const profile = PROFILES.get(name);
+  const base = SURFACE_PROFILES.get(name);
+  if (profile === undefined || base === undefined)
+    throw new Error(`unknown profile ${name}`);
+  const cfg = addressForm(frameConfig(profile, c.config?.frame ?? {}));
+  const sc = c.config?.surface ?? {};
+  const scfg = {
+    ...base,
+    ...(sc.envelope !== undefined ? { envelope: sc.envelope } : {}),
+    ...(sc.chain_id !== undefined ? { chainId: big(sc.chain_id) } : {}),
+  };
+  const f = c.fixture;
+  const parent =
+    f.parent === null
+      ? null
+      : {
+          number: num(f.parent.number),
+          timestamp: num(f.parent.timestamp),
+          gasLimit: big(f.parent.gas_limit),
+          gasUsed: big(f.parent.gas_used),
+          baseFee: big(f.parent.base_fee),
+        };
+  const got = replay(
+    Buffer.from(f.raw.slice(2), "hex"),
+    f.hash,
+    f.payer,
+    parent,
+    cfg,
+    scfg
+  );
+  partial(c.expect, got, "replay");
+}
+
+/** exp-mempool-l2s `docs/spec/10-claim-gated-admission.md`, CG-8 to CG-10. */
+function runClaimTicket(c: Json): void {
+  const hex = (s: string): Uint8Array => Buffer.from(s.slice(2), "hex");
+  const ticketClaim = (d: Json): TicketClaim => ({
+    chainId: BigInt(d.chain_id),
+    epoch: BigInt(d.epoch ?? "0x0"),
+    sender: hex(d.sender),
+    nonceSeq: BigInt(d.nonce_seq),
+    nonceKeys: d.nonce_keys.map((k: string) => BigInt(k)),
+    salt: hex(d.salt ?? "0x"),
+  });
+  if (c.frames !== undefined) {
+    // CG-10
+    const codes = new Map<string, Uint8Array>(
+      Object.entries(c.codes).map(([a, code]) => [
+        a.toLowerCase(),
+        hex(code as string),
+      ])
+    );
+    const frames: TicketFrame[] = c.frames.map((f: Json) => ({
+      mode: f.mode,
+      target: f.target.toLowerCase(),
+      data: hex(f.data),
+    }));
+    const t = carriedTicket(ticketClaim(c.tx), frames, codes);
+    const got: Json =
+      t === null
+        ? { claim: null }
+        : {
+            claim: {
+              epoch: t.epoch === null ? null : "0x" + t.epoch.toString(16),
+              salt:
+                t.salt === null
+                  ? null
+                  : "0x" + Buffer.from(t.salt).toString("hex"),
+              issuer: "0x" + Buffer.from(t.issuer).toString("hex"),
+            },
+            valid: t.valid,
+          };
+    same(c.expect, got, "claim_ticket");
+    return;
+  }
+  const claim = ticketClaim(c.claim);
+  const m = ticketMessage(claim);
+  const got: Json = {
+    message: m === null ? null : "0x" + Buffer.from(m).toString("hex"),
+  };
+  if (c.issuer !== undefined)
+    got.valid = ticketValid(claim, hex(c.issuer), hex(c.signature));
+  same(c.expect, got, "claim_ticket");
+}
+
 export const OPERATIONS: Readonly<Record<string, (c: Json) => void>> = {
   next_base_fee: runNextBaseFee,
   intrinsic_gas: runIntrinsicGas,
   frame_gas: runFrameGas,
   pool: runPool,
+  surface: runSurface,
+  replay: runReplay,
+  claim_ticket: runClaimTicket,
 };
 
 export interface Outcome {

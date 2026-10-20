@@ -1,5 +1,5 @@
 /**
- * Accounts, state, heads and the base fee: emem `docs/spec/00-model.md`,
+ * Accounts, state, heads and the base fee: exp-mempool-l2s `docs/spec/00-model.md`,
  * MD-1 to MD-4 and FEE-1.
  */
 

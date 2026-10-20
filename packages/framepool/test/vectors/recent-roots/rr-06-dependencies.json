@@ -1,7 +1,7 @@
 {
   "clause": "RR-6",
   "document": "08-recent-roots.md",
-  "version": 1,
+  "version": 2,
   "also": ["FP-10", "FP-15"],
   "operation": "pool",
   "distinguishes": "A pending spend depends on the code at the address and on each entry it was checked against: a change to either re-runs it and evicts it if it now fails, and a write to another index re-runs nothing.",

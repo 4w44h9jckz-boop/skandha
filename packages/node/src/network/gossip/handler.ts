@@ -15,6 +15,7 @@ import {
 import {
   GossipTopicCache,
   getGossipSSZType,
+  isFrameTopic,
   stringifyGossipTopic,
 } from "./topic.js";
 import { DataTransformSnappy } from "./encoding.js";
@@ -122,6 +123,7 @@ export class BundlerGossipsub extends GossipSub {
     event: GossipsubEvents["gossipsub:message"]
   ): void {
     const { propagationSource, msgId, msg } = event.detail;
+    if (isFrameTopic(msg.topic)) return; // validated, and so admitted, by its topic validator
 
     try {
       // Also validates that the topicStr is known

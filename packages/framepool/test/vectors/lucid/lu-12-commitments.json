@@ -1,7 +1,7 @@
 {
   "clause": "LU-12",
   "document": "06-lucid.md",
-  "version": 1,
+  "version": 2,
   "also": ["LU-3", "LU-7", "BB-3", "BB-4"],
   "operation": "pool",
   "distinguishes": "What a builder commits and charges: the selection at the block's base fee and its own minimum tip, each ticket charged its ticket fee with the priority fee to the coinbase, and no gas of the block taken by a ticket (an Interpretation, decision record 0014).",

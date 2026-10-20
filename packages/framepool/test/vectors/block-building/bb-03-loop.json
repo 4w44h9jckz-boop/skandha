@@ -1,7 +1,7 @@
 {
   "clause": "BB-3",
   "document": "03-block-building.md",
-  "version": 2,
+  "version": 4,
   "also": ["BB-1", "BB-2", "BB-4"],
   "operation": "pool",
   "distinguishes": "Which transactions a builder takes and in what order: price across senders with nonce order inside one, a sender dropped when its next transaction does not fit, the minimum tip, the base fee, and frame transactions merged in by the same price.",

@@ -1,6 +1,6 @@
 /**
  * Result codes. Names follow go-ethereum's error variables where one exists;
- * emem `docs/spec/` says which clause raises each. The list is emem's
+ * exp-mempool-l2s `docs/spec/` says which clause raises each. The list is exp-mempool-l2s's
  * `ref/python/emem/errors.py`, one constant a line.
  */
 export const OK = "ok";
@@ -9,6 +9,7 @@ export const OK = "ok";
 export const ErrAlreadyKnown = "ErrAlreadyKnown";
 export const ErrTxTypeNotSupported = "ErrTxTypeNotSupported";
 export const ErrOversizedData = "ErrOversizedData";
+export const ErrInvalidChainId = "ErrInvalidChainId";
 export const ErrMaxInitCodeSizeExceeded = "ErrMaxInitCodeSizeExceeded";
 export const ErrGasLimitTooHigh = "ErrGasLimitTooHigh";
 export const ErrNegativeValue = "ErrNegativeValue";
@@ -82,6 +83,23 @@ export const ErrFrameExpiryTooFar = "ErrFrameExpiryTooFar";
 export const ErrSTMalformed = "ErrSTMalformed";
 export const ErrSTExceedsToB = "ErrSTExceedsToB";
 export const ErrSTNotIncludable = "ErrSTNotIncludable";
+
+// This repository's, for claim-gated admission (`docs/spec/10-claim-gated-admission.md`)
+export const ErrClaimMissing = "ErrClaimMissing";
+export const ErrClaimInvalid = "ErrClaimInvalid";
+export const ErrClaimWrongSlot = "ErrClaimWrongSlot";
+export const ErrClaimEpoch = "ErrClaimEpoch";
+export const ErrProofUnsigned = "ErrProofUnsigned";
+export const ErrSlotRefused = "ErrSlotRefused";
+export const ErrClaimRefused = "ErrClaimRefused";
+export const ErrClaimUsed = "ErrClaimUsed";
+export const ErrClaimExpired = "ErrClaimExpired";
+export const ErrRelayAggregate = "ErrRelayAggregate";
+
+// This repository's, for the surface (`docs/spec/11-surface.md`)
+export const ErrFrameDecode = "ErrFrameDecode";
+export const ErrFrameBlobs = "ErrFrameBlobs";
+export const ErrFrameClientRefused = "ErrFrameClientRefused";
 
 /** A rejection. The pool throws it internally and returns its code from `add`. */
 export class TxError extends Error {

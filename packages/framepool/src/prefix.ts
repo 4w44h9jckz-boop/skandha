@@ -1,5 +1,5 @@
 /**
- * The validation prefix: static checks and simulation, emem
+ * The validation prefix: static checks and simulation, exp-mempool-l2s
  * `docs/spec/02-frame-pool.md` FP-3 to FP-10, with the dependency frames of
  * `05-aggregation.md` (AG-2 to AG-4), the recent root verifier frame of
  * `08-recent-roots.md` (RR-4, RR-5) and the expiring nonces of
@@ -7,7 +7,7 @@
  *
  * Nothing here runs the EVM. A frame carries what a node simulating it would
  * observe (MD-6), and these functions apply the EIP-8141 rules to those
- * observations (emem decision record 0003).
+ * observations (exp-mempool-l2s decision record 0003).
  */
 import * as E from "./errors.js";
 import { TxError } from "./errors.js";
@@ -101,8 +101,9 @@ export interface Simulation {
   readonly payer: string;
   readonly payerClass: string;
   readonly deps: Deps;
-  readonly deadline: number | null;
+  readonly deadline: bigint | null;
   readonly roots: readonly [number, number] | null; // RR-6: the oldest and newest slot referenced
+  readonly verdict?: string | null; // FP-10: the client's verdict it was judged by, a dependency of its own
 }
 
 /** FP-5's frame classes, with RR-4's. */
@@ -344,9 +345,9 @@ export function checkExpiring(
 ): void {
   const i = prefix.kinds.indexOf(EXPIRY);
   if (i < 0) fail(E.ErrFrameExpiryMissing);
-  const d = prefix.frames[i].deadline as number;
-  if (d < now) fail(E.ErrFrameExpired);
-  if (d > now + cfg.maxExpirySecs) fail(E.ErrFrameExpiryTooFar);
+  const d = prefix.frames[i].deadline as bigint;
+  if (d < BigInt(now)) fail(E.ErrFrameExpired);
+  if (d > BigInt(now + cfg.maxExpirySecs)) fail(E.ErrFrameExpiryTooFar);
   if (state.storage(cfg.nonceRing, seenSlot(tx.hash)) >= BigInt(now))
     fail(E.ErrNonceTooLow);
 }
@@ -390,6 +391,51 @@ export function staticPayer(
 }
 
 /**
+ * FP-8 and FP-9 through a client's verdict, then FP-8's payment check and
+ * FP-10. The verdict stands for every prefix frame, so no observation is read;
+ * the payer is the one the prefix's shape names, as under `static_first`; the
+ * slots the prefix read are unknown, and the verdict is recorded in their place.
+ */
+function byVerdict(
+  tx: FrameTx,
+  prefix: Prefix,
+  state: State,
+  cfg: FramePoolConfig,
+  deps: Deps
+): Simulation {
+  let deadline: bigint | null = null;
+  let roots: [number, number] | null = null;
+  for (let i = 0; i < prefix.frames.length; i++) {
+    if (prefix.kinds[i] === EXPIRY) {
+      deps.set(
+        depKey("code", cfg.expiryVerifier),
+        state.code(cfg.expiryVerifier)
+      );
+      deadline = prefix.frames[i].deadline;
+    } else if (prefix.kinds[i] === ROOT) {
+      // RR-6: the tuples' slots, read from the transaction, for RR-7
+      const slots = prefix.frames[i].roots.map(([, slot]) => slot);
+      roots = [Math.min(...slots), Math.max(...slots)];
+    }
+  }
+  if (tx.verdict !== E.OK) fail(tx.verdict as string);
+  const [payer, payerClass] = staticPayer(tx, prefix, state, cfg);
+  if (state.balance(payer) < tx.maxCost) fail(E.ErrInsufficientFunds);
+  deps.set(depKey("balance", payer), state.balance(payer));
+  deps.set(depKey("code", payer), state.code(payer));
+  if (payerClass === "canonical")
+    deps.set(depKey("withdrawal", payer), state.withdrawal(payer));
+  return {
+    payer,
+    payerClass,
+    deps,
+    deadline,
+    roots,
+    verdict: tx.verdict,
+  };
+}
+
+/**
  * FP-7 to FP-10, with RR-5. A pool passes its `expiryMargin` (FP-8), its
  * current slot, which is its head's plus one, and its `rootMargin` (RR-2,
  * RR-5); a block being built passes none, and its own slot is the current
@@ -424,11 +470,12 @@ export function simulate(
   }
   deps.set(depKey("code", sender), state.code(sender));
   deps.set(depKey("balance", sender), state.balance(sender));
+  if (tx.verdict !== null) return byVerdict(tx, prefix, state, cfg, deps);
 
   // FP-8: the prefix, frame by frame
   let senderCode = state.code(sender);
   const deployedStorage = new Map<bigint, bigint>();
-  let deadline: number | null = null;
+  let deadline: bigint | null = null;
   let roots: [number, number] | null = null;
   let payer: string | null = null;
   let payerCode = "";
@@ -452,7 +499,7 @@ export function simulate(
       deps.set(depKey("code", cfg.expiryVerifier), code);
       if (code !== cfg.expiryVerifierCode) fail(E.ErrFramePrefixReverted);
       deadline = frame.deadline;
-      if ((frame.deadline as number) < head.timestamp + expiryMargin)
+      if ((frame.deadline as bigint) < BigInt(head.timestamp + expiryMargin))
         fail(E.ErrFrameExpired);
       continue;
     }

@@ -1,11 +1,11 @@
 {
   "clause": "LU-3",
   "document": "06-lucid.md",
-  "version": 1,
+  "version": 2,
   "operation": "ticket_fee",
   "distinguishes": "The order in which a ticket's fees come out of max_fee times gas_limit: the base fee and the key fee, then the priority fee, then the ToB fee, each capped; and whether the ticket can pay at all.",
   "cases": [
-    {"name": "aa's worked example: every fee at its cap",
+    {"name": "a worked example: every fee at its cap",
      "st": {"type": "st", "gas_limit": 200000, "max_fee": 5000000000, "tip": 1000000000, "key_fee": 100000000000000, "max_tob_fee": 1000000000000000},
      "base_fee": 1000000000,
      "expect": {"can_pay": true, "priority": 200000000000000, "tob": 500000000000000, "ticket_fee": 1000000000000000, "cost": 1000000000000000}},

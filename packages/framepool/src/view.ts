@@ -1,6 +1,6 @@
 /**
  * BB-2, go-ethereum `TransactionsByPriceAndNonce`, for frame transactions
- * alone: emem `docs/spec/03-block-building.md`. Each frame transaction is a
+ * alone: exp-mempool-l2s `docs/spec/03-block-building.md`. Each frame transaction is a
  * head of its own (FP-16); a head whose fee cap is below the base fee is
  * dropped, and the rest go by effective tip, then by arrival. The
  * account-nonce half, which merges each sender's nonce-ordered list, belongs

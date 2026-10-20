@@ -2,7 +2,7 @@
   "name": "@skandha/framepool",
   "private": true,
   "version": "4.0.2",
-  "description": "EIP-8141 frame transaction pool rules, a second implementation of emem's specification checked by its conformance vectors",
+  "description": "EIP-8141 frame transaction pool rules, a second implementation of exp-mempool-l2s's specification checked by its conformance vectors",
   "author": "Etherspot",
   "homepage": "https://github.com/etherspot/skandha#readme",
   "license": "MIT",
@@ -28,5 +28,8 @@
     "test": "bun run test:unit",
     "test:unit": "vitest --run --dir test/unit/",
     "vectors": "bun test/run-vectors.ts"
+  },
+  "dependencies": {
+    "@noble/curves": "1.8.1"
   }
 }

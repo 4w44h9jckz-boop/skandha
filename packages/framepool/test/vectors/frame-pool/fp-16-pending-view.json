@@ -1,7 +1,7 @@
 {
   "clause": "FP-16",
   "document": "02-frame-pool.md",
-  "version": 5,
+  "version": 7,
   "also": ["FEE-2", "MD-10"],
   "operation": "pool",
   "distinguishes": "Frame transactions are offered by effective tip at the builder's base fee, ties to the earlier one, and below the minimum tip not at all.",

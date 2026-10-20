@@ -1,7 +1,7 @@
 {
   "clause": "IL-3",
   "document": "07-focil.md",
-  "version": 1,
+  "version": 2,
   "also": ["IL-5"],
   "operation": "pool",
   "distinguishes": "Which frame transactions are Profile 2 candidates and so can be enforced: a recognised prefix shape, no VERIFY frame after the prefix, and a budget at most max_verify_gas_per_tx, which is IL-3's own bound and not the pool's max_verify_gas.",

@@ -1,0 +1,321 @@
+{
+  "clause": "FP-12",
+  "also": [
+    "FP-10",
+    "FP-11",
+    "RR-4",
+    "SF-3",
+    "SF-5",
+    "SF-8"
+  ],
+  "document": "02-frame-pool.md",
+  "version": 7,
+  "operation": "surface",
+  "distinguishes": "exp-frames experiment 06's concurrent pair, two withdrawals from one privacy pool whose nonce keys are their nullifiers, mined together in block 304240: admitted together under disjoint-keys and one after the other under one, and the same note spent again, to another recipient, refused as an underpriced replacement under both.",
+  "cases": [
+    {
+      "name": "disjoint-keys: the concurrent pair is admitted together, as the testnet admitted and mined it",
+      "profile": "hegota-testnet",
+      "head": {
+        "number": 304239,
+        "slot": 323056,
+        "timestamp": 1791360787,
+        "gas_limit": 200000000,
+        "gas_used": 0,
+        "base_fee": 7
+      },
+      "state": {
+        "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6": {
+          "balance": 1000000000000000000,
+          "code": "privacy-pool"
+        }
+      },
+      "steps": [
+        {
+          "rpc": "0x06f902e6821fcde09fdfbcdb6d0b4f76803d6accafe93ac4eee0736d7354310384f0c02f409e6b22809473e47a8da2c83beb802708fc473b5b7d094f3ee6f902a3f8670180940000000000000000000000000000000000008272c48227108080b848602d9dcea629f74a71ca0f0ad9dd175ea979f3068ae1cdce9e321126bf085207000000000004ede72ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de04ce010380c883061a8083017e808080f9022802809473e47a8da2c83beb802708fc473b5b7d094f3ee6c8830186a08302cd3080b9020421a0adb600000000000000000000000000000000000000000000000000000000000000e02ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de0400dfbcdb6d0b4f76803d6accafe93ac4eee0736d7354310384f0c02f409e6b22000000000000000000000000bc42a78cd0a3e6e6c2fefe07031f76f67f7619ed00000000000000000000000073e47a8da2c83beb802708fc473b5b7d094f3ee600000000000000000000000000000000000000000000000000000002540be4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010012e5dcd41c0f198eaf970dc216b361d283dcc762e6f993a5cdcd7d64f11479ea220cce77f095fb6657c646a7e29076aa0ce0e1cd2eb95d5b04f99a8a4e2785f127e6c5807c2c9bd16bf037157423e5f1aa2ec371956dffe12377ef9aa66ba2c20ca68e25dee8e44522f53ce60a9a3bb043d235c1ba3d1ae4889a6714e130dbe81398e654692d8fa56dc64758c43fc510f16fe95b611b61b99ef65c8934a798a826e180df7699d05b30b51c49bcf735027b3eb3c9be0b4ad63f1e4192fc8935910d88de9fadb38bdb6fa1573c3e73f8d27e1e098057aa17e773b2bd0e786072d725ab17a9fa2a7e1abe4ea700398514785595a50e3d921554e020afb163ea1e7cc0c3016480c0",
+          "as": "a",
+          "client": {
+            "valid": true
+          },
+          "expect": {
+            "result": "ok",
+            "hash": "0x5fb29fe15de91029d2c4a398b8d24aee23aa3e206b6e93b9e8139160deb90f6c",
+            "asked_client": true
+          }
+        },
+        {
+          "rpc": "0x06f902e7821fcde1a0253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9809473e47a8da2c83beb802708fc473b5b7d094f3ee6f902a3f8670180940000000000000000000000000000000000008272c48227108080b848602d9dcea629f74a71ca0f0ad9dd175ea979f3068ae1cdce9e321126bf085207000000000004ede72ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de04ce010380c883061a8083017e808080f9022802809473e47a8da2c83beb802708fc473b5b7d094f3ee6c8830186a08302cd3080b9020421a0adb600000000000000000000000000000000000000000000000000000000000000e02ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de04253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce900000000000000000000000056f7a782fd3899c6dc4bc25d78927e4dedd1218b00000000000000000000000073e47a8da2c83beb802708fc473b5b7d094f3ee600000000000000000000000000000000000000000000000000000002540be400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000d944d81ee1bad431fed4ba36d20f6b564a28af1409df80ceac7b8fee81b66212980c2ee68c9569ea719a03f502e90c436f2dcc332e541273b9c2fd89336b87706372600ff3f3534740110aebd49a788fbc1fea0a645860e5744027f9724c47d082b3baf492f08a2cf0745e3b6dbac422ac3dbb689d686dc3e0e8027aafaae1f0fecebede89566950236f18ac72084fe4a52f5ca3aec3bf801865b3101a37a090daa39f4bb4103cea901a0e872a8899a33d24d9d58bcabf8193ad6e593fba01521c2dcf5718de3bedfcb8f36c7694010aec62cfe552098e2a064ff3ed8be69062dd71ca25b958857758e0438aaf94da83b001b42f87d70703f27f395400c80f7c0c3016480c0",
+          "as": "b",
+          "client": {
+            "valid": true
+          },
+          "expect": {
+            "result": "ok",
+            "hash": "0x2719e9459155a1c329a3c8ab22c39e2d963ebeb5d4a538799766ab940acd5db8",
+            "asked_client": true
+          }
+        },
+        {
+          "head": {
+            "number": 304240,
+            "slot": 323057,
+            "timestamp": 1791360793
+          },
+          "state": {
+            "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6": {
+              "nonce_seqs": {
+                "395310339470789058832529476795102885641312758584144912590896318877018254114": 1,
+                "16830170481704439713738578947418888489700999945506021632371238480270501567721": 1
+              }
+            }
+          },
+          "client": {},
+          "expect_asked": [],
+          "expect_resimulated": [],
+          "expect_pending": []
+        }
+      ],
+      "derivation": "Both withdrawals are from exp-frames experiment 06's keyed privacy pool, which is their sender and their payer (FP-10, class sender), with no signature: frames [recent_root_verify (10000), VERIFY self flags 3 (400000, state 97920), SENDER withdraw (100000, state 183600)], max_fee 100, tip 1, nonce_seq 0, and each note's nullifier hash as the only nonce key. FP-3: tip 1 is at price_limit and below max_fee; FEE-4 gives a's max_gas as max(21541 + 510000 + 281520, 53233 + 281520) = 813061, b's as max(21557 + 510000 + 281520, 53297 + 281520) = 813077 (b's key is one byte longer), under the head's 200000000. FP-5 skips the recent_root_verify frame (RR-4) and finds [self_verify]; FP-6: 10000 + 400000 = 410000, under 500000. FP-7: no sequence is recorded for either key, so both are at 0. The verdicts are the simulations exp-frames ran before sending, all valid. FP-11: the pool's balance, 10^18 here because a replay reads no state (RP-1), covers 81306100 and then 81307700 more. FP-12 under disjoint-keys: neither uses key 0 and their keys differ, so b is admitted beside a. Block 304240 moves both keys to 1, so SF-8 asks about neither and FP-15 removes both as included."
+    },
+    {
+      "name": "one: the second withdrawal waits until the first is mined",
+      "profile": "hegota-testnet",
+      "config": {
+        "frame": {
+          "per_sender": "one"
+        }
+      },
+      "head": {
+        "number": 304239,
+        "slot": 323056,
+        "timestamp": 1791360787,
+        "gas_limit": 200000000,
+        "gas_used": 0,
+        "base_fee": 7
+      },
+      "state": {
+        "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6": {
+          "balance": 1000000000000000000,
+          "code": "privacy-pool"
+        }
+      },
+      "steps": [
+        {
+          "rpc": "0x06f902e6821fcde09fdfbcdb6d0b4f76803d6accafe93ac4eee0736d7354310384f0c02f409e6b22809473e47a8da2c83beb802708fc473b5b7d094f3ee6f902a3f8670180940000000000000000000000000000000000008272c48227108080b848602d9dcea629f74a71ca0f0ad9dd175ea979f3068ae1cdce9e321126bf085207000000000004ede72ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de04ce010380c883061a8083017e808080f9022802809473e47a8da2c83beb802708fc473b5b7d094f3ee6c8830186a08302cd3080b9020421a0adb600000000000000000000000000000000000000000000000000000000000000e02ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de0400dfbcdb6d0b4f76803d6accafe93ac4eee0736d7354310384f0c02f409e6b22000000000000000000000000bc42a78cd0a3e6e6c2fefe07031f76f67f7619ed00000000000000000000000073e47a8da2c83beb802708fc473b5b7d094f3ee600000000000000000000000000000000000000000000000000000002540be4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010012e5dcd41c0f198eaf970dc216b361d283dcc762e6f993a5cdcd7d64f11479ea220cce77f095fb6657c646a7e29076aa0ce0e1cd2eb95d5b04f99a8a4e2785f127e6c5807c2c9bd16bf037157423e5f1aa2ec371956dffe12377ef9aa66ba2c20ca68e25dee8e44522f53ce60a9a3bb043d235c1ba3d1ae4889a6714e130dbe81398e654692d8fa56dc64758c43fc510f16fe95b611b61b99ef65c8934a798a826e180df7699d05b30b51c49bcf735027b3eb3c9be0b4ad63f1e4192fc8935910d88de9fadb38bdb6fa1573c3e73f8d27e1e098057aa17e773b2bd0e786072d725ab17a9fa2a7e1abe4ea700398514785595a50e3d921554e020afb163ea1e7cc0c3016480c0",
+          "as": "a",
+          "client": {
+            "valid": true
+          },
+          "expect": {
+            "result": "ok",
+            "hash": "0x5fb29fe15de91029d2c4a398b8d24aee23aa3e206b6e93b9e8139160deb90f6c",
+            "asked_client": true
+          }
+        },
+        {
+          "rpc": "0x06f902e7821fcde1a0253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9809473e47a8da2c83beb802708fc473b5b7d094f3ee6f902a3f8670180940000000000000000000000000000000000008272c48227108080b848602d9dcea629f74a71ca0f0ad9dd175ea979f3068ae1cdce9e321126bf085207000000000004ede72ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de04ce010380c883061a8083017e808080f9022802809473e47a8da2c83beb802708fc473b5b7d094f3ee6c8830186a08302cd3080b9020421a0adb600000000000000000000000000000000000000000000000000000000000000e02ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de04253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce900000000000000000000000056f7a782fd3899c6dc4bc25d78927e4dedd1218b00000000000000000000000073e47a8da2c83beb802708fc473b5b7d094f3ee600000000000000000000000000000000000000000000000000000002540be400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000d944d81ee1bad431fed4ba36d20f6b564a28af1409df80ceac7b8fee81b66212980c2ee68c9569ea719a03f502e90c436f2dcc332e541273b9c2fd89336b87706372600ff3f3534740110aebd49a788fbc1fea0a645860e5744027f9724c47d082b3baf492f08a2cf0745e3b6dbac422ac3dbb689d686dc3e0e8027aafaae1f0fecebede89566950236f18ac72084fe4a52f5ca3aec3bf801865b3101a37a090daa39f4bb4103cea901a0e872a8899a33d24d9d58bcabf8193ad6e593fba01521c2dcf5718de3bedfcb8f36c7694010aec62cfe552098e2a064ff3ed8be69062dd71ca25b958857758e0438aaf94da83b001b42f87d70703f27f395400c80f7c0c3016480c0",
+          "as": "b",
+          "client": {
+            "valid": true
+          },
+          "expect": {
+            "result": "ErrFrameSenderBusy",
+            "asked_client": true
+          }
+        },
+        {
+          "head": {
+            "number": 304240,
+            "slot": 323057,
+            "timestamp": 1791360793
+          },
+          "state": {
+            "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6": {
+              "nonce_seqs": {
+                "395310339470789058832529476795102885641312758584144912590896318877018254114": 1
+              }
+            }
+          },
+          "client": {},
+          "expect_asked": [],
+          "expect_resimulated": [],
+          "expect_pending": []
+        },
+        {
+          "rpc": "0x06f902e7821fcde1a0253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9809473e47a8da2c83beb802708fc473b5b7d094f3ee6f902a3f8670180940000000000000000000000000000000000008272c48227108080b848602d9dcea629f74a71ca0f0ad9dd175ea979f3068ae1cdce9e321126bf085207000000000004ede72ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de04ce010380c883061a8083017e808080f9022802809473e47a8da2c83beb802708fc473b5b7d094f3ee6c8830186a08302cd3080b9020421a0adb600000000000000000000000000000000000000000000000000000000000000e02ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de04253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce900000000000000000000000056f7a782fd3899c6dc4bc25d78927e4dedd1218b00000000000000000000000073e47a8da2c83beb802708fc473b5b7d094f3ee600000000000000000000000000000000000000000000000000000002540be400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000d944d81ee1bad431fed4ba36d20f6b564a28af1409df80ceac7b8fee81b66212980c2ee68c9569ea719a03f502e90c436f2dcc332e541273b9c2fd89336b87706372600ff3f3534740110aebd49a788fbc1fea0a645860e5744027f9724c47d082b3baf492f08a2cf0745e3b6dbac422ac3dbb689d686dc3e0e8027aafaae1f0fecebede89566950236f18ac72084fe4a52f5ca3aec3bf801865b3101a37a090daa39f4bb4103cea901a0e872a8899a33d24d9d58bcabf8193ad6e593fba01521c2dcf5718de3bedfcb8f36c7694010aec62cfe552098e2a064ff3ed8be69062dd71ca25b958857758e0438aaf94da83b001b42f87d70703f27f395400c80f7c0c3016480c0",
+          "as": "b",
+          "client": {
+            "valid": true
+          },
+          "expect": {
+            "result": "ok",
+            "hash": "0x2719e9459155a1c329a3c8ab22c39e2d963ebeb5d4a538799766ab940acd5db8",
+            "asked_client": true
+          }
+        },
+        {
+          "head": {
+            "number": 304240
+          },
+          "client": {
+            "b": {
+              "valid": true
+            }
+          },
+          "expect_asked": [
+            "b"
+          ],
+          "expect_resimulated": [],
+          "expect_pending": [
+            "b"
+          ]
+        }
+      ],
+      "derivation": "Both withdrawals are from exp-frames experiment 06's keyed privacy pool, which is their sender and their payer (FP-10, class sender), with no signature: frames [recent_root_verify (10000), VERIFY self flags 3 (400000, state 97920), SENDER withdraw (100000, state 183600)], max_fee 100, tip 1, nonce_seq 0, and each note's nullifier hash as the only nonce key. FP-3: tip 1 is at price_limit and below max_fee; FEE-4 gives a's max_gas as max(21541 + 510000 + 281520, 53233 + 281520) = 813061, b's as max(21557 + 510000 + 281520, 53297 + 281520) = 813077 (b's key is one byte longer), under the head's 200000000. FP-5 skips the recent_root_verify frame (RR-4) and finds [self_verify]; FP-6: 10000 + 400000 = 410000, under 500000. FP-7: no sequence is recorded for either key, so both are at 0. The verdicts are the simulations exp-frames ran before sending, all valid. FP-11: the pool's balance, 10^18 here because a replay reads no state (RP-1), covers 81306100 and then 81307700 more. FP-12 under one: b is another pending transaction from the pool, so it is refused with ErrFrameSenderBusy, after FP-8 asked the client, since static_first is false. At a head where only a's key moved to 1, a leaves as included, and b, sent again, is admitted alone. The last step only shows b held: the same head again, asked about and unchanged."
+    },
+    {
+      "name": "disjoint-keys: the same note again, to another recipient, can only replace its first spend, and does not pay the bump",
+      "profile": "hegota-testnet",
+      "head": {
+        "number": 304239,
+        "slot": 323056,
+        "timestamp": 1791360787,
+        "gas_limit": 200000000,
+        "gas_used": 0,
+        "base_fee": 7
+      },
+      "state": {
+        "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6": {
+          "balance": 1000000000000000000,
+          "code": "privacy-pool"
+        }
+      },
+      "steps": [
+        {
+          "rpc": "0x06f902e6821fcde09fdfbcdb6d0b4f76803d6accafe93ac4eee0736d7354310384f0c02f409e6b22809473e47a8da2c83beb802708fc473b5b7d094f3ee6f902a3f8670180940000000000000000000000000000000000008272c48227108080b848602d9dcea629f74a71ca0f0ad9dd175ea979f3068ae1cdce9e321126bf085207000000000004ede72ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de04ce010380c883061a8083017e808080f9022802809473e47a8da2c83beb802708fc473b5b7d094f3ee6c8830186a08302cd3080b9020421a0adb600000000000000000000000000000000000000000000000000000000000000e02ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de0400dfbcdb6d0b4f76803d6accafe93ac4eee0736d7354310384f0c02f409e6b22000000000000000000000000bc42a78cd0a3e6e6c2fefe07031f76f67f7619ed00000000000000000000000073e47a8da2c83beb802708fc473b5b7d094f3ee600000000000000000000000000000000000000000000000000000002540be4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010012e5dcd41c0f198eaf970dc216b361d283dcc762e6f993a5cdcd7d64f11479ea220cce77f095fb6657c646a7e29076aa0ce0e1cd2eb95d5b04f99a8a4e2785f127e6c5807c2c9bd16bf037157423e5f1aa2ec371956dffe12377ef9aa66ba2c20ca68e25dee8e44522f53ce60a9a3bb043d235c1ba3d1ae4889a6714e130dbe81398e654692d8fa56dc64758c43fc510f16fe95b611b61b99ef65c8934a798a826e180df7699d05b30b51c49bcf735027b3eb3c9be0b4ad63f1e4192fc8935910d88de9fadb38bdb6fa1573c3e73f8d27e1e098057aa17e773b2bd0e786072d725ab17a9fa2a7e1abe4ea700398514785595a50e3d921554e020afb163ea1e7cc0c3016480c0",
+          "as": "a",
+          "client": {
+            "valid": true
+          },
+          "expect": {
+            "result": "ok",
+            "hash": "0x5fb29fe15de91029d2c4a398b8d24aee23aa3e206b6e93b9e8139160deb90f6c",
+            "asked_client": true
+          }
+        },
+        {
+          "rpc": "0x06f902e7821fcde1a0253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9809473e47a8da2c83beb802708fc473b5b7d094f3ee6f902a3f8670180940000000000000000000000000000000000008272c48227108080b848602d9dcea629f74a71ca0f0ad9dd175ea979f3068ae1cdce9e321126bf085207000000000004ede72ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de04ce010380c883061a8083017e808080f9022802809473e47a8da2c83beb802708fc473b5b7d094f3ee6c8830186a08302cd3080b9020421a0adb600000000000000000000000000000000000000000000000000000000000000e02ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de04253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce900000000000000000000000056f7a782fd3899c6dc4bc25d78927e4dedd1218b00000000000000000000000073e47a8da2c83beb802708fc473b5b7d094f3ee600000000000000000000000000000000000000000000000000000002540be400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000d944d81ee1bad431fed4ba36d20f6b564a28af1409df80ceac7b8fee81b66212980c2ee68c9569ea719a03f502e90c436f2dcc332e541273b9c2fd89336b87706372600ff3f3534740110aebd49a788fbc1fea0a645860e5744027f9724c47d082b3baf492f08a2cf0745e3b6dbac422ac3dbb689d686dc3e0e8027aafaae1f0fecebede89566950236f18ac72084fe4a52f5ca3aec3bf801865b3101a37a090daa39f4bb4103cea901a0e872a8899a33d24d9d58bcabf8193ad6e593fba01521c2dcf5718de3bedfcb8f36c7694010aec62cfe552098e2a064ff3ed8be69062dd71ca25b958857758e0438aaf94da83b001b42f87d70703f27f395400c80f7c0c3016480c0",
+          "as": "b",
+          "client": {
+            "valid": true
+          },
+          "expect": {
+            "result": "ok",
+            "hash": "0x2719e9459155a1c329a3c8ab22c39e2d963ebeb5d4a538799766ab940acd5db8",
+            "asked_client": true
+          }
+        },
+        {
+          "rpc": "0x06f902e6821fcde09fdfbcdb6d0b4f76803d6accafe93ac4eee0736d7354310384f0c02f409e6b22809473e47a8da2c83beb802708fc473b5b7d094f3ee6f902a3f8670180940000000000000000000000000000000000008272c48227108080b848602d9dcea629f74a71ca0f0ad9dd175ea979f3068ae1cdce9e321126bf085207000000000004ede72ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de04ce010380c883061a8083017e808080f9022802809473e47a8da2c83beb802708fc473b5b7d094f3ee6c8830186a08302cd3080b9020421a0adb600000000000000000000000000000000000000000000000000000000000000e02ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de0400dfbcdb6d0b4f76803d6accafe93ac4eee0736d7354310384f0c02f409e6b22000000000000000000000000bc42a78cd0a3e6e6c2fefe07031f76f67f7619ee00000000000000000000000073e47a8da2c83beb802708fc473b5b7d094f3ee600000000000000000000000000000000000000000000000000000002540be4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010012e5dcd41c0f198eaf970dc216b361d283dcc762e6f993a5cdcd7d64f11479ea220cce77f095fb6657c646a7e29076aa0ce0e1cd2eb95d5b04f99a8a4e2785f127e6c5807c2c9bd16bf037157423e5f1aa2ec371956dffe12377ef9aa66ba2c20ca68e25dee8e44522f53ce60a9a3bb043d235c1ba3d1ae4889a6714e130dbe81398e654692d8fa56dc64758c43fc510f16fe95b611b61b99ef65c8934a798a826e180df7699d05b30b51c49bcf735027b3eb3c9be0b4ad63f1e4192fc8935910d88de9fadb38bdb6fa1573c3e73f8d27e1e098057aa17e773b2bd0e786072d725ab17a9fa2a7e1abe4ea700398514785595a50e3d921554e020afb163ea1e7cc0c3016480c0",
+          "as": "c",
+          "client": {
+            "valid": true
+          },
+          "expect": {
+            "result": "ErrReplaceUnderpriced",
+            "asked_client": true
+          }
+        },
+        {
+          "head": {
+            "number": 304239
+          },
+          "client": {
+            "a": {
+              "valid": true
+            },
+            "b": {
+              "valid": true
+            }
+          },
+          "expect_asked": [
+            "a",
+            "b"
+          ],
+          "expect_resimulated": [],
+          "expect_pending": [
+            "a",
+            "b"
+          ]
+        }
+      ],
+      "derivation": "Both withdrawals are from exp-frames experiment 06's keyed privacy pool, which is their sender and their payer (FP-10, class sender), with no signature: frames [recent_root_verify (10000), VERIFY self flags 3 (400000, state 97920), SENDER withdraw (100000, state 183600)], max_fee 100, tip 1, nonce_seq 0, and each note's nullifier hash as the only nonce key. FP-3: tip 1 is at price_limit and below max_fee; FEE-4 gives a's max_gas as max(21541 + 510000 + 281520, 53233 + 281520) = 813061, b's as max(21557 + 510000 + 281520, 53297 + 281520) = 813077 (b's key is one byte longer), under the head's 200000000. FP-5 skips the recent_root_verify frame (RR-4) and finds [self_verify]; FP-6: 10000 + 400000 = 410000, under 500000. FP-7: no sequence is recorded for either key, so both are at 0. The verdicts are the simulations exp-frames ran before sending, all valid. FP-11: the pool's balance, 10^18 here because a replay reads no state (RP-1), covers 81306100 and then 81307700 more. c is a's bytes with the last byte of the withdraw frame's recipient changed from 0xed to 0xee: experiment 06's refused second spend of the note was proven for another recipient and its bytes were not kept, and FP-12 reads only what c shares with it, a's identity (pool, [a's nullifier], 0) and a's fees. Its zero bytes are a's, so its gas is too. The fee rule of NP-11 needs 10% more of both fees, so c is refused with ErrReplaceUnderpriced, after FP-8, and a and b stay."
+    },
+    {
+      "name": "one: the same note again is refused the same way",
+      "profile": "hegota-testnet",
+      "config": {
+        "frame": {
+          "per_sender": "one"
+        }
+      },
+      "head": {
+        "number": 304239,
+        "slot": 323056,
+        "timestamp": 1791360787,
+        "gas_limit": 200000000,
+        "gas_used": 0,
+        "base_fee": 7
+      },
+      "state": {
+        "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6": {
+          "balance": 1000000000000000000,
+          "code": "privacy-pool"
+        }
+      },
+      "steps": [
+        {
+          "rpc": "0x06f902e6821fcde09fdfbcdb6d0b4f76803d6accafe93ac4eee0736d7354310384f0c02f409e6b22809473e47a8da2c83beb802708fc473b5b7d094f3ee6f902a3f8670180940000000000000000000000000000000000008272c48227108080b848602d9dcea629f74a71ca0f0ad9dd175ea979f3068ae1cdce9e321126bf085207000000000004ede72ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de04ce010380c883061a8083017e808080f9022802809473e47a8da2c83beb802708fc473b5b7d094f3ee6c8830186a08302cd3080b9020421a0adb600000000000000000000000000000000000000000000000000000000000000e02ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de0400dfbcdb6d0b4f76803d6accafe93ac4eee0736d7354310384f0c02f409e6b22000000000000000000000000bc42a78cd0a3e6e6c2fefe07031f76f67f7619ed00000000000000000000000073e47a8da2c83beb802708fc473b5b7d094f3ee600000000000000000000000000000000000000000000000000000002540be4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010012e5dcd41c0f198eaf970dc216b361d283dcc762e6f993a5cdcd7d64f11479ea220cce77f095fb6657c646a7e29076aa0ce0e1cd2eb95d5b04f99a8a4e2785f127e6c5807c2c9bd16bf037157423e5f1aa2ec371956dffe12377ef9aa66ba2c20ca68e25dee8e44522f53ce60a9a3bb043d235c1ba3d1ae4889a6714e130dbe81398e654692d8fa56dc64758c43fc510f16fe95b611b61b99ef65c8934a798a826e180df7699d05b30b51c49bcf735027b3eb3c9be0b4ad63f1e4192fc8935910d88de9fadb38bdb6fa1573c3e73f8d27e1e098057aa17e773b2bd0e786072d725ab17a9fa2a7e1abe4ea700398514785595a50e3d921554e020afb163ea1e7cc0c3016480c0",
+          "as": "a",
+          "client": {
+            "valid": true
+          },
+          "expect": {
+            "result": "ok",
+            "hash": "0x5fb29fe15de91029d2c4a398b8d24aee23aa3e206b6e93b9e8139160deb90f6c",
+            "asked_client": true
+          }
+        },
+        {
+          "rpc": "0x06f902e6821fcde09fdfbcdb6d0b4f76803d6accafe93ac4eee0736d7354310384f0c02f409e6b22809473e47a8da2c83beb802708fc473b5b7d094f3ee6f902a3f8670180940000000000000000000000000000000000008272c48227108080b848602d9dcea629f74a71ca0f0ad9dd175ea979f3068ae1cdce9e321126bf085207000000000004ede72ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de04ce010380c883061a8083017e808080f9022802809473e47a8da2c83beb802708fc473b5b7d094f3ee6c8830186a08302cd3080b9020421a0adb600000000000000000000000000000000000000000000000000000000000000e02ebecc295df73c1f1e226fed1d81ee55c921dc8640011d92eeb89d26d5e8de0400dfbcdb6d0b4f76803d6accafe93ac4eee0736d7354310384f0c02f409e6b22000000000000000000000000bc42a78cd0a3e6e6c2fefe07031f76f67f7619ee00000000000000000000000073e47a8da2c83beb802708fc473b5b7d094f3ee600000000000000000000000000000000000000000000000000000002540be4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010012e5dcd41c0f198eaf970dc216b361d283dcc762e6f993a5cdcd7d64f11479ea220cce77f095fb6657c646a7e29076aa0ce0e1cd2eb95d5b04f99a8a4e2785f127e6c5807c2c9bd16bf037157423e5f1aa2ec371956dffe12377ef9aa66ba2c20ca68e25dee8e44522f53ce60a9a3bb043d235c1ba3d1ae4889a6714e130dbe81398e654692d8fa56dc64758c43fc510f16fe95b611b61b99ef65c8934a798a826e180df7699d05b30b51c49bcf735027b3eb3c9be0b4ad63f1e4192fc8935910d88de9fadb38bdb6fa1573c3e73f8d27e1e098057aa17e773b2bd0e786072d725ab17a9fa2a7e1abe4ea700398514785595a50e3d921554e020afb163ea1e7cc0c3016480c0",
+          "as": "c",
+          "client": {
+            "valid": true
+          },
+          "expect": {
+            "result": "ErrReplaceUnderpriced",
+            "asked_client": true
+          }
+        },
+        {
+          "head": {
+            "number": 304239
+          },
+          "client": {
+            "a": {
+              "valid": true
+            }
+          },
+          "expect_asked": [
+            "a"
+          ],
+          "expect_resimulated": [],
+          "expect_pending": [
+            "a"
+          ]
+        }
+      ],
+      "derivation": "Both withdrawals are from exp-frames experiment 06's keyed privacy pool, which is their sender and their payer (FP-10, class sender), with no signature: frames [recent_root_verify (10000), VERIFY self flags 3 (400000, state 97920), SENDER withdraw (100000, state 183600)], max_fee 100, tip 1, nonce_seq 0, and each note's nullifier hash as the only nonce key. FP-3: tip 1 is at price_limit and below max_fee; FEE-4 gives a's max_gas as max(21541 + 510000 + 281520, 53233 + 281520) = 813061, b's as max(21557 + 510000 + 281520, 53297 + 281520) = 813077 (b's key is one byte longer), under the head's 200000000. FP-5 skips the recent_root_verify frame (RR-4) and finds [self_verify]; FP-6: 10000 + 400000 = 410000, under 500000. FP-7: no sequence is recorded for either key, so both are at 0. The verdicts are the simulations exp-frames ran before sending, all valid. FP-11: the pool's balance, 10^18 here because a replay reads no state (RP-1), covers 81306100 and then 81307700 more. c is the third case's. FP-12 compares identities before it looks for another pending transaction, so under one too c meets a's identity and is refused with ErrReplaceUnderpriced, not ErrFrameSenderBusy."
+    }
+  ]
+}

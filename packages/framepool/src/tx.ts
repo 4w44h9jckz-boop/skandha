@@ -1,5 +1,5 @@
 /**
- * Transactions: emem `docs/spec/00-model.md`, MD-5 to MD-7, FEE-3 and FEE-4.
+ * Transactions: exp-mempool-l2s `docs/spec/00-model.md`, MD-5 to MD-7, FEE-3 and FEE-4.
  */
 import { createHash } from "node:crypto";
 import { effectiveTip } from "./model.js";
@@ -86,7 +86,7 @@ export interface TxInit {
   label?: string;
 }
 
-/** MD-5. Defaults match emem `conformance/README.md`. */
+/** MD-5. Defaults match exp-mempool-l2s `conformance/README.md`. */
 export class Tx {
   readonly kind = "tx" as const;
   readonly sender: string;
@@ -292,7 +292,7 @@ export interface Frame {
   readonly writes: readonly Write[];
   readonly calls: readonly string[];
   readonly installsCode: string | null;
-  readonly deadline: number | null;
+  readonly deadline: bigint | null; // a uint64 (SF-3), so not a double
   readonly deps: readonly Dependency[]; // a dependency frame's triples (AG-2)
   readonly roots: readonly RootReference[]; // a recent root verifier frame's references (RR-4)
 }
@@ -376,6 +376,32 @@ export interface FrameGas {
   readonly maxGas: bigint;
 }
 
+/** MD-6, CG-2: an admission claim for one slot in one epoch; `valid` is CG-9's verdict on its ticket. */
+export interface Claim {
+  readonly sender: string;
+  readonly nonceKeys: readonly bigint[];
+  readonly nonceSeq: bigint;
+  readonly epoch: number;
+  readonly valid: boolean;
+  readonly salt: string;
+}
+
+/** CG-2: a transaction's or a claim's slot, as one string. */
+export function slotId(
+  sender: string,
+  nonceKeys: readonly bigint[],
+  nonceSeq: bigint
+): string {
+  return `${sender}/${nonceKeys.join(",")}/${nonceSeq}`;
+}
+
+/** CG-2: two claims with equal fields are one claim. */
+export function claimId(c: Claim): string {
+  return `${slotId(c.sender, c.nonceKeys, c.nonceSeq)}/${c.epoch}/${c.valid}/${
+    c.salt
+  }`;
+}
+
 export interface FrameTxInit {
   sender: string;
   frames: readonly Frame[];
@@ -389,6 +415,12 @@ export interface FrameTxInit {
   gasUsed?: bigint | null;
   label?: string;
   rootWrites?: readonly RootWrite[];
+  /** MD-6, FEE-4's Z: how many of the D bytes are zero. */
+  zeroBytes?: number;
+  /** MD-6: a client's answer for the prefix at the pool's head; not part of the identity (MD-7). */
+  verdict?: string | null;
+  /** MD-6, CG-2: absent, it leaves the hash as it was. */
+  claim?: Claim | null;
 }
 
 const max = (a: bigint, b: bigint): bigint => (a > b ? a : b);
@@ -409,6 +441,9 @@ export class FrameTx {
   readonly gasUsed: bigint | null;
   readonly label: string;
   readonly rootWrites: readonly RootWrite[];
+  readonly zeroBytes: number;
+  readonly verdict: string | null;
+  readonly claim: Claim | null;
   readonly hash: string;
   /** FEE-4's D: frame data, signature bytes and the nonce fields. */
   readonly dataBytes: number;
@@ -432,6 +467,10 @@ export class FrameTx {
     this.gasUsed = init.gasUsed ?? null;
     this.label = init.label ?? "";
     this.rootWrites = init.rootWrites ?? [];
+    this.zeroBytes = init.zeroBytes ?? 0;
+    this.verdict = init.verdict ?? null;
+    this.claim = init.claim ?? null;
+    const claim = this.claim;
     this.hash = hashOf("FrameTx", [
       this.sender,
       this.frames.map(frameFields),
@@ -452,6 +491,8 @@ export class FrameTx {
       this.label,
       this.rootWrites.map((w) => [...w]),
       this.type,
+      this.zeroBytes,
+      ...(claim === null ? [] : [["claim", claimId(claim)]]),
     ]);
 
     this.dataBytes =
@@ -467,7 +508,10 @@ export class FrameTx {
     const fixed =
       FRAME_TX_INTRINSIC_COST + n * FRAME_TX_PER_FRAME_COST + sigGas + valueGas;
     const d = BigInt(this.dataBytes);
-    const intrinsic = fixed + STANDARD_TOKEN_COST * TOKENS_PER_NONZERO_BYTE * d;
+    const z = BigInt(this.zeroBytes);
+    // a zero byte is one token and any other four; the floor counts four for every byte
+    const intrinsic =
+      fixed + STANDARD_TOKEN_COST * (TOKENS_PER_NONZERO_BYTE * (d - z) + z);
     const floor =
       fixed + TOTAL_COST_FLOOR_PER_TOKEN * TOKENS_PER_NONZERO_BYTE * d;
     const execSum = this.frames.reduce((g, f) => g + f.execGas, 0n);
@@ -499,12 +543,24 @@ export class FrameTx {
     return this.nonceSeq;
   }
 
+  /** CG-2: the place only one transaction fills. */
+  get slot(): string {
+    return slotId(this.sender, this.nonceKeys, this.nonceSeq);
+  }
+
   effectiveTip(baseFee: bigint): bigint {
     return effectiveTip(this.maxFee, this.tip, baseFee);
   }
 
   name(): string {
     return this.label || this.hash.slice(0, 10);
+  }
+
+  /** The same transaction with a new verdict: its hash does not change (MD-7). */
+  withVerdict(verdict: string | null): FrameTx {
+    const copy = Object.create(FrameTx.prototype) as FrameTx;
+    Object.assign(copy, this, { verdict });
+    return copy;
   }
 }
 

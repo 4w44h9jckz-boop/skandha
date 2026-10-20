@@ -1,7 +1,7 @@
 {
   "clause": "AG-4",
   "document": "05-aggregation.md",
-  "version": 2,
+  "version": 3,
   "also": ["AG-6"],
   "operation": "pool",
   "distinguishes": "The per-transaction limits count the sorted, deduplicated dependency list across all of a transaction's dependency frames, so a triple declared twice counts once and 16 leanSPHINCS triples pass where 17 do not.",
