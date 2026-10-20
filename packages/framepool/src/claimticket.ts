@@ -1,8 +1,9 @@
 /**
  * A claim's ticket: exp-mempool-l2s `docs/spec/10-claim-gated-admission.md`,
- * CG-8, the bytes an issuer signs, CG-9, when a node takes a ticket as valid
- * (a BLS12-381 signature in G1 under a key in G2, both in EIP-2537's
- * encoding), and CG-10, the ticket paymaster's frame that carries it.
+ * version 4. CG-8, the bytes an issuer signs; CG-9, when a node takes a
+ * ticket as valid (a BLS12-381 signature in G1 under a key in G2, both in
+ * EIP-2537's encoding); CG-10, the frame to a ticket paymaster that carries
+ * it, the paymaster recognised by its code.
  *
  * The curve is @noble/curves'. EIP-2537's encoding is decoded here, with its
  * padding, range and infinity rules, before noble sees the points.
@@ -17,6 +18,10 @@ const P = bls.fields.Fp.ORDER;
 const U64 = BigInt(2) ** BigInt(64);
 const U256 = BigInt(2) ** BigInt(256);
 const VERIFY = 1;
+// CG-10: the ticket-paymaster template, then a 256-byte key and 32 bytes
+const TEMPLATE_LENGTH = 1105;
+const TEMPLATE_KECCAK =
+  "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0";
 
 /** A claim's fields as a ticket names them, with the chain it is for. */
 export interface TicketClaim {
@@ -114,16 +119,14 @@ function g2(
   return point;
 }
 
-/** CG-9: steps 1 and 2, then the points and the pairing check. */
+/** CG-9: step 1, then the points and the pairing check. */
 export function ticketValid(
   c: TicketClaim,
   issuer: Uint8Array,
-  signature: Uint8Array,
-  accepted: ReadonlyMap<bigint, ReadonlySet<string>>
+  signature: Uint8Array
 ): boolean {
   const m = ticketMessage(c);
   if (m === null) return false;
-  if (!(accepted.get(c.epoch)?.has(hex(issuer)) ?? false)) return false;
   try {
     const pk = g2(issuer);
     const sig = g1(signature);
@@ -133,6 +136,20 @@ export function ticketValid(
     return bls.verifyShortSignature(sig, u, pk, { DST });
   } catch {
     return false;
+  }
+}
+
+/** CG-10: the key of a ticket paymaster whose code this is, or null if it is not one. */
+export function paymasterKey(code: Uint8Array): Uint8Array | null {
+  if (code.length !== TEMPLATE_LENGTH + 256 + 32) return null;
+  if (hex(keccak256(code.subarray(0, TEMPLATE_LENGTH))) !== TEMPLATE_KECCAK)
+    return null;
+  const key = code.subarray(TEMPLATE_LENGTH, TEMPLATE_LENGTH + 256);
+  try {
+    const point = g2(key);
+    return point !== null && point.isTorsionFree() ? key : null;
+  } catch {
+    return null;
   }
 }
 
@@ -154,18 +171,18 @@ export interface CarriedTicket {
 /**
  * CG-10: the claim a transaction carries, or null. `c` gives the
  * transaction's chain, sender and nonces; its epoch and salt are ignored.
- * `paymasters` maps each ticket paymaster the node accepts at the epoch of
- * its head to its key, and `accepted` is CG-9's set of keys for each epoch.
+ * `codes` is the code at the node's head of each account a frame targets;
+ * an account it leaves out has none.
  */
 export function carriedTicket(
   c: TicketClaim,
   frames: readonly TicketFrame[],
-  paymasters: ReadonlyMap<string, Uint8Array>,
-  accepted: ReadonlyMap<bigint, ReadonlySet<string>>
+  codes: ReadonlyMap<string, Uint8Array>
 ): CarriedTicket | null {
   for (const f of frames) {
-    const issuer = paymasters.get(f.target);
-    if (f.mode !== VERIFY || issuer === undefined) continue;
+    if (f.mode !== VERIFY) continue;
+    const issuer = paymasterKey(codes.get(f.target) ?? new Uint8Array(0));
+    if (issuer === null) continue;
     if (f.data.length !== PAY_DATA)
       return { epoch: null, salt: null, issuer, valid: false };
     const epoch = BigInt(hex(f.data.subarray(0, 8)));
@@ -175,7 +192,7 @@ export function carriedTicket(
       epoch,
       salt,
       issuer,
-      valid: ticketValid(claim, issuer, f.data.subarray(40), accepted),
+      valid: ticketValid(claim, issuer, f.data.subarray(40)),
     };
   }
   return null;

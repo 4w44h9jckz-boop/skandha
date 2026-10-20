@@ -996,27 +996,20 @@ function runClaimTicket(c: Json): void {
     nonceKeys: d.nonce_keys.map((k: string) => BigInt(k)),
     salt: hex(d.salt ?? "0x"),
   });
-  const accepted = new Map<bigint, Set<string>>();
-  const accept = (epoch: string, key: string): void => {
-    const keys = accepted.get(BigInt(epoch)) ?? new Set<string>();
-    keys.add(key.toLowerCase());
-    accepted.set(BigInt(epoch), keys);
-  };
   if (c.frames !== undefined) {
     // CG-10
-    const head = BigInt(c.head_epoch);
-    const paymasters = new Map<string, Uint8Array>();
-    for (const p of c.paymasters) {
-      accept(p.epoch, p.key);
-      if (BigInt(p.epoch) === head)
-        paymasters.set(p.address.toLowerCase(), hex(p.key));
-    }
+    const codes = new Map<string, Uint8Array>(
+      Object.entries(c.codes).map(([a, code]) => [
+        a.toLowerCase(),
+        hex(code as string),
+      ])
+    );
     const frames: TicketFrame[] = c.frames.map((f: Json) => ({
       mode: f.mode,
       target: f.target.toLowerCase(),
       data: hex(f.data),
     }));
-    const t = carriedTicket(ticketClaim(c.tx), frames, paymasters, accepted);
+    const t = carriedTicket(ticketClaim(c.tx), frames, codes);
     const got: Json =
       t === null
         ? { claim: null }
@@ -1039,10 +1032,8 @@ function runClaimTicket(c: Json): void {
   const got: Json = {
     message: m === null ? null : "0x" + Buffer.from(m).toString("hex"),
   };
-  if (c.issuer !== undefined) {
-    for (const a of c.issuers) for (const k of a.keys) accept(a.epoch, k);
-    got.valid = ticketValid(claim, hex(c.issuer), hex(c.signature), accepted);
-  }
+  if (c.issuer !== undefined)
+    got.valid = ticketValid(claim, hex(c.issuer), hex(c.signature));
   same(c.expect, got, "claim_ticket");
 }
 
