@@ -1,5 +1,5 @@
 /**
- * EIP-8288 dependency frames: emem `docs/spec/05-aggregation.md`, AG-2, AG-4
+ * EIP-8288 dependency frames: exp-mempool-l2s `docs/spec/05-aggregation.md`, AG-2, AG-4
  * and AG-8. Static rules over a transaction; the aggregator of AG-5 to AG-9
  * is not in this package.
  */

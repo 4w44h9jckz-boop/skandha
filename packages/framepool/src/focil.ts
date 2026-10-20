@@ -1,5 +1,5 @@
 /**
- * Inclusion lists for frame transactions, emem `docs/spec/07-focil.md`
+ * Inclusion lists for frame transactions, exp-mempool-l2s `docs/spec/07-focil.md`
  * version 2, as a mempool node reads them. An includer builds its list from
  * its frame pool (IL-2); the slot's lists are filled against the verify
  * budget, one for each list or one for the payload (IL-4); and a payload

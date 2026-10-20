@@ -51,7 +51,7 @@ export interface BundlerNodeInitOptions {
   metricsOptions: MetricsOptions;
   version: SkandhaVersion;
   retainPeerId?: boolean;
-  frames?: FrameServiceOptions; // emem `docs/spec/11-surface.md`
+  frames?: FrameServiceOptions; // exp-mempool-l2s `docs/spec/11-surface.md`
 }
 
 export class BundlerNode {

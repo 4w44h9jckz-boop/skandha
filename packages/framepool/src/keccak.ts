@@ -1,5 +1,5 @@
 /**
- * Keccak-256, the hash Ethereum names a transaction by (emem
+ * Keccak-256, the hash Ethereum names a transaction by (exp-mempool-l2s
  * `docs/spec/11-surface.md`, SF-3). Node's `sha3-256` is FIPS 202 SHA3-256,
  * whose padding differs from the original Keccak's, so the permutation is
  * written out here, with no dependency.

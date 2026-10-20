@@ -1,5 +1,5 @@
 /**
- * The validation prefix: static checks and simulation, emem
+ * The validation prefix: static checks and simulation, exp-mempool-l2s
  * `docs/spec/02-frame-pool.md` FP-3 to FP-10, with the dependency frames of
  * `05-aggregation.md` (AG-2 to AG-4), the recent root verifier frame of
  * `08-recent-roots.md` (RR-4, RR-5) and the expiring nonces of
@@ -7,7 +7,7 @@
  *
  * Nothing here runs the EVM. A frame carries what a node simulating it would
  * observe (MD-6), and these functions apply the EIP-8141 rules to those
- * observations (emem decision record 0003).
+ * observations (exp-mempool-l2s decision record 0003).
  */
 import * as E from "./errors.js";
 import { TxError } from "./errors.js";

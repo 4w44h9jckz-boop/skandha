@@ -1,5 +1,5 @@
 /**
- * The frame transaction pool: emem `docs/spec/02-frame-pool.md`, the MATCHA
+ * The frame transaction pool: exp-mempool-l2s `docs/spec/02-frame-pool.md`, the MATCHA
  * proposal of `04-matcha.md`, the recent roots of `08-recent-roots.md`, the
  * expiring nonces of `09-expiring-nonces.md`, and AG-6's admission rule of
  * `05-aggregation.md`.

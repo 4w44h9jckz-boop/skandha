@@ -1,6 +1,6 @@
 import { ICliCommandOptions } from "../../util/index.js";
 
-/** Frame transactions on this node (emem `docs/spec/11-surface.md`). */
+/** Frame transactions on this node (exp-mempool-l2s `docs/spec/11-surface.md`). */
 export interface IFramesArgs {
   "frames.enable": boolean;
   "frames.profile": string;

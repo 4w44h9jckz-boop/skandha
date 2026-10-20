@@ -2,7 +2,7 @@
 
 With `--frames.enable`, a skandha node takes EIP-8141 frame transactions over
 `eth_sendRawTransaction` and over a gossipsub topic of its own, and admits
-them with `@skandha/framepool` under emem's `docs/spec/11-surface.md`. The
+them with `@skandha/framepool` under exp-mempool-l2s `docs/spec/11-surface.md`. The
 claim this tests is that checking moves from a rollup's node to "every
 mempool node, before admission (EIP-8141)": an open set of nodes, none of them
 an operator, each checking for itself.
@@ -92,7 +92,7 @@ Then read the logs. A's has `rpc` with `"result":"ok"` and `relay` with the
 number of peers; B's has `gossip` with `"from"` A's peer ID and
 `"outcome":"accept"`, then `handoff` with the client's answer; both have a
 `head` line in which the transaction is removed once a block includes it.
-emem's `docs/spec/11-surface.md`, "Run procedure", is what a run passes on,
+exp-mempool-l2s `docs/spec/11-surface.md`, "Run procedure", is what a run passes on,
 and A and B answering differently at the same head is the result that would
 show the claim wrong.
 
@@ -102,7 +102,7 @@ A recorded run is in
 ## As an includer
 
 A node with `--frames.enable` also answers `skandha_frameInclusionList` with
-the inclusion list it would publish from its pool at its head, by emem's
+the inclusion list it would publish from its pool at its head, by exp-mempool-l2s's
 `docs/spec/07-focil.md`, IL-2: what is pending at the next block's base fee,
 by effective tip and then arrival, each frame transaction only if it is a
 Profile 2 candidate (IL-3) and its verify cost fits what remains of the

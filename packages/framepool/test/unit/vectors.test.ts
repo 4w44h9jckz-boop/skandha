@@ -1,12 +1,15 @@
 /**
- * emem's conformance vectors, one test a case. A skipped case names what this
- * package lacks to play it; a failing one is settled in emem, never by editing
- * the copy here (emem `conformance/README.md`, decision record 0035).
+ * exp-mempool-l2s's conformance vectors, one test a case. A skipped case names what this
+ * package lacks to play it; a failing one is settled in exp-mempool-l2s, never by editing
+ * the copy here (exp-mempool-l2s `conformance/README.md`, decision record 0035).
  */
 import { describe, expect, it } from "vitest";
 import { Outcome, VECTORS_COMMIT, playAll, vectorFiles } from "../runner.js";
 
-describe(`emem conformance vectors at ${VECTORS_COMMIT.slice(0, 8)}`, () => {
+describe(`exp-mempool-l2s conformance vectors at ${VECTORS_COMMIT.slice(
+  0,
+  8
+)}`, () => {
   it("are byte for byte the ones copied", () => {
     expect(vectorFiles().length).toBeGreaterThan(0);
   });

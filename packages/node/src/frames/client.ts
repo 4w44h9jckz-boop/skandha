@@ -1,5 +1,5 @@
 /**
- * The execution client a frame surface asks (emem `docs/spec/11-surface.md`):
+ * The execution client a frame surface asks (exp-mempool-l2s `docs/spec/11-surface.md`):
  * the head, the accounts a pool's dependencies name, its verdict on a prefix
  * (SF-4) and its own pool for hand-off (SF-9). Plain JSON-RPC over fetch.
  */

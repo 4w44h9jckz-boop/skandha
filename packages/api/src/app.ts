@@ -25,7 +25,7 @@ export interface RpcHandlerOptions {
   config: Config;
 }
 
-/** Frame transactions over `eth_sendRawTransaction` (emem `docs/spec/11-surface.md`, SF-5). */
+/** Frame transactions over `eth_sendRawTransaction` (exp-mempool-l2s `docs/spec/11-surface.md`, SF-5). */
 export interface FrameRpc {
   sendRawTransaction(param: unknown): Promise<{
     result?: string;

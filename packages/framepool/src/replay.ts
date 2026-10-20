@@ -1,5 +1,5 @@
 /**
- * Replay: a profile's verdict on a transaction a chain mined (emem
+ * Replay: a profile's verdict on a transaction a chain mined (exp-mempool-l2s
  * `docs/spec/12-replay.md`, RP-1 to RP-6). Only what a chain keeps is judged:
  * the bytes, the parent header and the receipt's payer. No state is read.
  */

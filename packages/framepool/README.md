@@ -2,12 +2,12 @@
 
 The mempool rules for EIP-8141 frame transactions, in TypeScript. This package
 is a second implementation of the frame pool that
-[emem](https://github.com/4w44h9jckz-boop/emem) specifies in `docs/spec/`. It
-is checked against emem's hand-written conformance vectors, and emem's
-specification is the normative one. The reasons are in emem's decision record
+[exp-mempool-l2s](https://github.com/4w44h9jckz-boop/exp-mempool-l2s) specifies in `docs/spec/`. It
+is checked against exp-mempool-l2s's hand-written conformance vectors, and exp-mempool-l2s's
+specification is the normative one. The reasons are in exp-mempool-l2s's decision record
 0035.
 
-The pool itself depends on nothing else in skandha. Since emem's item 42 it
+The pool itself depends on nothing else in skandha. Since exp-mempool-l2s's item 42 it
 also has the surface around it, `src/surface.ts`: a type `0x06` transaction
 decoded from its bytes and named by its keccak256, the validation prefix's
 outcome taken from an execution client's verdict, and the steps of
@@ -17,13 +17,13 @@ says how to run two such nodes against the Hegota testnet.
 
 ## What it covers
 
-| emem document | Clauses |
+| exp-mempool-l2s document | Clauses |
 | --- | --- |
 | `00-model.md` | MD-2 to MD-4, MD-6 with `zero_bytes` and `verdict`, MD-7, MD-8 with `reset`'s verdicts, FEE-1 to FEE-4 |
 | `02-frame-pool.md` | FP-2 to FP-16, profiles `eip-8141` and `hegota-testnet`, with the `reuse_balance`, `evict_first`, `expiry_margin` and `static_first` variants, and FP-8 to FP-10 and FP-15 through a client's verdict |
 | `04-matcha.md` | MA-2 to MA-14, profile `matcha` (a proposal) |
 | `05-aggregation.md` | AG-2 to AG-4 and AG-6's admission rule, profile `eip-8288`; not the aggregator (AG-5, AG-7 to AG-9) |
-| `08-recent-roots.md` | RR-3 to RR-7, profiles `eip-8272` and, since emem's version 2, `hegota-testnet` |
+| `08-recent-roots.md` | RR-3 to RR-7, profiles `eip-8272` and, since its version 2, `hegota-testnet` |
 | `09-expiring-nonces.md` | EN-2 to EN-6, profile `eip-8266` |
 | `11-surface.md` | SF-1 to SF-9: decoding, the model transaction, the verdict, `eth_sendRawTransaction`, relay, what is taken from peers, head changes and hand-off (`src/surface.ts`, `src/keccak.ts`) |
 | `12-replay.md` | RP-1 to RP-6: a profile's verdict on a transaction a chain mined (`src/replay.ts`, and `replay/` over every fixture) |
@@ -35,7 +35,7 @@ to an execution client, the sealed pool of `06-lucid.md`, block building, so
 not IL-7's appending, or the claim-gated admission of
 `10-claim-gated-admission.md`.
 
-The pool is a port of emem's `ref/python/emem/`, read alongside the clauses,
+The pool is a port of exp-mempool-l2s `ref/python/emem/`, read alongside the clauses,
 and keeps the clause names in its comments. Two shortcuts of the reference
 are not ported: FP-14's victim and MA-8's oldest transaction are found by a
 pass over the pool rather than kept in a heap. Both give the same
@@ -47,16 +47,16 @@ where a deadline had been a `number`.
 
 ## The vectors
 
-`test/vectors/` is a byte-for-byte copy of emem's `conformance/vectors/` at
+`test/vectors/` is a byte-for-byte copy of exp-mempool-l2s `conformance/vectors/` at
 the commit in `test/vectors.commit`. `test/vectors.sha256` lists every file's
 SHA-256, and the runner refuses to play anything if a file differs from it.
 **A vector is never edited here.** When this package and a vector disagree,
-the disagreement is settled in emem, by the three cases in emem's
+the disagreement is settled in exp-mempool-l2s, by the three cases in exp-mempool-l2s's
 `conformance/README.md`: the implementation is wrong, the vector is wrong,
 or the clause is ambiguous. Then the vectors are copied again:
 
 ```sh
-tools/sync-vectors.sh <path to an emem checkout> <commit>
+tools/sync-vectors.sh <path to an exp-mempool-l2s checkout> <commit>
 ```
 
 The runner decides from each case's contents whether it can play the case. A
@@ -67,12 +67,12 @@ skipped cases by name: a list could quietly take in a failing case, and a rule
 over what the case contains cannot.
 
 `bun run vectors` prints one line for each failing case, the skipped cases
-grouped by what they need, and the totals. The emem commit it was last
+grouped by what they need, and the totals. The exp-mempool-l2s commit it was last
 played against, with its totals, is in this package's latest commit message.
 
 ## The replay
 
-`replay/` plays emem's `12-replay.md` over every frame transaction
+`replay/` plays exp-mempool-l2s `12-replay.md` over every frame transaction
 [exp-frames](https://github.com/4w44h9jckz-boop/exp-frames) has mined:
 
 ```sh

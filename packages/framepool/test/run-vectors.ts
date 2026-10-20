@@ -26,6 +26,9 @@ const files = new Set(outcomes.map((o) => o.file)).size;
 console.log(
   `${count("pass")} passed, ${count("fail")} failed, ${count(
     "skip"
-  )} skipped, ${files} vector files from emem ${VECTORS_COMMIT.slice(0, 8)}`
+  )} skipped, ${files} vector files from exp-mempool-l2s ${VECTORS_COMMIT.slice(
+    0,
+    8
+  )}`
 );
 process.exit(count("fail") > 0 ? 1 : 0);

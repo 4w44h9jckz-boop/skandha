@@ -1,5 +1,5 @@
 /**
- * The surface around the frame pool: emem `docs/spec/11-surface.md`, SF-1 to
+ * The surface around the frame pool: exp-mempool-l2s `docs/spec/11-surface.md`, SF-1 to
  * SF-9. Bytes in (SF-2, SF-3), a client's verdict on the prefix (SF-4),
  * answers over JSON-RPC (SF-5), relay to peers and what is taken from them
  * (SF-6, SF-7), head changes (SF-8) and hand-off to a client (SF-9).
@@ -7,7 +7,7 @@
  * The client and the network are not here. `prepare` decodes and runs FP-2
  * to FP-7; a caller that gets past it asks its client, then `admit` takes the
  * answer. `rpc` and `peer` do both at once with an answer already in hand,
- * which is how emem's vectors drive them.
+ * which is how exp-mempool-l2s's vectors drive them.
  */
 import * as E from "./errors.js";
 import { TxError } from "./errors.js";

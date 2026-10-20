@@ -1,4 +1,4 @@
-/** MATCHA's charge: emem `docs/spec/04-matcha.md`, MA-2. */
+/** MATCHA's charge: exp-mempool-l2s `docs/spec/04-matcha.md`, MA-2. */
 import { Prefix } from "./prefix.js";
 import { FrameTx, TX_VALUE_COST } from "./tx.js";
 

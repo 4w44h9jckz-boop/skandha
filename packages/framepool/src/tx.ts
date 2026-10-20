@@ -1,5 +1,5 @@
 /**
- * Transactions: emem `docs/spec/00-model.md`, MD-5 to MD-7, FEE-3 and FEE-4.
+ * Transactions: exp-mempool-l2s `docs/spec/00-model.md`, MD-5 to MD-7, FEE-3 and FEE-4.
  */
 import { createHash } from "node:crypto";
 import { effectiveTip } from "./model.js";
@@ -86,7 +86,7 @@ export interface TxInit {
   label?: string;
 }
 
-/** MD-5. Defaults match emem `conformance/README.md`. */
+/** MD-5. Defaults match exp-mempool-l2s `conformance/README.md`. */
 export class Tx {
   readonly kind = "tx" as const;
   readonly sender: string;

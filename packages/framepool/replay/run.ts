@@ -1,5 +1,5 @@
 /**
- * Replays every fixture of a snapshot under its chain's profile (emem
+ * Replays every fixture of a snapshot under its chain's profile (exp-mempool-l2s
  * `docs/spec/12-replay.md`, RP-6) and prints the results as markdown. The
  * output depends only on the snapshot and this package, so a committed
  * results.md can be checked by running this again.
@@ -130,7 +130,7 @@ console.log(`# Replay of mined frame transactions
 
 Every fixture of \`${path
   .split("/")
-  .pop()}\` judged as emem's \`docs/spec/12-replay.md\`
+  .pop()}\` judged as exp-mempool-l2s \`docs/spec/12-replay.md\`
 says, by \`bun replay/run.ts ${path
   .split("/")
   .slice(-2)

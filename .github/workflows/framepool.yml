@@ -1,4 +1,4 @@
-name: Frame pool conformance (emem vectors)
+name: Frame pool conformance (exp-mempool-l2s vectors)
 
 on:
   push:

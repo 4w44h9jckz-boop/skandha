@@ -1,11 +1,11 @@
 /**
- * Plays emem's conformance vectors against this package, as emem's
+ * Plays exp-mempool-l2s's conformance vectors against this package, as exp-mempool-l2s's
  * `conformance/run.py` plays them against its reference. It reads vectors and
  * never writes them: there is no regeneration mode.
  *
  * A case is played when this package has everything it uses, and skipped
  * otherwise with what it needs. Which is decided from the case's contents,
- * never from a list of names (emem decision record 0035).
+ * never from a list of names (exp-mempool-l2s decision record 0035).
  */
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -167,7 +167,7 @@ export function vectorFiles(): string[] {
       .digest("hex");
     if (actual !== sum)
       throw new Error(
-        `${path} differs from emem ${VECTORS_COMMIT}; vectors are never edited here`
+        `${path} differs from exp-mempool-l2s ${VECTORS_COMMIT}; vectors are never edited here`
       );
     files.push(path);
   }
@@ -216,7 +216,7 @@ const ACCOUNT_FIELDS = [
   "withdrawal",
 ];
 
-/** Field-wise merge of an account map over a state (emem `conformance/README.md`). */
+/** Field-wise merge of an account map over a state (exp-mempool-l2s `conformance/README.md`). */
 function mergeState(
   state: State | null,
   d: Record<string, Json> | undefined
@@ -481,7 +481,7 @@ const STEP_NEEDS: Readonly<Record<string, string>> = {
   expect_selection: "the sealed pool (06-lucid.md)",
 };
 
-/** Profiles of emem's specification this package does not have, with where each is specified. */
+/** Profiles of exp-mempool-l2s's specification this package does not have, with where each is specified. */
 const PROFILE_NEEDS: Readonly<Record<string, string>> = {
   "claim-gated": "claim-gated admission (10-claim-gated-admission.md)",
 };
@@ -736,7 +736,7 @@ const answerOf = (
 ): { valid: boolean; violation?: string } | undefined =>
   a === undefined ? undefined : { valid: a.valid, violation: a.violation };
 
-/** emem `docs/spec/11-surface.md`: one node's surface over the pool of `runPool`. */
+/** exp-mempool-l2s `docs/spec/11-surface.md`: one node's surface over the pool of `runPool`. */
 function runSurface(c: Json): void {
   const name = c.profile ?? EIP_8141.name;
   const profile = PROFILES.get(name);
@@ -888,7 +888,7 @@ function runSurface(c: Json): void {
   });
 }
 
-/** emem `docs/spec/12-replay.md`: one fixture under one profile. */
+/** exp-mempool-l2s `docs/spec/12-replay.md`: one fixture under one profile. */
 function runReplay(c: Json): void {
   const name = c.profile ?? EIP_8141.name;
   const profile = PROFILES.get(name);

@@ -1,6 +1,6 @@
 # Replay of mined frame transactions
 
-Every fixture of `fixtures-exp-frames-85ee60d.json` judged as emem's `docs/spec/12-replay.md`
+Every fixture of `fixtures-exp-frames-85ee60d.json` judged as exp-mempool-l2s `docs/spec/12-replay.md`
 says, by `bun replay/run.ts replay/fixtures-exp-frames-85ee60d.json`. Its input is
 exp-frames 85ee60d671c67a536c26265b8cba9fca78ff0360, test/fixtures/chain, with parent headers from https://rpc1.privacy.ethrex.xyz, eth_getBlockByNumber, read 2026-10-20. Generated: do
 not edit; run the command again and compare.

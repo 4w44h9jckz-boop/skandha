@@ -1,6 +1,6 @@
 # Two nodes, one frame transaction, the Hegota testnet: 2026-10-20
 
-The run emem's `docs/spec/11-surface.md` describes under "Run procedure", for
+The run exp-mempool-l2s `docs/spec/11-surface.md` describes under "Run procedure", for
 the proof-of-concept entry M1. The claim is that checking moves from a
 rollup's node to "every mempool node, before admission (EIP-8141)". What would
 show it wrong, written before the run: two honest nodes reach different
@@ -9,7 +9,8 @@ verdicts on the same transaction at the same head.
 ## Setup
 
 - skandha at `3573f1a`, built with `bun install && bun run build`; framepool's
-  vectors from emem `2665c5d3`.
+  vectors from `2665c5d3`, a commit of the specification before it was
+  published as `exp-mempool-l2s`.
 - The Hegota testnet's client, as `web3_clientVersion` answered:
   `ethrex/v23.0.0-hegota-testnet-hotfix-64b8fc09` (`client-version.txt`), at
   `https://rpc1.privacy.ethrex.xyz`.

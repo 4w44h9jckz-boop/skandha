@@ -129,7 +129,7 @@ function parseEncodingStr(encodingStr: string): GossipEncoding {
   }
 }
 
-/** emem `docs/spec/11-surface.md`, SF-6: the frame transaction topic, outside the user-operation topics. */
+/** exp-mempool-l2s `docs/spec/11-surface.md`, SF-6: the frame transaction topic, outside the user-operation topics. */
 export function isFrameTopic(topicStr: string): boolean {
   return topicStr.startsWith("/frame-transactions/");
 }

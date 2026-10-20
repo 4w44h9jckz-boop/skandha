@@ -180,7 +180,7 @@ export class Network implements INetwork {
   }
 
   /**
-   * emem `docs/spec/11-surface.md`, SF-6 and SF-7: subscribe to the frame
+   * exp-mempool-l2s `docs/spec/11-surface.md`, SF-6 and SF-7: subscribe to the frame
    * transaction topic, let `frames` decide every message on it before
    * gossipsub forwards it, and publish what it admits from JSON-RPC.
    */

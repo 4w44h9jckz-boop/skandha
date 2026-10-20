@@ -1,6 +1,6 @@
 /**
  * Result codes. Names follow go-ethereum's error variables where one exists;
- * emem `docs/spec/` says which clause raises each. The list is emem's
+ * exp-mempool-l2s `docs/spec/` says which clause raises each. The list is exp-mempool-l2s's
  * `ref/python/emem/errors.py`, one constant a line.
  */
 export const OK = "ok";

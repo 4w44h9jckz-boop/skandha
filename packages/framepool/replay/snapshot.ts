@@ -1,5 +1,5 @@
 /**
- * The replay's input (emem `docs/spec/12-replay.md`, RP-1), read once: for
+ * The replay's input (exp-mempool-l2s `docs/spec/12-replay.md`, RP-1), read once: for
  * each of exp-frames' mined fixtures, its bytes as exp-frames encodes them,
  * kept only if they hash to the chain's hash, its chain, its receipt's payer,
  * and its parent block's header from the chain's RPC. No state is read.

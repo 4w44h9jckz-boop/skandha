@@ -1,6 +1,6 @@
 /**
  * Frame transactions over this node's JSON-RPC and gossip, admitted by
- * `@skandha/framepool` under emem's `docs/spec/11-surface.md`: SF-5 for
+ * `@skandha/framepool` under exp-mempool-l2s `docs/spec/11-surface.md`: SF-5 for
  * `eth_sendRawTransaction`, SF-6 and SF-7 for the gossip topic, SF-8 for a new
  * head and SF-9 for hand-off. The prefix's outcome is the execution client's
  * verdict (SF-4); everything else the pool decides itself. As an includer it

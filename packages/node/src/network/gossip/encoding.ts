@@ -60,7 +60,7 @@ export class DataTransformSnappy {
    */
   inboundTransform(topicStr: string, data: Uint8Array): Uint8Array {
     const uncompressedData = uncompress(data, this.maxSizePerMessage);
-    // A frame transaction's bytes (emem 11-surface.md, SF-6); its validator decodes them.
+    // A frame transaction's bytes (exp-mempool-l2s 11-surface.md, SF-6); its validator decodes them.
     if (isFrameTopic(topicStr)) return uncompressedData;
 
     // check uncompressed data length before we extract beacon block root, slot or

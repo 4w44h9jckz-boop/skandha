@@ -3,7 +3,7 @@ import { keccak256 } from "../../src/keccak.js";
 
 const hex = (b: Uint8Array): string => Buffer.from(b).toString("hex");
 
-describe("keccak256 (emem 11-surface.md, SF-3)", () => {
+describe("keccak256 (exp-mempool-l2s 11-surface.md, SF-3)", () => {
   it("gives the known answers", () => {
     expect(hex(keccak256(new Uint8Array()))).toBe(
       "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
