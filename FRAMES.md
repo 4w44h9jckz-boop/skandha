@@ -122,6 +122,51 @@ lets one committee member's never-valid entries deny honest ones is what the
 inclusion-list vectors of `@skandha/framepool` test, on exp-frames
 experiment 25's transactions.
 
+## Tickets: claim-gated admission
+
+With `--frames.claims` as well, a node checks the ticket a transaction
+carries before it asks its client anything about the prefix, by exp-mempool-l2s
+`docs/spec/10-claim-gated-admission.md` (version 4) and
+`docs/spec/11-surface.md` (version 3). There is nothing to configure: no
+list of paymasters and no issuer keys.
+
+1. For each `VERIFY` frame's target, the node reads the code at its head
+   with `eth_getCode`. An account whose code is the 1,105-byte
+   ticket-paymaster template (keccak256
+   `0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0`),
+   then a 256-byte key in G2 in EIP-2537's encoding, then 32 bytes, is a
+   ticket paymaster, and that key is the issuer (CG-10). A paymaster once
+   found is kept; any other target is read again at the next head.
+2. The first `VERIFY` frame to a ticket paymaster carries the ticket, 168
+   bytes: the epoch (8), a salt (32) and a BLS12-381 signature in G1 (128).
+   The node builds the 132-byte message from the transaction's chain,
+   sender, nonce keys and sequence, the epoch and the salt (CG-8), and
+   checks the signature under the issuer's key (CG-9).
+3. After FP-2 to FP-6 it refuses a ticket that does not verify
+   (`ErrClaimInvalid`), one for another slot (`ErrClaimWrongSlot`) and one
+   whose epoch is not its head's timestamp divided by 384 (`ErrClaimEpoch`),
+   then what CG-4 and CG-6 remember from earlier in the epoch, and only
+   then asks the client. A junk ticket costs the node one signature check
+   and no simulation.
+
+A transaction that carries no ticket is admitted as without the flag. Run
+node A above with the flag added:
+
+```sh
+NODE_BACKEND=js ./skandha node --configFile hegota.json --dataDir /tmp/a \
+  --api.port 14337 --api.wsPort 14437 \
+  --p2p.port 14000 --p2p.host 127.0.0.1 --p2p.enrHost 127.0.0.1 --p2p.enrPort 14000 \
+  --frames.enable --frames.claims --frames.name A --frames.log /tmp/a.frames.jsonl
+```
+
+Its `start` line says `"claims":true`. Each `rpc` and `gossip` line of a
+transaction that carries a ticket has `claim`, its epoch, salt and verdict,
+and has no `client` when the client was not asked. A ticket paymaster is not
+the canonical paymaster, so FP-11 holds it to one pending transaction, as
+the testnet's client does: a second spend through the same paymaster waits
+for the first to be included. A recorded run is in
+[`docs/frames/runs/2026-10-20-tickets/`](docs/frames/runs/2026-10-20-tickets/README.md).
+
 ## What it does not do
 
 - Blob-carrying frame transactions and EIP-8288's dependency frames are not
