@@ -79,6 +79,23 @@ export interface FramePoolConfig {
   readonly claimMemory: "slot" | "claim" | "none"; // CG-4
   readonly signedProofs: boolean; // CG-3: whether a sender's signature covers its wrapper's proofs
   readonly verifies: boolean; // CG-7: false makes the node a relay, which verifies no proof
+  // 14-erc-8421.md, AM-1, read only when ruleset is "erc-8421"; a descriptor sets them (13-descriptors.md, DS-6)
+  readonly ruleset: "eip-8141" | "erc-8421";
+  readonly maxVerifyGasPerEntity: bigint;
+  readonly maxVerifyGasStakedEntity: bigint;
+  readonly minStakeValue: bigint;
+  readonly minUnstakeDelay: bigint;
+  readonly minInclusionRateDenominator: number;
+  readonly throttlingSlack: number;
+  readonly banSlack: number;
+  readonly refreshSeconds: number;
+  readonly throttledEntityMempoolCount: number;
+  readonly throttledEntityLiveBlocks: number; // not modelled
+  readonly throttledEntityBlockCount: number; // not modelled
+  readonly sameUnstakedEntityMempoolCount: number;
+  readonly maxTxsAllowedUnstakedEntity: number;
+  readonly sameNonceKeyMempoolCount: number;
+  readonly sameSenderMempoolCount: number;
 }
 
 export const EIP_8141: FramePoolConfig = Object.freeze({
@@ -135,6 +152,22 @@ export const EIP_8141: FramePoolConfig = Object.freeze({
   claimMemory: "slot",
   signedProofs: false,
   verifies: true,
+  ruleset: "eip-8141",
+  maxVerifyGasPerEntity: 100_000n,
+  maxVerifyGasStakedEntity: 1_000_000n,
+  minStakeValue: 10n ** 18n,
+  minUnstakeDelay: 86400n,
+  minInclusionRateDenominator: 10,
+  throttlingSlack: 10,
+  banSlack: 50,
+  refreshSeconds: 3600,
+  throttledEntityMempoolCount: 4,
+  throttledEntityLiveBlocks: 10,
+  throttledEntityBlockCount: 4,
+  sameUnstakedEntityMempoolCount: 10,
+  maxTxsAllowedUnstakedEntity: 10000,
+  sameNonceKeyMempoolCount: 4,
+  sameSenderMempoolCount: 64,
 });
 
 export function withChanges(

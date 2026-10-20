@@ -9,6 +9,7 @@ export interface IFramesArgs {
   "frames.claims": boolean;
   "frames.log"?: string;
   "frames.name"?: string;
+  "frames.descriptor"?: string;
 }
 
 export const options: ICliCommandOptions<IFramesArgs> = {
@@ -55,6 +56,12 @@ export const options: ICliCommandOptions<IFramesArgs> = {
   "frames.name": {
     type: "string",
     description: "How this node names itself in that log",
+    group: "frames",
+  },
+  "frames.descriptor": {
+    type: "string",
+    description:
+      "A descriptor file (exp-mempool-l2s docs/spec/13-descriptors.md) whose ruleset the frame pool runs in place of the profile's, loaded with the parents beside it; refusals name the descriptor and the rule",
     group: "frames",
   },
 };

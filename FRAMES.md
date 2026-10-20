@@ -167,6 +167,33 @@ the testnet's client does: a second spend through the same paymaster waits
 for the first to be included. A recorded run is in
 [`docs/frames/runs/2026-10-20-tickets/`](docs/frames/runs/2026-10-20-tickets/README.md).
 
+## A ruleset from a file
+
+`--frames.descriptor <file>` runs the frame pool under the ruleset a
+descriptor file names (exp-mempool-l2s `docs/spec/13-descriptors.md`), in
+place of the profile's; `--frames.profile` still picks the chain the surface
+speaks for. The node loads the file's parents from the descriptor files
+beside it, each found by its identifier. Copies of exp-mempool-l2s's three
+descriptors are in `packages/framepool/test/descriptors/`:
+
+| File | Identifier | Runs on the node |
+| --- | --- | --- |
+| `eip-8141.json` | `bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4` | yes |
+| `claim-gated.json` | `bafkreid2yhoz2it5mzjhejpm2f3tthv5npcvxaahxujjhds63mwfpx4ahm` | yes |
+| `erc-8421.json` | `bafkreieanbgdpq22vtfsa4rz4zll2lhf4qofoi75hbubqqhlqzepvyvjsy` | no: refused at start |
+
+The `start` line says `descriptor`, the loaded identifier, and `ruleset`,
+the profile it compiled to. Every refused `rpc` and `gossip` line has
+`rule`, the module that refused it, and `descriptor`, and so does the
+JSON-RPC error's `data`: `{"rule": "FP-6", "descriptor": "bafkrei..."}`.
+
+ERC-8421's standard ruleset (`14-erc-8421.md`) traces each validation
+frame for its opcodes, its calls and the address each storage slot is
+associated with, which an execution client's verdict does not give, and
+`11-surface.md` specifies the surface for the canonical mempool only. So the
+node refuses that descriptor with the reason, and `@skandha/framepool`'s
+vectors play it instead, against `StandardPool`.
+
 ## What it does not do
 
 - Blob-carrying frame transactions and EIP-8288's dependency frames are not

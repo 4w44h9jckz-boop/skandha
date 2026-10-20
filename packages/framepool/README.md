@@ -15,11 +15,22 @@ outcome taken from an execution client's verdict, and the steps of
 frame transactions over the bundler's JSON-RPC and gossip; [`FRAMES.md`](../../FRAMES.md)
 says how to run two such nodes against the Hegota testnet.
 
+Since exp-mempool-l2s's `13-descriptors.md` a ruleset can also be a file: a
+descriptor names the rules as modules with their parameters, has an
+identifier derived from its canonical encoding, and may inherit from a
+parent. `src/descriptor.ts` loads one with its own strict JSON parser and
+compiles it to a pool profile, and a refusal under it names the module and
+the descriptor. ERC-8421's standard ruleset (`14-erc-8421.md`) is one such
+file and runs as `StandardPool`, a frame pool with six of its modules
+replaced. The node loads a descriptor with `--frames.descriptor`; ERC-8421's
+needs a tracer the execution client does not offer, so the node refuses it
+and only the vectors play it.
+
 ## What it covers
 
 | exp-mempool-l2s document | Clauses |
 | --- | --- |
-| `00-model.md` | MD-2 to MD-4, MD-6 with `zero_bytes` and `verdict`, MD-7, MD-8 with `reset`'s verdicts, FEE-1 to FEE-4 |
+| `00-model.md` | MD-2 to MD-4, version 10: an account's stake, and MD-6 with `zero_bytes`, `verdict` and a slot's association, MD-7, MD-8 with `reset`'s verdicts, FEE-1 to FEE-4 |
 | `02-frame-pool.md` | FP-2 to FP-16, profiles `eip-8141` and `hegota-testnet`, with the `reuse_balance`, `evict_first`, `expiry_margin` and `static_first` variants, and FP-8 to FP-10 and FP-15 through a client's verdict |
 | `04-matcha.md` | MA-2 to MA-14, profile `matcha` (a proposal) |
 | `05-aggregation.md` | AG-2 to AG-6, profile `eip-8288`: dependency frames, and receiving a wrapper and admitting its transactions (`src/aggregation.ts`); not building an aggregate (AG-7 to AG-9) |
@@ -30,6 +41,8 @@ says how to run two such nodes against the Hegota testnet.
 | `07-focil.md` | IL-1 to IL-6 for frame transactions, version 2: an includer's list from the pool (IL-2), Profile 2 candidates (IL-3), the budget fill per list or per payload, profiles `eip-8369` and `ethrex` (IL-4), and, with validity at the end of the payload as a client's verdict, whether a payload satisfies the lists (IL-5, IL-6) (`src/focil.ts`) |
 | `03-block-building.md` | BB-2's order, for frame transactions only |
 | `10-claim-gated-admission.md` | CG-2 to CG-10, profile `claim-gated` (a proposal), version 3: claims checked after FP-6, the checks before a wrapper's proofs, what a node remembers after a proof fails, relays, and a ticket's bytes, its BLS12-381 check and the paymaster frame that carries it (`src/claimticket.ts`) |
+| `13-descriptors.md` | DS-1 to DS-8: a ruleset as a file, its strict parse, canonical encoding and CIDv1 identifier, modules, inheritance, completeness, the profile it compiles to, and the rule and descriptor a refusal names (`src/descriptor.ts`) |
+| `14-erc-8421.md` | AM-2 to AM-14 and AM-16: ERC-8421's standard alternative mempool as a pool, entities, stake, per-entity budgets, `pre_verify` frames, trace and storage rules, keyed-nonce lifecycle and limits, local rules, solvency, reputation and blame (`src/erc8421.ts`, `StandardPool`) |
 
 It does not have the account-nonce pool of `01-nonce-pool.md`, which belongs
 to an execution client, the sealed pool of `06-lucid.md`, block building, so
@@ -55,7 +68,9 @@ where a deadline had been a `number`.
 ## The vectors
 
 `test/vectors/` is a byte-for-byte copy of exp-mempool-l2s `conformance/vectors/` at
-the commit in `test/vectors.commit`. `test/vectors.sha256` lists every file's
+the commit in `test/vectors.commit`, and `test/descriptors/` of its
+`docs/spec/descriptors/`, which the descriptor vectors load by path.
+`test/vectors.sha256` and `test/descriptors.sha256` list every file's
 SHA-256, and the runner refuses to play anything if a file differs from it.
 **A vector is never edited here.** When this package and a vector disagree,
 the disagreement is settled in exp-mempool-l2s, by the three cases in exp-mempool-l2s's

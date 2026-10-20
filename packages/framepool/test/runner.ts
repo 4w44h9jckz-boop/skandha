@@ -25,7 +25,13 @@ import {
   Reserver,
   RootReference,
   Claim,
+  Descriptor,
+  DescriptorError,
   Signature,
+  StandardPool,
+  Store,
+  canonical as canonicalDescriptor,
+  compileConfig,
   State,
   TicketClaim,
   TicketFrame,
@@ -183,6 +189,62 @@ export function vectorFiles(): string[] {
   return files;
 }
 
+// --- the descriptors on disk (exp-mempool-l2s `docs/spec/descriptors/`) ------------------
+
+const DESCRIPTORS = new URL("./descriptors/", import.meta.url).pathname;
+const DESCRIPTOR_MANIFEST = new URL("./descriptors.sha256", import.meta.url)
+  .pathname;
+const SPEC_DESCRIPTORS = "docs/spec/descriptors/";
+
+/** A descriptor file as copied with the vectors, by its path in exp-mempool-l2s; throws if it was changed since. */
+export function descriptorText(path: string): string {
+  if (!path.startsWith(SPEC_DESCRIPTORS))
+    throw new Error(`not a descriptor of exp-mempool-l2s: ${path}`);
+  const name = path.slice(SPEC_DESCRIPTORS.length);
+  const sums = new Map(
+    readFileSync(DESCRIPTOR_MANIFEST, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => line.split(/\s+/).reverse() as [string, string])
+  );
+  const text = readFileSync(join(DESCRIPTORS, name));
+  if (createHash("sha256").update(text).digest("hex") !== sums.get(name))
+    throw new Error(
+      `${path} differs from exp-mempool-l2s ${VECTORS_COMMIT}; descriptors are never edited here`
+    );
+  return text.toString("utf8");
+}
+
+/** DS-8: `docs/spec/descriptors/<name>.json`, loaded after the descriptors it inherits from. */
+const loadedDescriptors = new Map<string, Descriptor>();
+export function descriptor(name: string): Descriptor {
+  if (loadedDescriptors.size === 0) {
+    const store = new Store();
+    const pending = readFileSync(DESCRIPTOR_MANIFEST, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => line.split(/\s+/)[1])
+      .sort();
+    while (pending.length > 0) {
+      const i = pending.findIndex((file) => {
+        const parent = JSON.parse(
+          descriptorText(SPEC_DESCRIPTORS + file)
+        ).parent;
+        return parent === null || store.held.has(parent);
+      });
+      if (i < 0) throw new Error(`no parent held for ${pending}`);
+      const [file] = pending.splice(i, 1);
+      loadedDescriptors.set(
+        file.replace(/\.json$/, ""),
+        store.load(descriptorText(SPEC_DESCRIPTORS + file))
+      );
+    }
+  }
+  const d = loadedDescriptors.get(name);
+  if (d === undefined) throw new Error(`no descriptor ${name}`);
+  return d;
+}
+
 export interface Vector {
   clause: string;
   operation: string;
@@ -223,6 +285,9 @@ const ACCOUNT_FIELDS = [
   "storage",
   "nonce_seqs",
   "withdrawal",
+  "stake",
+  "unstake_delay",
+  "withdrawing",
 ];
 
 /** Field-wise merge of an account map over a state (exp-mempool-l2s `conformance/README.md`). */
@@ -242,6 +307,9 @@ function mergeState(
       } else if (key === "code") acc.code = value;
       else if (key === "nonce") acc.nonce = big(value);
       else if (key === "balance") acc.balance = big(value);
+      else if (key === "stake") acc.stake = big(value);
+      else if (key === "unstake_delay") acc.unstakeDelay = big(value);
+      else if (key === "withdrawing") acc.withdrawing = value;
       else acc.withdrawal = big(value);
     }
   }
@@ -328,10 +396,18 @@ function makeFrame(d: Record<string, Json>): Frame {
     reverts: d.reverts,
     opcodes: opt("opcodes", (x) => new Set<string>(x)),
     reads: opt("reads", (x: Json[]) =>
-      x.map(([a, s, v]): Read => [a, big(s), bigOrNull(v)])
+      x.map(
+        ([a, s, v, assoc]): Read =>
+          assoc === undefined
+            ? [a, big(s), bigOrNull(v)]
+            : [a, big(s), bigOrNull(v), assoc]
+      )
     ),
     writes: opt("writes", (x: Json[]) =>
-      x.map(([a, s, v]): Write => [a, big(s), big(v)])
+      x.map(
+        ([a, s, v, assoc]): Write =>
+          assoc === undefined ? [a, big(s), big(v)] : [a, big(s), big(v), assoc]
+      )
     ),
     calls: d.calls,
     installsCode: d.installs_code,
@@ -633,14 +709,27 @@ function runFrameGas(c: Json): void {
 }
 
 function runPool(c: Json): void {
-  const profile = PROFILES.get(c.profile ?? EIP_8141.name);
+  const loaded = c.descriptor !== undefined ? descriptor(c.descriptor) : null;
+  const profile =
+    loaded !== null
+      ? compileConfig(loaded)
+      : PROFILES.get(c.profile ?? EIP_8141.name);
   if (profile === undefined) throw new Error(`unknown profile ${c.profile}`);
   const cfg = frameConfig(profile, c.config?.frame ?? {});
   const headD = { ...DEFAULT_HEAD, ...(c.head ?? {}) };
   let head = makeHead(headD);
   let state = mergeState(null, c.state);
   writeRoots(state, cfg, c.roots);
-  const pool = new FramePool(head, state, cfg, new Reserver());
+  const pool =
+    cfg.ruleset === "erc-8421"
+      ? new StandardPool(head, state, cfg, new Reserver())
+      : new FramePool(head, state, cfg, new Reserver());
+  for (const [addr, r] of Object.entries(c.reputation ?? {}))
+    (pool as StandardPool).give(
+      addr,
+      num((r as Json).seen),
+      num((r as Json).included)
+    ); // AM-13
   let now = 0;
   c.steps.forEach((step: Json, n: number) => {
     const where = `step ${n}:`;
@@ -648,6 +737,25 @@ function runPool(c: Json): void {
       now = step.now ?? now;
       const got = pool.add(step.add.map(makeFrameTx), now);
       if ("expect" in step) same(step.expect, got, `${where} add`);
+      if (loaded !== null) {
+        // DS-7: every refusal names a rule of the loaded descriptor
+        const rules = got.map((code) =>
+          code === "ok" ? null : loaded.ruleOf(code)
+        );
+        if (got.some((code, i) => code !== "ok" && rules[i] === null))
+          throw new Mismatch(
+            `${where} a refusal names no rule of ${loaded.id}: ${got}`
+          );
+        if ("expect_rules" in step)
+          same(step.expect_rules, rules, `${where} rules`);
+      }
+    } else if ("reputation" in step) {
+      // AM-13
+      same(
+        step.expect,
+        (pool as StandardPool).reputation(step.reputation),
+        `${where} reputation of ${step.reputation}`
+      );
     } else if ("wrapper" in step) {
       now = step.now ?? now;
       const got = receive(pool, makeWrapper(step.wrapper), now);
@@ -1052,6 +1160,54 @@ function runClaimTicket(c: Json): void {
   same(c.expect, got, "claim_ticket");
 }
 
+/** A descriptor of a case's `store`, or the one it loads: a file of exp-mempool-l2s, or a value. */
+function loadItem(store: Store, item: Json): Descriptor {
+  if (Object.keys(item).length === 1 && "file" in item)
+    return store.load(descriptorText(item.file));
+  return store.load(JSON.stringify(item));
+}
+
+/** FP-1, AG-1, CG-1 and AM-1's parameters of a profile, in their names. */
+function configJson(cfg: Json): Json {
+  return Object.fromEntries(
+    Object.entries(cfg).map(([k, v]) => [
+      k.replace(/[A-Z]/g, (ch) => "_" + ch.toLowerCase()),
+      v instanceof Set ? [...v] : v,
+    ])
+  );
+}
+
+/** exp-mempool-l2s `docs/spec/13-descriptors.md`: load a descriptor after the case's `store`, and what it compiles to. */
+function runDescriptor(c: Json): void {
+  const store = new Store();
+  for (const item of c.store ?? []) loadItem(store, item);
+  let got: Json;
+  try {
+    const d =
+      c.text !== undefined
+        ? store.load(c.text)
+        : c.descriptor !== undefined
+        ? loadItem(store, c.descriptor)
+        : loadItem(store, { file: c.file });
+    const cfg = compileConfig(d);
+    got = {
+      result: "ok",
+      canonical: canonicalDescriptor(d.value),
+      id: d.id,
+      modules: d.effective.size,
+      set_by: Object.fromEntries(
+        [...d.effective].map(([name, [, by]]) => [name, by])
+      ),
+      profile: cfg.name,
+      config: configJson(cfg),
+    };
+  } catch (err) {
+    if (!(err instanceof DescriptorError)) throw err;
+    got = { result: err.code, rule: err.rule };
+  }
+  partial(c.expect, got, "descriptor");
+}
+
 export const OPERATIONS: Readonly<Record<string, (c: Json) => void>> = {
   next_base_fee: runNextBaseFee,
   intrinsic_gas: runIntrinsicGas,
@@ -1060,6 +1216,7 @@ export const OPERATIONS: Readonly<Record<string, (c: Json) => void>> = {
   surface: runSurface,
   replay: runReplay,
   claim_ticket: runClaimTicket,
+  descriptor: runDescriptor,
 };
 
 export interface Outcome {

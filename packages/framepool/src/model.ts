@@ -18,7 +18,10 @@ export class Account {
     public code: string = "",
     public storage: Map<bigint, bigint> = new Map(),
     public nonceSeqs: Map<bigint, bigint> = new Map(),
-    public withdrawal: bigint = 0n
+    public withdrawal: bigint = 0n,
+    public stake: bigint = 0n, // MD-2, version 10: what ERC-8421's Staking Registry reports
+    public unstakeDelay: bigint = 0n,
+    public withdrawing: boolean = false
   ) {}
 
   copy(): Account {
@@ -28,7 +31,10 @@ export class Account {
       this.code,
       new Map(this.storage),
       new Map(this.nonceSeqs),
-      this.withdrawal
+      this.withdrawal,
+      this.stake,
+      this.unstakeDelay,
+      this.withdrawing
     );
   }
 }
@@ -91,6 +97,12 @@ export class State {
 
   withdrawal(addr: string): bigint {
     return this.account(addr).withdrawal;
+  }
+
+  /** MD-2: the stake, unstake delay and withdrawal flag the Staking Registry reports for `addr`. */
+  stake(addr: string): [bigint, bigint, boolean] {
+    const a = this.account(addr);
+    return [a.stake, a.unstakeDelay, a.withdrawing];
   }
 
   /** MD-3: key 0 is the account nonce (EIP-8250). */

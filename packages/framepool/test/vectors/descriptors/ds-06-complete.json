@@ -1,0 +1,471 @@
+{
+ "clause": "DS-6",
+ "also": [],
+ "document": "13-descriptors.md",
+ "version": 1,
+ "operation": "descriptor",
+ "distinguishes": "A ruleset holds every core module, all of the ERC's modules or none, each replaceable frame pool module or its replacement but not both, no AG or CG module with the ERC's, and whole AG and CG families, checked in DS-6's order; a complete one behaves as the profile its modules carry. A loader that accepts a partial ruleset, names another module, or compiles to another profile fails here.",
+ "cases": [
+  {
+   "name": "a root without FP-2",
+   "store": [],
+   "descriptor": {
+    "format": 1,
+    "name": "a root",
+    "source": "a vector",
+    "parent": null,
+    "remove": [],
+    "rules": {
+     "FP-3": {
+      "price_limit": 1
+     },
+     "FP-4": {},
+     "FP-5": {
+      "expiry_verifier": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf"
+     },
+     "FP-6": {
+      "max_verify_gas": 100000,
+      "max_verify_state_gas": 500000
+     },
+     "FP-7": {},
+     "FP-8": {
+      "expiry_margin": 0,
+      "expiry_verifier_code": "expiry-verifier"
+     },
+     "FP-9": {
+      "canonical_paymaster_code": "canonical-paymaster",
+      "precompiles": [
+       "0x0000000000000000000000000000000000000001",
+       "0x0000000000000000000000000000000000000002",
+       "0x0000000000000000000000000000000000000003",
+       "0x0000000000000000000000000000000000000004",
+       "0x0000000000000000000000000000000000000005",
+       "0x0000000000000000000000000000000000000006",
+       "0x0000000000000000000000000000000000000007",
+       "0x0000000000000000000000000000000000000008",
+       "0x0000000000000000000000000000000000000009",
+       "0x000000000000000000000000000000000000000a",
+       "0x000000000000000000000000000000000000000b",
+       "0x000000000000000000000000000000000000000c",
+       "0x000000000000000000000000000000000000000d",
+       "0x000000000000000000000000000000000000000e",
+       "0x000000000000000000000000000000000000000f",
+       "0x0000000000000000000000000000000000000010",
+       "0x0000000000000000000000000000000000000011",
+       "0x0000000000000000000000000000000000000100"
+      ]
+     },
+     "FP-10": {},
+     "FP-11": {
+      "max_pending_noncanonical": 1,
+      "cap_codeless_payers": false
+     },
+     "FP-12": {
+      "per_sender": "one",
+      "price_bump": 10
+     },
+     "FP-13": {},
+     "FP-14": {
+      "max_pending": 4096,
+      "evict_first": "expiry"
+     },
+     "FP-15": {
+      "reuse_balance": false
+     },
+     "FP-16": {}
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorIncomplete",
+    "rule": "FP-2"
+   },
+   "derivation": "FP-2 is a core module."
+  },
+  {
+   "name": "FP-5 removed and not replaced",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [
+     "FP-5"
+    ],
+    "rules": {}
+   },
+   "expect": {
+    "result": "ErrDescriptorIncomplete",
+    "rule": "FP-5"
+   },
+   "derivation": "Neither FP-5 nor the ERC's modules."
+  },
+  {
+   "name": "an ERC module added without the others",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "PREFIX-010": {
+      "expiry_verifier": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf"
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorIncomplete",
+    "rule": "ASSOC-010"
+   },
+   "derivation": "Step 2: with any ERC module every one is needed; ASSOC-010 is the first AM-2 lists."
+  },
+  {
+   "name": "the ERC's modules with FP-5 kept",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [
+     "FP-6",
+     "FP-7",
+     "FP-9",
+     "FP-11",
+     "FP-12"
+    ],
+    "rules": {
+     "ASSOC-010": {},
+     "ASSOC-020": {
+      "max_offset": 128
+     },
+     "PREFIX-010": {
+      "expiry_verifier": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf"
+     },
+     "PREFIX-020": {},
+     "PREFIX-040": {},
+     "PREFIX-050": {},
+     "PREFIX-060": {},
+     "PREFIX-080": {},
+     "PREFIX-100": {
+      "canonical_paymaster_code": "canonical-paymaster"
+     },
+     "PREFIX-110": {},
+     "PREFIX-120": {},
+     "BUDGET-010": {
+      "max_verify_gas_per_entity": 100000,
+      "max_verify_gas_staked_entity": 1000000
+     },
+     "SIGNATURE-010": {},
+     "OPCODES-010": {},
+     "OPCODES-020": {},
+     "OPCODES-030": {},
+     "OPCODES-040": {},
+     "CREATION-010": {},
+     "CALLING-010": {},
+     "CALLING-040": {
+      "precompiles": [
+       "0x0000000000000000000000000000000000000001",
+       "0x0000000000000000000000000000000000000002",
+       "0x0000000000000000000000000000000000000003",
+       "0x0000000000000000000000000000000000000004",
+       "0x0000000000000000000000000000000000000005",
+       "0x0000000000000000000000000000000000000006",
+       "0x0000000000000000000000000000000000000007",
+       "0x0000000000000000000000000000000000000008",
+       "0x0000000000000000000000000000000000000009",
+       "0x000000000000000000000000000000000000000a",
+       "0x000000000000000000000000000000000000000b",
+       "0x000000000000000000000000000000000000000c",
+       "0x000000000000000000000000000000000000000d",
+       "0x000000000000000000000000000000000000000e",
+       "0x000000000000000000000000000000000000000f",
+       "0x0000000000000000000000000000000000000010",
+       "0x0000000000000000000000000000000000000011",
+       "0x0000000000000000000000000000000000000100"
+      ]
+     },
+     "STORAGE-000": {},
+     "STORAGE-010": {},
+     "STORAGE-021": {},
+     "STORAGE-022": {},
+     "STORAGE-031": {},
+     "STORAGE-032": {},
+     "STORAGE-033": {},
+     "LOCAL-010": {},
+     "LOCAL-020": {},
+     "STAKING-010": {
+      "min_stake_value": "1000000000000000000",
+      "min_unstake_delay": 86400,
+      "staking_registry": "staking-registry"
+     },
+     "SOLVENCY-010": {},
+     "SOLVENCY-020": {},
+     "SOLVENCY-030": {},
+     "REPUTATION-010": {
+      "min_inclusion_rate_denominator": 10,
+      "throttling_slack": 10,
+      "ban_slack": 50,
+      "refresh_seconds": 3600
+     },
+     "REPUTATION-020": {
+      "throttled_entity_mempool_count": 4,
+      "throttled_entity_live_blocks": 10,
+      "throttled_entity_block_count": 4
+     },
+     "REPUTATION-040": {},
+     "REPUTATION-210": {},
+     "REPUTATION-220": {
+      "same_unstaked_entity_mempool_count": 10,
+      "max_txs_allowed_unstaked_entity": 10000
+     },
+     "REPUTATION-310": {},
+     "REPUTATION-320": {},
+     "REPUTATION-330": {},
+     "LIFECYCLE-010": {},
+     "LIFECYCLE-020": {
+      "price_bump": 10
+     },
+     "LIFECYCLE-030": {
+      "same_nonce_key_mempool_count": 4,
+      "same_sender_mempool_count": 64
+     },
+     "LIFECYCLE-040": {},
+     "PROPAGATION-010": {},
+     "PROPAGATION-020": {},
+     "PROPAGATION-030": {},
+     "PROPAGATION-040": {},
+     "PROPAGATION-050": {}
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorConflict",
+    "rule": "FP-5"
+   },
+   "derivation": "Step 3: FP-5 and its replacement are both there."
+  },
+  {
+   "name": "the ERC's ruleset with claims",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/erc-8421.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreieanbgdpq22vtfsa4rz4zll2lhf4qofoi75hbubqqhlqzepvyvjsy",
+    "remove": [],
+    "rules": {
+     "AG-2": {
+      "max_dependencies_per_frame": 256
+     },
+     "AG-3": {},
+     "AG-4": {
+      "max_sigs_per_tx": 16,
+      "max_starks_per_tx": 1
+     },
+     "AG-5": {
+      "max_sig_deps_per_wrapper": 16,
+      "max_stark_deps_per_wrapper": 1
+     },
+     "AG-6": {},
+     "AG-7": {
+      "aggregation_interval_ms": 1000,
+      "cap_aggregates": true,
+      "forward_wrappers": false
+     },
+     "AG-8": {},
+     "CG-2": {
+      "claim_epoch": 384
+     },
+     "CG-3": {
+      "signed_proofs": false
+     },
+     "CG-4": {
+      "claim_memory": "slot"
+     },
+     "CG-5": {},
+     "CG-6": {},
+     "CG-7": {
+      "verifies": true
+     },
+     "CG-8": {
+      "namespace": "FRAME_TICKET_V1"
+     },
+     "CG-9": {},
+     "CG-10": {
+      "template_length": 1105,
+      "template_keccak": "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0"
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorConflict",
+    "rule": "AG-2"
+   },
+   "derivation": "Step 4: no clause composes the ERC's modules with AG or CG modules; AG-2 is the first in the table's order."
+  },
+  {
+   "name": "claim-gated without AG-6",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "AG-2": {
+      "max_dependencies_per_frame": 256
+     },
+     "AG-3": {},
+     "AG-4": {
+      "max_sigs_per_tx": 16,
+      "max_starks_per_tx": 1
+     },
+     "AG-5": {
+      "max_sig_deps_per_wrapper": 16,
+      "max_stark_deps_per_wrapper": 1
+     },
+     "AG-7": {
+      "aggregation_interval_ms": 1000,
+      "cap_aggregates": true,
+      "forward_wrappers": false
+     },
+     "AG-8": {},
+     "CG-2": {
+      "claim_epoch": 384
+     },
+     "CG-3": {
+      "signed_proofs": false
+     },
+     "CG-4": {
+      "claim_memory": "slot"
+     },
+     "CG-5": {},
+     "CG-6": {},
+     "CG-7": {
+      "verifies": true
+     },
+     "CG-8": {
+      "namespace": "FRAME_TICKET_V1"
+     },
+     "CG-9": {},
+     "CG-10": {
+      "template_length": 1105,
+      "template_keccak": "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0"
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorIncomplete",
+    "rule": "AG-6"
+   },
+   "derivation": "Step 5: every AG module of the table."
+  },
+  {
+   "name": "CG modules with no AG modules",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "CG-2": {
+      "claim_epoch": 384
+     },
+     "CG-3": {
+      "signed_proofs": false
+     },
+     "CG-4": {
+      "claim_memory": "slot"
+     },
+     "CG-5": {},
+     "CG-6": {},
+     "CG-7": {
+      "verifies": true
+     },
+     "CG-8": {
+      "namespace": "FRAME_TICKET_V1"
+     },
+     "CG-9": {},
+     "CG-10": {
+      "template_length": 1105,
+      "template_keccak": "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0"
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorIncomplete",
+    "rule": "AG-2"
+   },
+   "derivation": "Step 5: a CG module needs every AG module; AG-2 is the first."
+  },
+  {
+   "name": "eip-8141.json is the eip-8141 profile",
+   "file": "docs/spec/descriptors/eip-8141.json",
+   "expect": {
+    "result": "ok",
+    "profile": "eip-8141"
+   },
+   "derivation": "Every frame pool module, FP-1's eip-8141 column."
+  },
+  {
+   "name": "claim-gated.json is the claim-gated profile",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "file": "docs/spec/descriptors/claim-gated.json",
+   "expect": {
+    "result": "ok",
+    "profile": "claim-gated"
+   },
+   "derivation": "With the AG and CG modules, AG-1's and CG-1's values."
+  },
+  {
+   "name": "erc-8421.json is the ERC-8421 ruleset",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "file": "docs/spec/descriptors/erc-8421.json",
+   "expect": {
+    "result": "ok",
+    "profile": "erc-8421"
+   },
+   "derivation": "The six FP modules replaced by every ERC module."
+  }
+ ]
+}

@@ -96,6 +96,24 @@ export const ErrClaimUsed = "ErrClaimUsed";
 export const ErrClaimExpired = "ErrClaimExpired";
 export const ErrRelayAggregate = "ErrRelayAggregate";
 
+// This repository's, for ERC-8421's standard ruleset (`docs/spec/14-erc-8421.md`)
+export const ErrFramePreVerifyNoCode = "ErrFramePreVerifyNoCode";
+export const ErrFrameStrayDefault = "ErrFrameStrayDefault";
+export const ErrEntityVerifyGas = "ErrEntityVerifyGas";
+export const ErrFrameUnassignedOpcode = "ErrFrameUnassignedOpcode";
+export const ErrFrameOutOfGasRevert = "ErrFrameOutOfGasRevert";
+export const ErrFrameCreation = "ErrFrameCreation";
+export const ErrFrameStorageAccess = "ErrFrameStorageAccess";
+export const ErrNonceGap = "ErrNonceGap";
+export const ErrNonceKeyLimit = "ErrNonceKeyLimit";
+export const ErrSenderLimit = "ErrSenderLimit";
+export const ErrEntityIsSender = "ErrEntityIsSender";
+export const ErrLocalStorage = "ErrLocalStorage";
+export const ErrEntityBanned = "ErrEntityBanned";
+export const ErrEntityThrottled = "ErrEntityThrottled";
+export const ErrSenderThrottled = "ErrSenderThrottled";
+export const ErrPayerOpsAllowed = "ErrPayerOpsAllowed";
+
 // This repository's, for the surface (`docs/spec/11-surface.md`)
 export const ErrFrameDecode = "ErrFrameDecode";
 export const ErrFrameBlobs = "ErrFrameBlobs";

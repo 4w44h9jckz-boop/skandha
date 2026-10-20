@@ -29,7 +29,7 @@ export interface RpcHandlerOptions {
 export interface FrameRpc {
   sendRawTransaction(param: unknown): Promise<{
     result?: string;
-    error?: { code: number; message: string };
+    error?: { code: number; message: string; data?: unknown };
   }>;
   /** IL-2 of `07-focil.md`: the inclusion list this node would publish from its pool. */
   inclusionList(param: unknown): Promise<{

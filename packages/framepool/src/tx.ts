@@ -58,7 +58,13 @@ export const CALLDATA_NONZERO = 16n;
 export const PER_AUTHORIZATION = 25000n;
 export const TOKENS_PER_NONZERO_BYTE = 4n;
 
-export type Write = readonly [address: string, slot: bigint, value: bigint];
+/** MD-6: a state write; the fourth element, when present, is the address a tracer finds the slot associated with. */
+export type Write = readonly [
+  address: string,
+  slot: bigint,
+  value: bigint,
+  associated?: string
+];
 export type RootWrite = readonly [
   sourceAddress: string,
   salt: string,
@@ -268,7 +274,8 @@ export function sortedUnique(deps: Iterable<Dependency>): Dependency[] {
 export type Read = readonly [
   address: string,
   slot: bigint,
-  expected: bigint | null
+  expected: bigint | null,
+  associated?: string
 ];
 export type RootReference = readonly [
   sourceId: string,

@@ -64,16 +64,16 @@ export class FramePool {
   readonly reserver: Reserver;
   readonly entries = new Map<string, Entry>();
   private byIdentity = new Map<string, string>();
-  private bySender = new Map<string, string[]>();
+  protected bySender = new Map<string, string[]>();
   private keys = new Map<string, Map<bigint, number>>(); // by sender: how many pending transactions use each nonce key
-  private reserved = new Map<string, bigint>();
+  protected reserved = new Map<string, bigint>();
   private readers = new Map<string, Set<string>>(); // FP-15: by address, the transactions whose sender, payer or dependencies name it
   private payerCount = new Map<string, number>();
   resimulated: FrameTx[] = [];
   resimulations = 0;
   readonly dropped = new Map<string, number>(); // by reason, every transaction the pool has removed
   readonly work = new Map<string, bigint>(); // by sender: admission gas (MA-2) of every prefix run
-  private sequence: () => number;
+  protected sequence: () => number;
   private readonly matcha: boolean;
   private widths = new Map<string, bigint>(); // MA-3
   private bases = new Set<string>(); // MA-5: the hashes of pending baselines
@@ -215,7 +215,7 @@ export class FramePool {
         sim = this.simulate(e.tx, e.prefix, head, state);
       } catch (err) {
         if (!(err instanceof TxError)) throw err;
-        this.remove(h, "invalidated:" + err.code);
+        this.invalidated(h, err);
         continue;
       }
       this.index(e, -1);
@@ -256,6 +256,11 @@ export class FramePool {
       }
       this.account(e, +1);
     }
+  }
+
+  /** FP-15 step 3: a re-run that fails removes the transaction. */
+  protected invalidated(txHash: string, err: TxError): void {
+    this.remove(txHash, "invalidated:" + err.code);
   }
 
   /** FP-15 step 3 under `reuseBalance`, or MA-9 step 1: whether a change to balances alone re-runs nothing. */
@@ -463,7 +468,7 @@ export class FramePool {
 
   // --- admission ------------------------------------------------------------
 
-  private addOne(tx: FrameTx, now: number): string {
+  protected addOne(tx: FrameTx, now: number): string {
     try {
       const cfg = this.config;
       if (this.entries.has(tx.hash)) throw new TxError(E.ErrAlreadyKnown); // FP-2
@@ -561,7 +566,7 @@ export class FramePool {
   }
 
   /** FP-7 to FP-10 as a pool runs them: with its `expiryMargin`, and its head's slot plus one and its `rootMargin`. */
-  private simulate(
+  protected simulate(
     tx: FrameTx,
     prefix: Prefix,
     head: Head,
@@ -581,7 +586,7 @@ export class FramePool {
   }
 
   /** FP-11. */
-  private checkPayer(
+  protected checkPayer(
     tx: FrameTx,
     payer: string,
     payerClass: string,
@@ -724,7 +729,7 @@ export class FramePool {
   }
 
   /** MA-8, oldest first. */
-  private expire(now: number): void {
+  protected expire(now: number): void {
     if (!this.matcha) return;
     const oldest = [...this.entries.values()].sort(
       (a, b) => a.admitted - b.admitted || a.seq - b.seq
@@ -754,7 +759,7 @@ export class FramePool {
    * is the victim. The reference keeps the held keys in a heap; the minimum
    * over the pool is the same transaction.
    */
-  private victim(
+  protected victim(
     tx: FrameTx,
     seq: number,
     deadline: bigint | null
@@ -782,7 +787,7 @@ export class FramePool {
     );
   }
 
-  private addWork(sender: string, gas: bigint): void {
+  protected addWork(sender: string, gas: bigint): void {
     this.work.set(sender, (this.work.get(sender) ?? 0n) + gas);
   }
 
@@ -820,7 +825,7 @@ export class FramePool {
     }
   }
 
-  private insert(e: Entry): void {
+  protected insert(e: Entry): void {
     const tx = e.tx;
     this.entries.set(tx.hash, e);
     if (!this.many(tx)) this.byIdentity.set(identity(tx), tx.hash);
@@ -839,7 +844,7 @@ export class FramePool {
     this.reserver.hold(tx.sender, this);
   }
 
-  private remove(
+  protected remove(
     txHash: string,
     reason: string,
     release = true,

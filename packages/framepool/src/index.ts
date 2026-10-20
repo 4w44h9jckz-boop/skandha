@@ -3,6 +3,8 @@ export * from "./claimticket.js";
 export * from "./config.js";
 export * from "./dependencies.js";
 export * from "./deps.js";
+export * from "./descriptor.js";
+export * from "./erc8421.js";
 export * from "./errors.js";
 export * from "./focil.js";
 export * from "./matcha.js";

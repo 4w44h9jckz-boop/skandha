@@ -41,7 +41,7 @@ export const PAY = "pay";
 export const OTHER = "other";
 export const ROOT = "recent_root_verify"; // RR-4
 
-const RECOGNIZED = new Set(
+export const RECOGNIZED: ReadonlySet<string> = new Set(
   [
     [SELF_VERIFY],
     [DEPLOY, SELF_VERIFY],
@@ -148,16 +148,14 @@ export function analyse(tx: FrameTx, cfg: FramePoolConfig): Prefix | null {
   };
 }
 
-/** FP-3, FP-5 and FP-6: everything decidable without state. */
-export function checkStatic(
+/** FP-3: the EIP's static constraints, with EN-3's and AG-2's under a profile that admits them. */
+export function checkFp3(
   tx: FrameTx,
-  head: Head,
+  gasLimit: bigint,
   cfg: FramePoolConfig
-): Prefix {
+): void {
   const frames = tx.frames;
   const sender = tx.sender;
-
-  // FP-3: the EIP's static constraints
   if (frames.length < 1 || frames.length > MAX_FRAMES)
     fail(E.ErrFrameMalformed);
   const keys = tx.nonceKeys;
@@ -238,7 +236,17 @@ export function checkStatic(
   if (tx.signatures.some((s) => !s.valid)) fail(E.ErrInvalidSender);
   if (tx.tip > tx.maxFee) fail(E.ErrTipAboveFeeCap);
   if (tx.tip < cfg.priceLimit) fail(E.ErrTxGasPriceTooLow);
-  if (gas.maxGas > head.gasLimit) fail(E.ErrGasLimit);
+  if (gas.maxGas > gasLimit) fail(E.ErrGasLimit);
+}
+
+/** FP-3, FP-5 and FP-6: everything decidable without state. */
+export function checkStatic(
+  tx: FrameTx,
+  head: Head,
+  cfg: FramePoolConfig
+): Prefix {
+  const sender = tx.sender;
+  checkFp3(tx, head.gasLimit, cfg);
 
   // AG-4: limits per transaction
   if (cfg.dependencyFrames)
