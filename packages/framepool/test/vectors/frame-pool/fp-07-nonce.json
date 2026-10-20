@@ -1,7 +1,7 @@
 {
   "clause": "FP-7",
   "document": "02-frame-pool.md",
-  "version": 5,
+  "version": 6,
   "operation": "pool",
   "distinguishes": "A frame transaction must carry exactly the current sequence of every key it names; there is no queue, and a key that is behind wins over one that is ahead.",
   "cases": [

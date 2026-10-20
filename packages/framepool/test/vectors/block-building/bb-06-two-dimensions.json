@@ -1,0 +1,170 @@
+{
+  "clause": "BB-6",
+  "document": "03-block-building.md",
+  "version": 4,
+  "also": ["BB-3", "BB-4", "FEE-1", "FEE-4"],
+  "operation": "pool",
+  "distinguishes": "Under the rule two, state gas counted apart from execution gas: what an included transaction adds to each sum, an account-nonce transaction reserving its whole gas in both dimensions where a frame transaction reserves each budget in its own, the loop stopping when either dimension has less than 12,000 left and running down to 12,000 where one would stop at 21,000, and the header's gas used, which the next base fee reads, being the larger sum, and a reverted transaction's gas counted as execution alone.",
+  "cases": [
+    {
+      "name": "under one, state gas fills the single sum",
+      "head": {"gas_limit": 300000, "gas_used": 150000},
+      "state": {"a": {"balance": 100000000}, "b": {"balance": 100000000}, "c": {"balance": 100000000},
+                "d": {"balance": 100000000}, "e": {"balance": 100000000}, "f": {"balance": 100000000}},
+      "steps": [
+        {"add": [
+          {"label": "a", "sender": "a", "gas": 100000, "state_gas_used": 60000, "tip": 70},
+          {"label": "b", "sender": "b", "gas": 100000, "state_gas_used": 60000, "tip": 60},
+          {"label": "c", "sender": "c", "gas": 100000, "state_gas_used": 60000, "tip": 50},
+          {"label": "d", "sender": "d", "gas": 100000, "state_gas_used": 60000, "tip": 40},
+          {"label": "e", "sender": "e", "gas": 100000, "state_gas_used": 60000, "tip": 30},
+          {"label": "f", "sender": "f", "gas": 21000, "tip": 20}
+        ], "expect": ["ok", "ok", "ok", "ok", "ok", "ok"]},
+        {"build": {"min_tip": 1, "coinbase": "cb", "dimensions": "one"}, "expect": ["a", "b", "c"],
+         "expect_gas_used": 300000},
+        {"expect_pool": {"pending": {"d": ["d"], "e": ["e"], "f": ["f"]}}}
+      ]
+    },
+    {
+      "name": "under two, state gas takes no execution room, and a head that does not fit its state room is dropped",
+      "head": {"gas_limit": 300000, "gas_used": 150000},
+      "state": {"a": {"balance": 100000000}, "b": {"balance": 100000000}, "c": {"balance": 100000000},
+                "d": {"balance": 100000000}, "e": {"balance": 100000000}, "f": {"balance": 100000000}},
+      "steps": [
+        {"add": [
+          {"label": "a", "sender": "a", "gas": 100000, "state_gas_used": 60000, "tip": 70},
+          {"label": "b", "sender": "b", "gas": 100000, "state_gas_used": 60000, "tip": 60},
+          {"label": "c", "sender": "c", "gas": 100000, "state_gas_used": 60000, "tip": 50},
+          {"label": "d", "sender": "d", "gas": 100000, "state_gas_used": 60000, "tip": 40},
+          {"label": "e", "sender": "e", "gas": 100000, "state_gas_used": 60000, "tip": 30},
+          {"label": "f", "sender": "f", "gas": 21000, "tip": 20}
+        ], "expect": ["ok", "ok", "ok", "ok", "ok", "ok"]},
+        {"build": {"min_tip": 1, "coinbase": "cb", "dimensions": "two"}, "expect": ["a", "b", "c", "d", "f"],
+         "expect_gas_used": 240000},
+        {"expect_pool": {"pending": {"e": ["e"]}}}
+      ]
+    },
+    {
+      "name": "under one, neither a type 2 spend nor a frame spend fits 100,000 left",
+      "head": {"gas_limit": 300000, "gas_used": 150000},
+      "state": {"x1": {"balance": 100000000}, "x2": {"balance": 100000000}, "t": {"balance": 100000000},
+                "fs": {"balance": 100000000}, "y": {"balance": 100000000}},
+      "steps": [
+        {"add": [
+          {"label": "x1", "sender": "x1", "gas": 100000, "tip": 90},
+          {"label": "x2", "sender": "x2", "gas": 100000, "tip": 80},
+          {"label": "t", "sender": "t", "gas": 150000, "state_gas_used": 90000, "tip": 70},
+          {"label": "fs", "type": 6, "sender": "fs", "tip": 60,
+           "frames": [{"mode": 1, "flags": 3, "exec_gas": 20000}, {"mode": 2, "exec_gas": 23162, "state_gas": 90000}]},
+          {"label": "y", "sender": "y", "gas": 21000, "tip": 50}
+        ], "expect": ["ok", "ok", "ok", "ok", "ok"]},
+        {"build": {"min_tip": 1, "coinbase": "cb", "dimensions": "one"}, "expect": ["x1", "x2", "y"],
+         "expect_gas_used": 221000}
+      ]
+    },
+    {
+      "name": "under two, a type 2 spend reserves its state gas in execution too, and a frame spend does not",
+      "head": {"gas_limit": 300000, "gas_used": 150000},
+      "state": {"x1": {"balance": 100000000}, "x2": {"balance": 100000000}, "t": {"balance": 100000000},
+                "fs": {"balance": 100000000}, "y": {"balance": 100000000}},
+      "steps": [
+        {"add": [
+          {"label": "x1", "sender": "x1", "gas": 100000, "tip": 90},
+          {"label": "x2", "sender": "x2", "gas": 100000, "tip": 80},
+          {"label": "t", "sender": "t", "gas": 150000, "state_gas_used": 90000, "tip": 70},
+          {"label": "fs", "type": 6, "sender": "fs", "tip": 60,
+           "frames": [{"mode": 1, "flags": 3, "exec_gas": 20000}, {"mode": 2, "exec_gas": 23162, "state_gas": 90000}]},
+          {"label": "y", "sender": "y", "gas": 21000, "tip": 50}
+        ], "expect": ["ok", "ok", "ok", "ok", "ok"]},
+        {"build": {"min_tip": 1, "coinbase": "cb", "dimensions": "two"}, "expect": ["x1", "x2", "fs", "y"],
+         "expect_gas_used": 281000},
+        {"expect_pool": {"pending": {"t": ["t"]}}}
+      ]
+    },
+    {
+      "name": "under two, the loop stops when the state dimension has less than 12,000 left, though a frame transaction with no state gas would fit",
+      "head": {"gas_limit": 300000, "gas_used": 150000},
+      "state": {"s1": {"balance": 100000000}, "fz": {"balance": 100000000}},
+      "steps": [
+        {"add": [
+          {"label": "s1", "sender": "s1", "gas": 290000, "state_gas_used": 290000, "tip": 90},
+          {"label": "fz", "type": 6, "sender": "fz", "tip": 80, "frames": [{"mode": 1, "flags": 3, "exec_gas": 5000}]}
+        ], "expect": ["ok", "ok"]},
+        {"build": {"min_tip": 1, "coinbase": "cb", "dimensions": "two"}, "expect": ["s1"],
+         "expect_gas_used": 290000}
+      ]
+    },
+    {
+      "name": "under one, the loop stops below 21,000 left",
+      "head": {"gas_limit": 300000, "gas_used": 150000},
+      "state": {"s1": {"balance": 100000000}, "fz": {"balance": 100000000}},
+      "steps": [
+        {"add": [
+          {"label": "s1", "sender": "s1", "gas": 280000, "tip": 90},
+          {"label": "fz", "type": 6, "sender": "fz", "tip": 80, "frames": [{"mode": 1, "flags": 3, "exec_gas": 3000}]}
+        ], "expect": ["ok", "ok"]},
+        {"build": {"min_tip": 1, "coinbase": "cb", "dimensions": "one"}, "expect": ["s1"],
+         "expect_gas_used": 280000}
+      ]
+    },
+    {
+      "name": "under two, the loop runs down to 12,000 left in each dimension",
+      "head": {"gas_limit": 300000, "gas_used": 150000},
+      "state": {"s1": {"balance": 100000000}, "fz": {"balance": 100000000}},
+      "steps": [
+        {"add": [
+          {"label": "s1", "sender": "s1", "gas": 280000, "tip": 90},
+          {"label": "fz", "type": 6, "sender": "fz", "tip": 80, "frames": [{"mode": 1, "flags": 3, "exec_gas": 3000}]}
+        ], "expect": ["ok", "ok"]},
+        {"build": {"min_tip": 1, "coinbase": "cb", "dimensions": "two"}, "expect": ["s1", "fz"],
+         "expect_gas_used": 299627}
+      ]
+    },
+    {
+      "name": "under one, a block of 300,000 gas raises the next base fee",
+      "head": {"gas_limit": 300000, "gas_used": 150000},
+      "state": {"a": {"balance": 100000000}, "b": {"balance": 100000000}, "c": {"balance": 100000000}},
+      "steps": [
+        {"add": [
+          {"label": "a", "sender": "a", "gas": 150000, "state_gas_used": 150000, "tip": 50},
+          {"label": "b", "sender": "b", "gas": 150000, "tip": 40}
+        ], "expect": ["ok", "ok"]},
+        {"build": {"min_tip": 1, "coinbase": "cb", "dimensions": "one"}, "expect": ["a", "b"],
+         "expect_gas_used": 300000},
+        {"add": [{"label": "c", "sender": "c", "max_fee": 10, "tip": 1}], "expect": ["ok"]},
+        {"build": {"min_tip": 0, "coinbase": "cb", "dimensions": "one"}, "expect": []},
+        {"expect_pool": {"pending": {"c": ["c"]}}}
+      ]
+    },
+    {
+      "name": "under two, the same block uses 150,000 in each dimension and leaves the base fee where it was",
+      "head": {"gas_limit": 300000, "gas_used": 150000},
+      "state": {"a": {"balance": 100000000}, "b": {"balance": 100000000}, "c": {"balance": 100000000}},
+      "steps": [
+        {"add": [
+          {"label": "a", "sender": "a", "gas": 150000, "state_gas_used": 150000, "tip": 50},
+          {"label": "b", "sender": "b", "gas": 150000, "tip": 40}
+        ], "expect": ["ok", "ok"]},
+        {"build": {"min_tip": 1, "coinbase": "cb", "dimensions": "two"}, "expect": ["a", "b"],
+         "expect_gas_used": 150000},
+        {"add": [{"label": "c", "sender": "c", "max_fee": 10, "tip": 1}], "expect": ["ok"]},
+        {"build": {"min_tip": 0, "coinbase": "cb", "dimensions": "two"}, "expect": ["c"]}
+      ]
+    },
+    {
+      "name": "under two, a transaction that reverts counts its gas as execution, its declared state gas not at all",
+      "head": {"gas_limit": 300000, "gas_used": 150000},
+      "state": {"a": {"balance": 100000000}, "b": {"balance": 100000000}},
+      "steps": [
+        {"add": [
+          {"label": "r0", "sender": "a", "to": "round", "gas": 100000, "state_gas_used": 60000, "revert_gas_used": 40000,
+           "tip": 20, "pulls": [["i1", 1000]]},
+          {"label": "b0", "sender": "b", "gas": 50000, "state_gas_used": 50000}
+        ], "expect": ["ok", "ok"]},
+        {"build": {"min_tip": 1, "coinbase": "cb", "dimensions": "two"}, "expect": ["r0", "b0"],
+         "expect_gas_used": 50000}
+      ],
+      "derivation": "i1 holds nothing, so r0 reverts at 40000 gas, all of it execution: X = 40000. b0 adds 50000 to S. gas_used = max(40000, 50000) = 50000. Counting r0's state gas, capped at the 40000 it used, would give S = 90000."
+    }
+  ]
+}

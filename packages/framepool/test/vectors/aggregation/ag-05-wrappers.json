@@ -1,7 +1,7 @@
 {
   "clause": "AG-5",
   "document": "05-aggregation.md",
-  "version": 2,
+  "version": 3,
   "also": ["AG-6"],
   "operation": "pool",
   "distinguishes": "The checks on a wrapper, in their order: its mode and proof count, hashes a mode 0 wrapper cannot resolve, its deps against its transactions or its STARK's public input, the limits, then the proofs. Whether the limits bind a mode 1 wrapper is cap_aggregates, an Interpretation (decision record 0012).",

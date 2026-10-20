@@ -1,7 +1,7 @@
 {
   "clause": "LU-7",
   "document": "06-lucid.md",
-  "version": 1,
+  "version": 2,
   "operation": "pool",
   "distinguishes": "The greedy selection in commitment order: max_preceding counts the commitments already selected, a candidate that does not fit is passed over and the scan goes on, and the count, the ToB segment, the minimum tip and the base fee each bind (an Interpretation, decision record 0014).",
   "cases": [

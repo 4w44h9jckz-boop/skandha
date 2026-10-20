@@ -1,7 +1,7 @@
 {
   "clause": "LU-11",
   "document": "06-lucid.md",
-  "version": 1,
+  "version": 2,
   "also": ["MD-11"],
   "operation": "pool",
   "distinguishes": "What a new head drops from the sealed pool: a used nonce, a balance below the cost, a fee cap below the new pending base fee, a gas limit above the new ToB segment, and under every-head what the selection passes over; and that the sender is released.",

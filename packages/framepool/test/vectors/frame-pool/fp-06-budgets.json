@@ -1,7 +1,7 @@
 {
   "clause": "FP-6",
   "document": "02-frame-pool.md",
-  "version": 5,
+  "version": 6,
   "operation": "pool",
   "distinguishes": "MAX_VERIFY_GAS counts the prefix's execution limits plus signature verification, to the gas, and the two profiles differ exactly where the testnet was measured to differ.",
   "cases": [

@@ -1,7 +1,7 @@
 {
   "clause": "FP-3",
   "document": "02-frame-pool.md",
-  "version": 5,
+  "version": 6,
   "also": ["FP-2"],
   "operation": "pool",
   "distinguishes": "The statically checkable constraints of EIP-8141 and the fee and gas checks that follow them, each in isolation.",

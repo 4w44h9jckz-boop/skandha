@@ -1,0 +1,463 @@
+{
+ "clause": "CG-5",
+ "document": "10-claim-gated-admission.md",
+ "version": 2,
+ "also": [
+  "CG-3",
+  "CG-6",
+  "FP-2"
+ ],
+ "operation": "pool",
+ "distinguishes": "A node verifies at most one proof under each slot and claim, valid or not, so a second wrapper under the same claim is refused before its proof and a replacement needs a fresh claim; a transaction the pool holds is ErrAlreadyKnown first, and a transaction in an aggregate is not checked against the record.",
+ "cases": [
+  {
+   "name": "after a junk proof the claim is used",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1"
+        }
+       }
+      ],
+      "proofs": [
+       false
+      ]
+     },
+     "expect": "ErrWrapperProof"
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1"
+        }
+       }
+      ]
+     },
+     "expect": "ErrClaimUsed"
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    }
+   ],
+   "config": {
+    "frame": {
+     "claim_memory": "none"
+    }
+   }
+  },
+  {
+   "name": "a replacement under the same claim, then under a fresh one",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A1",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1"
+        },
+        "max_fee": 110,
+        "tip": 11
+       }
+      ]
+     },
+     "expect": "ErrClaimUsed"
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A2",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t2"
+        },
+        "max_fee": 121,
+        "tip": 13
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A2"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "the pool holds the transaction",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1"
+        }
+       }
+      ]
+     },
+     "expect": "ErrAlreadyKnown"
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "an aggregate's transaction is not checked against it",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1"
+        }
+       }
+      ],
+      "proofs": [
+       false
+      ]
+     },
+     "expect": "ErrWrapperProof"
+    },
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A"
+       ]
+      }
+     }
+    }
+   ],
+   "config": {
+    "frame": {
+     "claim_memory": "none"
+    }
+   }
+  }
+ ]
+}

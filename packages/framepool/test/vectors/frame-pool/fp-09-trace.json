@@ -1,7 +1,7 @@
 {
   "clause": "FP-9",
   "document": "02-frame-pool.md",
-  "version": 5,
+  "version": 6,
   "operation": "pool",
   "distinguishes": "The trace rules as observations: which opcodes are banned and where the deploy frame is exempt, that the only readable storage is the sender's, which call targets are allowed, and which frames are exempt because the protocol defines them.",
   "cases": [

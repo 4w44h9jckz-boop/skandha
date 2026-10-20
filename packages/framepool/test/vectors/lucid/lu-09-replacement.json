@@ -1,7 +1,7 @@
 {
   "clause": "LU-9",
   "document": "06-lucid.md",
-  "version": 1,
+  "version": 2,
   "operation": "pool",
   "distinguishes": "Replacement by NP-11's bump on the fee cap and the tip, and a floored, non-strict bump on max_tob_fee (an Interpretation, decision record 0014), before the policy and outside the capacity rule.",
   "cases": [

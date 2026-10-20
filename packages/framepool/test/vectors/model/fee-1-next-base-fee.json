@@ -1,7 +1,7 @@
 {
   "clause": "FEE-1",
   "document": "00-model.md",
-  "version": 5,
+  "version": 9,
   "operation": "next_base_fee",
   "distinguishes": "Rounding and the minimum step of the EIP-1559 update: integer division happens twice, an increase is at least 1 wei, a decrease can be 0, and the target is the floor of half the gas limit.",
   "cases": [

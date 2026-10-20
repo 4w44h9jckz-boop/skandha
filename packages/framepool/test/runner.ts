@@ -25,8 +25,15 @@ import {
   Signature,
   State,
   Tx,
+  Surface,
+  SURFACE_PROFILES,
+  TxError,
   Write,
+  addressForm,
   builderOrder,
+  decode,
+  replay,
+  verdict,
   floorDataGas,
   frame,
   intrinsicGas,
@@ -314,7 +321,7 @@ function makeFrame(d: Record<string, Json>): Frame {
     ),
     calls: d.calls,
     installsCode: d.installs_code,
-    deadline: opt("deadline", num),
+    deadline: opt("deadline", big),
     deps: opt("deps", makeDeps),
     roots: opt("roots", (x: Json[]) =>
       x.map(([s, slot, root]): RootReference => [s, num(slot), root])
@@ -336,6 +343,8 @@ const FRAME_TX_FIELDS = [
   "gas_used",
   "label",
   "root_writes",
+  "zero_bytes",
+  "verdict",
 ];
 
 function makeFrameTx(d: Record<string, Json>): FrameTx {
@@ -357,6 +366,8 @@ function makeFrameTx(d: Record<string, Json>): FrameTx {
     gasUsed: d.gas_used === undefined ? undefined : big(d.gas_used),
     label: d.label,
     rootWrites: d.root_writes,
+    zeroBytes: d.zero_bytes === undefined ? undefined : num(d.zero_bytes),
+    verdict: d.verdict,
   });
 }
 
@@ -449,11 +460,20 @@ const STEP_NEEDS: Readonly<Record<string, string>> = {
   expect_selection: "the sealed pool (06-lucid.md)",
 };
 
+/** Profiles of emem's specification this package does not have, with where each is specified. */
+const PROFILE_NEEDS: Readonly<Record<string, string>> = {
+  "claim-gated": "claim-gated admission (10-claim-gated-admission.md)",
+};
+
 /** What this package lacks to play `c`, as a sorted list; empty when it can play it. */
 export function needs(operation: string, c: Json): string[] {
   const out = new Set<string>();
   if (operation === "ticket_fee") out.add("the sealed pool (06-lucid.md)");
-  if (operation !== "pool") return [...out];
+  if (operation !== "pool" && operation !== "surface" && operation !== "replay")
+    return [...out];
+  if (c.profile !== undefined && !PROFILES.has(c.profile))
+    out.add(PROFILE_NEEDS[c.profile] ?? `the ${c.profile} profile`);
+  if (operation !== "pool") return [...out].sort();
   if (c.sealed !== undefined && c.sealed !== "off")
     out.add("the sealed pool (06-lucid.md)");
   if (c.focil !== undefined && c.focil !== "off")
@@ -560,7 +580,16 @@ function runPool(c: Json): void {
       head = makeHead(headD);
       state = mergeState(state, step.reset.state);
       writeRoots(state, cfg, step.reset.roots);
-      pool.reset(head, state, now);
+      const byLabel = new Map(
+        [...pool.content().values()].flat().map((tx) => [label(tx), tx.hash])
+      );
+      const verdicts = new Map<string, string>(
+        Object.entries(step.reset.verdicts ?? {}).map(([l, v]) => [
+          byLabel.get(l) as string,
+          v as string,
+        ])
+      ); // MD-8
+      pool.reset(head, state, now, verdicts);
     } else if ("tick" in step) {
       now = step.tick;
       pool.tick(now);
@@ -627,11 +656,204 @@ function runPool(c: Json): void {
   });
 }
 
+/** Every key `want` names must match; a null expects the field absent. */
+function partial(want: Json, got: Json, where: string): void {
+  if (want !== null && typeof want === "object" && !Array.isArray(want)) {
+    if (got === null || typeof got !== "object")
+      throw new Mismatch(`${where} expected an object, got ${String(got)}`);
+    for (const [k, v] of Object.entries(want))
+      partial(v, got[k], `${where}.${k}`);
+  } else if (
+    Array.isArray(want) &&
+    want.length > 0 &&
+    typeof want[0] === "object"
+  ) {
+    if (!Array.isArray(got) || got.length !== want.length)
+      throw new Mismatch(`${where} expected ${want.length} entries`);
+    want.forEach((w, i) => partial(w, got[i], `${where}[${i}]`));
+  } else same(want, got ?? null, where);
+}
+
+/** SF-3's model transaction, in the vectors' names. */
+function modelJson(tx: FrameTx): Json {
+  return {
+    sender: tx.sender,
+    nonce_keys: [...tx.nonceKeys],
+    nonce_seq: tx.nonceSeq,
+    tip: tx.tip,
+    max_fee: tx.maxFee,
+    size: tx.size,
+    zero_bytes: tx.zeroBytes,
+    frames: tx.frames.map((f) => ({
+      mode: f.mode,
+      flags: f.flags,
+      target: f.target,
+      exec_gas: f.execGas,
+      state_gas: f.stateGas,
+      value: f.value,
+      data_size: f.dataSize,
+      deadline: f.deadline,
+    })),
+    signatures: tx.signatures.map((s) => ({
+      scheme: s.scheme,
+      signer: s.signer,
+      canonical_msg: s.canonicalMsg,
+      valid: s.valid,
+      length: s.length,
+    })),
+  };
+}
+
+const answerOf = (
+  a: Json
+): { valid: boolean; violation?: string } | undefined =>
+  a === undefined ? undefined : { valid: a.valid, violation: a.violation };
+
+/** emem `docs/spec/11-surface.md`: one node's surface over the pool of `runPool`. */
+function runSurface(c: Json): void {
+  const name = c.profile ?? EIP_8141.name;
+  const profile = PROFILES.get(name);
+  const base = SURFACE_PROFILES.get(name);
+  if (profile === undefined || base === undefined)
+    throw new Error(`unknown profile ${name}`);
+  const cfg = addressForm(frameConfig(profile, c.config?.frame ?? {}));
+  const sc = c.config?.surface ?? {};
+  const scfg = {
+    ...base,
+    ...(sc.envelope !== undefined ? { envelope: sc.envelope } : {}),
+    ...(sc.chain_id !== undefined ? { chainId: big(sc.chain_id) } : {}),
+    ...(sc.max_tx_size !== undefined ? { maxTxSize: num(sc.max_tx_size) } : {}),
+    ...(sc.relay !== undefined ? { relay: sc.relay } : {}),
+    ...(sc.handoff !== undefined ? { handoff: sc.handoff } : {}),
+  };
+  const headD = { ...DEFAULT_HEAD, ...(c.head ?? {}) };
+  let state = mergeState(null, c.state);
+  const pool = new FramePool(makeHead(headD), state, cfg, new Reserver());
+  const node = new Surface(pool, scfg, c.peers ?? []);
+  const alias = new Map<string, string>();
+  const names = (hashes: string[]): string[] =>
+    hashes.map((h) => [...alias].find(([, x]) => x === h)?.[0] ?? h);
+  let now = 0;
+  c.steps.forEach((step: Json, n: number) => {
+    const where = `step ${n}:`;
+    now = step.now ?? now;
+    if ("decode" in step) {
+      let got: Json;
+      try {
+        const tx = decode(Buffer.from(step.decode.slice(2), "hex"), cfg, scfg);
+        got = {
+          result: "ok",
+          hash: tx.label,
+          tx: modelJson(tx),
+          gas: { max_gas: tx.maxGas, max_cost: tx.maxCost },
+        };
+      } catch (err) {
+        if (!(err instanceof TxError)) throw err;
+        got = { result: err.code };
+      }
+      partial(step.expect, got, `${where} decode`);
+    } else if ("verdict" in step) {
+      same(
+        step.expect,
+        verdict(answerOf(step.verdict) as { valid: boolean }),
+        `${where} verdict`
+      );
+    } else if ("rpc" in step || "peer" in step) {
+      let got: Json;
+      try {
+        got =
+          "rpc" in step
+            ? node.rpc(step.rpc, answerOf(step.client), now)
+            : node.peer(step.peer, step.from, answerOf(step.client), now);
+      } catch (err) {
+        throw new Mismatch(
+          `${where} ${err instanceof Error ? err.message : err}`
+        );
+      }
+      if ("as" in step) {
+        const raw = Buffer.from((step.rpc ?? step.peer).slice(2), "hex");
+        alias.set(
+          step.as,
+          (got.hash as string) ?? decode(raw, cfg, scfg).label
+        );
+      }
+      partial(step.expect, got, where);
+    } else if ("head" in step) {
+      Object.assign(headD, step.head);
+      state = mergeState(state, step.state);
+      const answers = new Map(
+        Object.entries(step.client ?? {}).map(([k, v]) => [
+          alias.get(k) ?? k,
+          answerOf(v) as { valid: boolean },
+        ])
+      );
+      let asked: string[];
+      try {
+        asked = node.head(makeHead(headD), state, answers, now);
+      } catch (err) {
+        throw new Mismatch(
+          `${where} ${err instanceof Error ? err.message : err}`
+        );
+      }
+      if ("expect_asked" in step)
+        same(step.expect_asked, names(asked), `${where} asked`);
+      if ("expect_resimulated" in step)
+        same(
+          step.expect_resimulated,
+          names(pool.resimulated.map((tx) => tx.label)),
+          `${where} resimulated`
+        );
+      if ("expect_pending" in step)
+        same(step.expect_pending, names(node.pending()), `${where} pending`);
+    } else {
+      throw new Error(`${where} unknown step ${Object.keys(step).sort()}`);
+    }
+  });
+}
+
+/** emem `docs/spec/12-replay.md`: one fixture under one profile. */
+function runReplay(c: Json): void {
+  const name = c.profile ?? EIP_8141.name;
+  const profile = PROFILES.get(name);
+  const base = SURFACE_PROFILES.get(name);
+  if (profile === undefined || base === undefined)
+    throw new Error(`unknown profile ${name}`);
+  const cfg = addressForm(frameConfig(profile, c.config?.frame ?? {}));
+  const sc = c.config?.surface ?? {};
+  const scfg = {
+    ...base,
+    ...(sc.envelope !== undefined ? { envelope: sc.envelope } : {}),
+    ...(sc.chain_id !== undefined ? { chainId: big(sc.chain_id) } : {}),
+  };
+  const f = c.fixture;
+  const parent =
+    f.parent === null
+      ? null
+      : {
+          number: num(f.parent.number),
+          timestamp: num(f.parent.timestamp),
+          gasLimit: big(f.parent.gas_limit),
+          gasUsed: big(f.parent.gas_used),
+          baseFee: big(f.parent.base_fee),
+        };
+  const got = replay(
+    Buffer.from(f.raw.slice(2), "hex"),
+    f.hash,
+    f.payer,
+    parent,
+    cfg,
+    scfg
+  );
+  partial(c.expect, got, "replay");
+}
+
 export const OPERATIONS: Readonly<Record<string, (c: Json) => void>> = {
   next_base_fee: runNextBaseFee,
   intrinsic_gas: runIntrinsicGas,
   frame_gas: runFrameGas,
   pool: runPool,
+  surface: runSurface,
+  replay: runReplay,
 };
 
 export interface Outcome {

@@ -1,7 +1,7 @@
 {
   "clause": "AG-6",
   "document": "05-aggregation.md",
-  "version": 2,
+  "version": 3,
   "also": ["AG-5", "FP-2"],
   "operation": "pool",
   "distinguishes": "A transaction with dependencies is admitted only once a wrapper that passes AG-5 has proven them, however it arrives; the check sits after FP-6 and before FP-7; and a triple stays proven when the pool refuses or drops the transaction that brought it, which is an Interpretation (decision record 0012).",

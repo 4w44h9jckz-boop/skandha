@@ -25,7 +25,8 @@ import { Reserver } from "./reserver.js";
 import { FrameTx, dependencyId, replaces } from "./tx.js";
 
 export interface Entry {
-  readonly tx: FrameTx;
+  tx: FrameTx; // replaced only by a newer verdict (MD-8), which leaves its hash
+
   readonly seq: number;
   readonly prefix: Prefix;
   sim: Simulation;
@@ -35,7 +36,9 @@ export interface Entry {
   readonly cls: ReadonlySet<string>; // MA-14, fixed at admission
 }
 
-type EvictKey = [number, bigint, number] | [bigint, number, number];
+type EvictKey =
+  | [bigint | number, bigint, number]
+  | [bigint, bigint | number, number]; // no deadline is Infinity
 
 function compareKeys(a: EvictKey, b: EvictKey): number {
   for (let i = 0; i < a.length; i++) {
@@ -107,15 +110,33 @@ export class FramePool {
    * an address the new state may have changed can fail step 1, 3 or 4, so
    * only those are looked at, in the order received.
    */
-  reset(head: Head, state: State, now = 0): void {
+  reset(
+    head: Head,
+    state: State,
+    now = 0,
+    verdicts: ReadonlyMap<string, string> = new Map()
+  ): void {
     this.expire(now);
     const touched = state.changedSince(this.state);
     this.head = head;
     this.state = state;
     this.resimulated = [];
     const cfg = this.config;
+    // MD-8: a verdict given for a pending transaction; one that differs from the recorded one is a changed dependency
+    const given = new Map([...verdicts].filter(([h]) => this.entries.has(h)));
+    const renewed = new Set(
+      [...given]
+        .filter(([h, v]) => {
+          const recorded = (this.entries.get(h) as Entry).sim.verdict;
+          return recorded !== undefined && recorded !== null && recorded !== v;
+        })
+        .map(([h]) => h)
+    );
     const affected = this.inOrder(
-      new Set([...touched].flatMap((a) => [...(this.readers.get(a) ?? [])]))
+      new Set([
+        ...[...touched].flatMap((a) => [...(this.readers.get(a) ?? [])]),
+        ...renewed,
+      ])
     );
     for (const h of affected) {
       const tx = (this.entries.get(h) as Entry).tx;
@@ -138,7 +159,7 @@ export class FramePool {
     for (const [h, e] of [...this.entries]) {
       if (
         e.sim.deadline !== null &&
-        e.sim.deadline < head.timestamp + cfg.expiryMargin
+        e.sim.deadline < BigInt(head.timestamp + cfg.expiryMargin)
       )
         this.remove(h, "expired");
     }
@@ -164,7 +185,11 @@ export class FramePool {
       const changed = [...e.sim.deps.entries()]
         .filter(([k, v]) => value(k) !== v)
         .map(([k]) => k);
-      if (changed.length === 0) continue;
+      if (given.has(h) && e.tx.verdict !== null)
+        e.tx = e.tx.withVerdict(given.get(h) as string); // the newest verdict is the one any re-run uses
+      const renew = renewed.has(h); // FP-15 step 3: a different verdict re-runs it, and is not a balance
+      if (!renew && changed.length === 0) continue;
+      if (!renew && this.reuse(e, changed, state)) continue;
       if (this.reuse(e, changed, state)) continue;
       if (this.matcha && !this.bases.has(h)) {
         // MA-9
@@ -310,6 +335,25 @@ export class FramePool {
         hs.map((h) => (this.entries.get(h) as Entry).tx),
       ])
     );
+  }
+
+  /**
+   * SF-4: FP-2 to FP-7, the checks a node runs before it asks a client about
+   * the prefix. Throws the first failure and changes nothing.
+   */
+  beforePrefix(tx: FrameTx): void {
+    if (this.entries.has(tx.hash)) throw new TxError(E.ErrAlreadyKnown); // FP-2
+    const prefix = checkStatic(tx, this.head, this.config); // FP-3 to FP-6
+    if (expiring(tx, this.config))
+      checkExpiring(
+        tx,
+        prefix,
+        this.state,
+        this.config,
+        this.head.timestamp + this.config.expiryMargin
+      );
+    // EN-4 in place of FP-7
+    else checkNonce(tx, this.state); // FP-7
   }
 
   status(txHash: string): string {
@@ -590,7 +634,7 @@ export class FramePool {
   ): void {
     const pendingFee = headNextBaseFee(this.head);
     if (tx.maxFee < pendingFee) throw new TxError(E.ErrFeeCapTooLow);
-    if (sim.deadline !== null && sim.deadline <= this.head.timestamp)
+    if (sim.deadline !== null && sim.deadline <= BigInt(this.head.timestamp))
       throw new TxError(E.ErrFrameExpired);
     if ((this.widths.get(tx.sender) ?? 0n) < txCharge)
       throw new TxError(E.ErrFrameInsufficientWidth);
@@ -618,7 +662,7 @@ export class FramePool {
 
   /** FP-14: the smallest key is the victim. The latest received has the smallest `-seq`. */
   private evictKey(
-    deadline: number | null,
+    deadline: bigint | null,
     tx: FrameTx,
     seq: number,
     baseFee: bigint
@@ -638,7 +682,7 @@ export class FramePool {
   private victim(
     tx: FrameTx,
     seq: number,
-    deadline: number | null
+    deadline: bigint | null
   ): string | null {
     const baseFee = headNextBaseFee(this.head);
     let best: [EvictKey, string] | null = null;

@@ -1,7 +1,7 @@
 {
   "clause": "AG-7",
   "document": "05-aggregation.md",
-  "version": 2,
+  "version": 3,
   "also": ["AG-5"],
   "operation": "pool",
   "distinguishes": "What a node's aggregate holds and in what order: its previous aggregate, then received aggregates by how many transactions they add, then the rest by effective tip, skipping what breaks a limit when cap_aggregates is true; transactions already sent go as hashes, and only what the node still holds is listed. Reading the EIP's proving-time order as the order that fills the limits is an Interpretation (decision record 0012).",

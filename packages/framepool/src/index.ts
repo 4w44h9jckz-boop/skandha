@@ -8,5 +8,8 @@ export * from "./pool.js";
 export * from "./prefix.js";
 export * as recentroots from "./recentroots.js";
 export * from "./reserver.js";
+export * from "./surface.js";
+export * from "./replay.js";
+export { keccak256 } from "./keccak.js";
 export * from "./tx.js";
 export * from "./view.js";

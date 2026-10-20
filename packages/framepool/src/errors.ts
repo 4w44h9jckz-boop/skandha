@@ -9,6 +9,7 @@ export const OK = "ok";
 export const ErrAlreadyKnown = "ErrAlreadyKnown";
 export const ErrTxTypeNotSupported = "ErrTxTypeNotSupported";
 export const ErrOversizedData = "ErrOversizedData";
+export const ErrInvalidChainId = "ErrInvalidChainId";
 export const ErrMaxInitCodeSizeExceeded = "ErrMaxInitCodeSizeExceeded";
 export const ErrGasLimitTooHigh = "ErrGasLimitTooHigh";
 export const ErrNegativeValue = "ErrNegativeValue";
@@ -82,6 +83,11 @@ export const ErrFrameExpiryTooFar = "ErrFrameExpiryTooFar";
 export const ErrSTMalformed = "ErrSTMalformed";
 export const ErrSTExceedsToB = "ErrSTExceedsToB";
 export const ErrSTNotIncludable = "ErrSTNotIncludable";
+
+// This repository's, for the surface (`docs/spec/11-surface.md`)
+export const ErrFrameDecode = "ErrFrameDecode";
+export const ErrFrameBlobs = "ErrFrameBlobs";
+export const ErrFrameClientRefused = "ErrFrameClientRefused";
 
 /** A rejection. The pool throws it internally and returns its code from `add`. */
 export class TxError extends Error {

@@ -1,7 +1,7 @@
 {
   "clause": "FP-14",
   "document": "02-frame-pool.md",
-  "version": 5,
+  "version": 6,
   "operation": "pool",
   "distinguishes": "Eviction order in a full frame pool: nearest expiry before lowest tip, so an expiring transaction loses to a cheaper one without a deadline, and a newcomer that would be the victim is refused; ties go against the latest received; under evict_first tip the lowest effective tip goes first and a deadline only breaks ties.",
   "cases": [

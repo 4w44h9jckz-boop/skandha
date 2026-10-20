@@ -1,7 +1,7 @@
 {
   "clause": "LU-3",
   "document": "06-lucid.md",
-  "version": 1,
+  "version": 2,
   "operation": "ticket_fee",
   "distinguishes": "The order in which a ticket's fees come out of max_fee times gas_limit: the base fee and the key fee, then the priority fee, then the ToB fee, each capped; and whether the ticket can pay at all.",
   "cases": [

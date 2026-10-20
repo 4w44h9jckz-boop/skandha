@@ -1,0 +1,244 @@
+{
+ "clause": "SF-5",
+ "also": [
+  "SF-4",
+  "SF-6"
+ ],
+ "document": "11-surface.md",
+ "version": 1,
+ "operation": "surface",
+ "distinguishes": "eth_sendRawTransaction answers the chain's hash for what the pool admits and relays it, answers a refusal as an error carrying its code and relays nothing, and asks the client only about a transaction that SF-2 and FP-2 to FP-7 let through.",
+ "cases": [
+  {
+   "name": "an admitted transaction answers its hash and goes to every peer; sent again it is known",
+   "profile": "hegota-testnet",
+   "state": {
+    "0xa6b01af7512a08b1f0a7603765b21a53a7d1d7db": {
+     "nonce": 9,
+     "balance": 1000000000000000000
+    }
+   },
+   "peers": [
+    "p1",
+    "p2"
+   ],
+   "steps": [
+    {
+     "rpc": "0x06f8cb821fcdc1800994a6b01af7512a08b1f0a7603765b21a53a7d1d7dbf857e60180940000000000000000000000000000000000008141c4821388808088ffffffffffffffffca010380c4824e20808080e4028094a93cee06b1e4ffacdf920bd500cb301a39ddeb74c482753080865af3107a400080f848f846018080b8410134798f54e7f1e268ade7d1aba5ab5a404867647066b65e404e102dc49ad4ecd93b567f7dfd64b157b47fe1a48f5a57151efb6d4df43c6972d8017f41b3dd16becb843b9aca00843b9aca0e80c0",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok",
+      "hash": "0x045fb58b1c52183b3869d764ac5deebf697dd835d9cacfe2ef54b8283a24f723",
+      "asked_client": true,
+      "relay_to": [
+       "p1",
+       "p2"
+      ]
+     }
+    },
+    {
+     "rpc": "0x06f8cb821fcdc1800994a6b01af7512a08b1f0a7603765b21a53a7d1d7dbf857e60180940000000000000000000000000000000000008141c4821388808088ffffffffffffffffca010380c4824e20808080e4028094a93cee06b1e4ffacdf920bd500cb301a39ddeb74c482753080865af3107a400080f848f846018080b8410134798f54e7f1e268ade7d1aba5ab5a404867647066b65e404e102dc49ad4ecd93b567f7dfd64b157b47fe1a48f5a57151efb6d4df43c6972d8017f41b3dd16becb843b9aca00843b9aca0e80c0",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ErrAlreadyKnown",
+      "error_code": -32000,
+      "asked_client": false,
+      "relay_to": []
+     }
+    }
+   ],
+   "derivation": "The transaction mined as 0x045fb58b1c52183b3869d764ac5deebf697dd835d9cacfe2ef54b8283a24f723 passes FP-2 to FP-7 with its sender at sequence 9, the client answers valid, FP-8's payment check passes against 10^18, so add answers ok and SF-5 returns keccak256 of the bytes. The same bytes again are FP-2's duplicate, refused before the client is asked."
+  },
+  {
+   "name": "a refusal at FP-7 never reaches the client",
+   "profile": "hegota-testnet",
+   "state": {
+    "0xa6b01af7512a08b1f0a7603765b21a53a7d1d7db": {
+     "nonce": 10,
+     "balance": 1000000000000000000
+    }
+   },
+   "peers": [
+    "p1"
+   ],
+   "steps": [
+    {
+     "rpc": "0x06f8cb821fcdc1800994a6b01af7512a08b1f0a7603765b21a53a7d1d7dbf857e60180940000000000000000000000000000000000008141c4821388808088ffffffffffffffffca010380c4824e20808080e4028094a93cee06b1e4ffacdf920bd500cb301a39ddeb74c482753080865af3107a400080f848f846018080b8410134798f54e7f1e268ade7d1aba5ab5a404867647066b65e404e102dc49ad4ecd93b567f7dfd64b157b47fe1a48f5a57151efb6d4df43c6972d8017f41b3dd16becb843b9aca00843b9aca0e80c0",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ErrNonceTooLow",
+      "error_code": -32000,
+      "asked_client": false,
+      "relay_to": []
+     }
+    }
+   ],
+   "derivation": "The sender's sequence is 10, above the transaction's 9 (FP-7); SF-4 does not ask about a transaction FP-2 to FP-7 refuse."
+  },
+  {
+   "name": "the client's refusal is the answer",
+   "profile": "hegota-testnet",
+   "state": {
+    "0xa6b01af7512a08b1f0a7603765b21a53a7d1d7db": {
+     "nonce": 9,
+     "balance": 1000000000000000000
+    }
+   },
+   "peers": [
+    "p1"
+   ],
+   "steps": [
+    {
+     "rpc": "0x06f8cb821fcdc1800994a6b01af7512a08b1f0a7603765b21a53a7d1d7dbf857e60180940000000000000000000000000000000000008141c4821388808088ffffffffffffffffca010380c4824e20808080e4028094a93cee06b1e4ffacdf920bd500cb301a39ddeb74c482753080865af3107a400080f848f846018080b8410134798f54e7f1e268ade7d1aba5ab5a404867647066b65e404e102dc49ad4ecd93b567f7dfd64b157b47fe1a48f5a57151efb6d4df43c6972d8017f41b3dd16becb843b9aca00843b9aca0e80c0",
+     "client": {
+      "valid": false,
+      "violation": "StorageReadNonSender"
+     },
+     "expect": {
+      "result": "ErrFrameStorageReadNonSender",
+      "error_code": -32000,
+      "asked_client": true,
+      "relay_to": []
+     }
+    }
+   ],
+   "derivation": "FP-2 to FP-7 pass, so the client is asked; its answer maps to the verdict (SF-4), which FP-8 returns."
+  },
+  {
+   "name": "an ok verdict, and a payer that cannot pay",
+   "profile": "hegota-testnet",
+   "state": {
+    "0xa6b01af7512a08b1f0a7603765b21a53a7d1d7db": {
+     "nonce": 9,
+     "balance": 1
+    }
+   },
+   "peers": [
+    "p1"
+   ],
+   "steps": [
+    {
+     "rpc": "0x06f8cb821fcdc1800994a6b01af7512a08b1f0a7603765b21a53a7d1d7dbf857e60180940000000000000000000000000000000000008141c4821388808088ffffffffffffffffca010380c4824e20808080e4028094a93cee06b1e4ffacdf920bd500cb301a39ddeb74c482753080865af3107a400080f848f846018080b8410134798f54e7f1e268ade7d1aba5ab5a404867647066b65e404e102dc49ad4ecd93b567f7dfd64b157b47fe1a48f5a57151efb6d4df43c6972d8017f41b3dd16becb843b9aca00843b9aca0e80c0",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ErrInsufficientFunds",
+      "error_code": -32000,
+      "asked_client": true,
+      "relay_to": []
+     }
+    }
+   ],
+   "derivation": "The payer is the sender (self_verify); 1 wei is below the max_cost 78441001098174 of sf-03."
+  },
+  {
+   "name": "a malformed transaction is refused with its code before any state is read",
+   "profile": "eip-8141",
+   "state": {
+    "0x000000000000000000000000000000000000abcd": {
+     "nonce": 7,
+     "balance": 10000000000000000
+    }
+   },
+   "peers": [
+    "p1"
+   ],
+   "steps": [
+    {
+     "rpc": "0x06f8b101c18007930000000000000000000000000000000000abcdeccc010380c48252088080821122de0280940000000000000000000000000000000000001234c4829c40808080f85cf85a0194000000000000000000000000000000000000abcd80b8410101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101cc843b9aca008506fc23ac0080c0",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ErrFrameMalformed",
+      "error_code": -32000,
+      "asked_client": false,
+      "relay_to": []
+     }
+    }
+   ],
+   "derivation": "sf-02's 19-byte sender, sent over JSON-RPC."
+  },
+  {
+   "name": "a parameter that is not 0x-prefixed hexadecimal",
+   "profile": "eip-8141",
+   "state": {
+    "0x000000000000000000000000000000000000abcd": {
+     "nonce": 7,
+     "balance": 10000000000000000
+    }
+   },
+   "steps": [
+    {
+     "rpc": "0x06zz",
+     "expect": {
+      "error_code": -32602,
+      "asked_client": false,
+      "relay_to": []
+     }
+    },
+    {
+     "rpc": "06f8b201c1800794000000000000000000000000000000000000abcdeccc010380c48252088080821122de0280940000000000000000000000000000000000001234c4829c40808080f85cf85a0194000000000000000000000000000000000000abcd80b8410101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101cc843b9aca008506fc23ac0080c0",
+     "expect": {
+      "error_code": -32602,
+      "asked_client": false,
+      "relay_to": []
+     }
+    }
+   ],
+   "derivation": "SF-5: an invalid-params error, before SF-2 is reached."
+  },
+  {
+   "name": "the golden vector over JSON-RPC, then a re-priced copy that replaces it",
+   "profile": "eip-8141",
+   "state": {
+    "0x000000000000000000000000000000000000abcd": {
+     "nonce": 7,
+     "balance": 10000000000000000
+    }
+   },
+   "peers": [
+    "p1",
+    "p2"
+   ],
+   "steps": [
+    {
+     "rpc": "0x06f8b201c1800794000000000000000000000000000000000000abcdeccc010380c48252088080821122de0280940000000000000000000000000000000000001234c4829c40808080f85cf85a0194000000000000000000000000000000000000abcd80b8410101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101cc843b9aca008506fc23ac0080c0",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok",
+      "asked_client": true,
+      "relay_to": [
+       "p1",
+       "p2"
+      ]
+     }
+    },
+    {
+     "rpc": "0x06f8b201c1800794000000000000000000000000000000000000abcdeccc010380c48252088080821122de0280940000000000000000000000000000000000001234c4829c40808080f85cf85a0194000000000000000000000000000000000000abcd80b8410101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101cc84773594008509502f900080c0",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok",
+      "asked_client": true,
+      "relay_to": [
+       "p1",
+       "p2"
+      ]
+     }
+    }
+   ],
+   "derivation": "G2 is G with tip 2000000000 and max_fee 40000000000, both at least 10 percent above G's, so FP-12 replaces G, and the replacement is relayed (SF-6)."
+  }
+ ]
+}

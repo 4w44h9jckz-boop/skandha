@@ -31,3 +31,7 @@ jobs:
           bun run lint
           bun run test
           bun run vectors
+
+      - name: The replay reproduces its committed results
+        working-directory: packages/framepool
+        run: bun replay/run.ts replay/fixtures-exp-frames-85ee60d.json | diff - replay/results.md

@@ -1,0 +1,436 @@
+{
+  "clause": "FP-8",
+  "also": [
+    "FP-9",
+    "FP-10",
+    "FP-15",
+    "MD-6",
+    "MD-8"
+  ],
+  "document": "02-frame-pool.md",
+  "version": 6,
+  "operation": "pool",
+  "distinguishes": "A transaction's verdict replaces the evaluation of its prefix frames and nothing else: an implementation that still reads the frames' observations, skips the payment check or the checks before FP-8, ignores a new verdict at a head, or re-runs a transaction whose verdict and dependencies did not change, fails a case here.",
+  "cases": [
+    {
+      "name": "an ok verdict admits what the frames' own observations would refuse",
+      "state": {
+        "alice": {
+          "code": "wallet",
+          "balance": 1000000000
+        }
+      },
+      "steps": [
+        {
+          "add": [
+            {
+              "type": 6,
+              "sender": "alice",
+              "label": "a",
+              "frames": [
+                {
+                  "mode": 1,
+                  "flags": 3,
+                  "exec_gas": 30000
+                },
+                {
+                  "mode": 2,
+                  "exec_gas": 50000
+                }
+              ]
+            }
+          ],
+          "expect": [
+            "ErrFrameMissingApprove"
+          ]
+        },
+        {
+          "add": [
+            {
+              "type": 6,
+              "sender": "alice",
+              "label": "b",
+              "frames": [
+                {
+                  "mode": 1,
+                  "flags": 3,
+                  "exec_gas": 30000
+                },
+                {
+                  "mode": 2,
+                  "exec_gas": 50000
+                }
+              ],
+              "verdict": "ok"
+            }
+          ],
+          "expect": [
+            "ok"
+          ]
+        },
+        {
+          "expect_pool": {
+            "pending": {
+              "alice": [
+                "b"
+              ]
+            }
+          }
+        }
+      ],
+      "derivation": "a carries no verdict and its self_verify frame on non-empty code observes no APPROVE: FP-8 gives ErrFrameMissingApprove. b, otherwise the same, carries ok: the prefix frames pass, alice's 1000000000 covers max_cost 9683800, and FP-11 and FP-12 pass."
+    },
+    {
+      "name": "a refusing verdict is the result, whatever the frames observe",
+      "state": {
+        "alice": {
+          "code": "wallet",
+          "balance": 1000000000
+        }
+      },
+      "steps": [
+        {
+          "add": [
+            {
+              "type": 6,
+              "sender": "alice",
+              "label": "a",
+              "frames": [
+                {
+                  "mode": 1,
+                  "flags": 3,
+                  "exec_gas": 30000,
+                  "approves": 3
+                },
+                {
+                  "mode": 2,
+                  "exec_gas": 50000
+                }
+              ],
+              "verdict": "ErrFrameBannedOpcode"
+            }
+          ],
+          "expect": [
+            "ErrFrameBannedOpcode"
+          ]
+        }
+      ],
+      "derivation": "The frames would approve; the verdict is not ok, so it is the result (FP-8)."
+    },
+    {
+      "name": "after an ok verdict the pool still checks the payer's balance against max_cost",
+      "state": {
+        "alice": {
+          "code": "wallet",
+          "balance": 9683799
+        }
+      },
+      "steps": [
+        {
+          "add": [
+            {
+              "type": 6,
+              "sender": "alice",
+              "label": "a",
+              "frames": [
+                {
+                  "mode": 1,
+                  "flags": 3,
+                  "exec_gas": 30000
+                },
+                {
+                  "mode": 2,
+                  "exec_gas": 50000
+                }
+              ],
+              "verdict": "ok"
+            }
+          ],
+          "expect": [
+            "ErrInsufficientFunds"
+          ]
+        }
+      ],
+      "derivation": "D = 65 + 3 = 68; intrinsic = 12000 + 950 + 2800 + 16*68 = 16838; max_gas = max(16838 + 80000, 15750 + 64*68) = 96838; max_cost = 9683800, one wei above the balance. FP-8's last bullet applies to an ok verdict."
+    },
+    {
+      "name": "the checks before FP-8 run whatever the verdict says",
+      "state": {
+        "alice": {
+          "code": "wallet",
+          "balance": 1000000000
+        }
+      },
+      "steps": [
+        {
+          "add": [
+            {
+              "type": 6,
+              "sender": "alice",
+              "label": "a",
+              "frames": [
+                {
+                  "mode": 1,
+                  "flags": 3,
+                  "exec_gas": 30000
+                },
+                {
+                  "mode": 2,
+                  "exec_gas": 50000
+                }
+              ],
+              "verdict": "ok",
+              "nonce_seq": 1
+            }
+          ],
+          "expect": [
+            "ErrNonceTooHigh"
+          ]
+        }
+      ],
+      "derivation": "FP-7 comes before FP-8: alice's sequence for key 0 is 0, below 1."
+    },
+    {
+      "name": "a different verdict at the new head is a changed dependency and removes the transaction",
+      "state": {
+        "alice": {
+          "code": "wallet",
+          "balance": 1000000000
+        }
+      },
+      "steps": [
+        {
+          "add": [
+            {
+              "type": 6,
+              "sender": "alice",
+              "label": "t",
+              "frames": [
+                {
+                  "mode": 1,
+                  "flags": 3,
+                  "exec_gas": 30000
+                },
+                {
+                  "mode": 2,
+                  "exec_gas": 50000
+                }
+              ],
+              "verdict": "ok"
+            }
+          ],
+          "expect": [
+            "ok"
+          ]
+        },
+        {
+          "reset": {
+            "head": {
+              "number": 1,
+              "timestamp": 1012
+            },
+            "verdicts": {
+              "t": "ErrFramePrefixReverted"
+            }
+          }
+        },
+        {
+          "expect_resimulated": [
+            "t"
+          ]
+        },
+        {
+          "expect_pool": {
+            "pending": {}
+          }
+        }
+      ],
+      "derivation": "No account changed, but the verdict at the new head differs from the one recorded (FP-10, FP-15 step 3): t is re-run with the new verdict, which refuses it."
+    },
+    {
+      "name": "the same verdict and no changed account re-run nothing",
+      "state": {
+        "alice": {
+          "code": "wallet",
+          "balance": 1000000000
+        }
+      },
+      "steps": [
+        {
+          "add": [
+            {
+              "type": 6,
+              "sender": "alice",
+              "label": "t",
+              "frames": [
+                {
+                  "mode": 1,
+                  "flags": 3,
+                  "exec_gas": 30000
+                },
+                {
+                  "mode": 2,
+                  "exec_gas": 50000
+                }
+              ],
+              "verdict": "ok"
+            }
+          ],
+          "expect": [
+            "ok"
+          ]
+        },
+        {
+          "reset": {
+            "head": {
+              "number": 1,
+              "timestamp": 1012
+            },
+            "verdicts": {
+              "t": "ok"
+            }
+          }
+        },
+        {
+          "expect_resimulated": []
+        },
+        {
+          "expect_pool": {
+            "pending": {
+              "alice": [
+                "t"
+              ]
+            }
+          }
+        }
+      ],
+      "derivation": "FP-15 MUST NOT re-simulate a transaction whose dependencies did not change; an equal verdict is not a change."
+    },
+    {
+      "name": "a changed balance re-runs the transaction with the verdict it has",
+      "state": {
+        "alice": {
+          "code": "wallet",
+          "balance": 1000000000
+        }
+      },
+      "steps": [
+        {
+          "add": [
+            {
+              "type": 6,
+              "sender": "alice",
+              "label": "t",
+              "frames": [
+                {
+                  "mode": 1,
+                  "flags": 3,
+                  "exec_gas": 30000
+                },
+                {
+                  "mode": 2,
+                  "exec_gas": 50000
+                }
+              ],
+              "verdict": "ok"
+            }
+          ],
+          "expect": [
+            "ok"
+          ]
+        },
+        {
+          "reset": {
+            "head": {
+              "number": 1,
+              "timestamp": 1012
+            },
+            "state": {
+              "alice": {
+                "balance": 999999999
+              }
+            }
+          }
+        },
+        {
+          "expect_resimulated": [
+            "t"
+          ]
+        },
+        {
+          "expect_pool": {
+            "pending": {
+              "alice": [
+                "t"
+              ]
+            }
+          }
+        }
+      ],
+      "derivation": "alice's balance is a dependency (FP-10); no verdict is given, so the recorded ok is used, and 999999999 still covers 9683800."
+    },
+    {
+      "name": "with a verdict, the sender's storage is not a dependency the pool sees",
+      "state": {
+        "alice": {
+          "code": "wallet",
+          "balance": 1000000000
+        }
+      },
+      "steps": [
+        {
+          "add": [
+            {
+              "type": 6,
+              "sender": "alice",
+              "label": "t",
+              "frames": [
+                {
+                  "mode": 1,
+                  "flags": 3,
+                  "exec_gas": 30000
+                },
+                {
+                  "mode": 2,
+                  "exec_gas": 50000
+                }
+              ],
+              "verdict": "ok"
+            }
+          ],
+          "expect": [
+            "ok"
+          ]
+        },
+        {
+          "reset": {
+            "head": {
+              "number": 1,
+              "timestamp": 1012
+            },
+            "state": {
+              "alice": {
+                "storage": {
+                  "1": 5
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect_resimulated": []
+        },
+        {
+          "expect_pool": {
+            "pending": {
+              "alice": [
+                "t"
+              ]
+            }
+          }
+        }
+      ],
+      "derivation": "FP-10: the slots a prefix read are not known for a transaction with a verdict, so a write to alice's storage changes nothing the pool recorded; a new verdict at the head would (SF-8)."
+    }
+  ]
+}
