@@ -22,18 +22,25 @@ says how to run two such nodes against the Hegota testnet.
 | `00-model.md` | MD-2 to MD-4, MD-6 with `zero_bytes` and `verdict`, MD-7, MD-8 with `reset`'s verdicts, FEE-1 to FEE-4 |
 | `02-frame-pool.md` | FP-2 to FP-16, profiles `eip-8141` and `hegota-testnet`, with the `reuse_balance`, `evict_first`, `expiry_margin` and `static_first` variants, and FP-8 to FP-10 and FP-15 through a client's verdict |
 | `04-matcha.md` | MA-2 to MA-14, profile `matcha` (a proposal) |
-| `05-aggregation.md` | AG-2 to AG-4 and AG-6's admission rule, profile `eip-8288`; not the aggregator (AG-5, AG-7 to AG-9) |
+| `05-aggregation.md` | AG-2 to AG-6, profile `eip-8288`: dependency frames, and receiving a wrapper and admitting its transactions (`src/aggregation.ts`); not building an aggregate (AG-7 to AG-9) |
 | `08-recent-roots.md` | RR-3 to RR-7, profiles `eip-8272` and, since its version 2, `hegota-testnet` |
 | `09-expiring-nonces.md` | EN-2 to EN-6, profile `eip-8266` |
 | `11-surface.md` | SF-1 to SF-9: decoding, the model transaction, the verdict, `eth_sendRawTransaction`, relay, what is taken from peers, head changes and hand-off (`src/surface.ts`, `src/keccak.ts`) |
 | `12-replay.md` | RP-1 to RP-6: a profile's verdict on a transaction a chain mined (`src/replay.ts`, and `replay/` over every fixture) |
 | `07-focil.md` | IL-1 to IL-6 for frame transactions, version 2: an includer's list from the pool (IL-2), Profile 2 candidates (IL-3), the budget fill per list or per payload, profiles `eip-8369` and `ethrex` (IL-4), and, with validity at the end of the payload as a client's verdict, whether a payload satisfies the lists (IL-5, IL-6) (`src/focil.ts`) |
 | `03-block-building.md` | BB-2's order, for frame transactions only |
+| `10-claim-gated-admission.md` | CG-2 to CG-10, profile `claim-gated` (a proposal), version 3: claims checked after FP-6, the checks before a wrapper's proofs, what a node remembers after a proof fails, relays, and a ticket's bytes, its BLS12-381 check and the paymaster frame that carries it (`src/claimticket.ts`) |
 
 It does not have the account-nonce pool of `01-nonce-pool.md`, which belongs
 to an execution client, the sealed pool of `06-lucid.md`, block building, so
-not IL-7's appending, or the claim-gated admission of
-`10-claim-gated-admission.md`.
+not IL-7's appending, or an aggregator's side of `05-aggregation.md`.
+
+A ticket's signature is checked with `@noble/curves`, not with the code the
+ticket vectors were made with, so that they judge a verifier that shares
+nothing with them. `src/claimticket.ts` decodes EIP-2537's encoding itself,
+with its padding rule, and noble checks the range, the curve and the
+subgroup when it makes the points. noble's own decoder of compressed points
+is not used: it reduces a coordinate of $p$ or more rather than refusing it.
 
 The pool is a port of exp-mempool-l2s `ref/python/emem/`, read alongside the clauses,
 and keeps the clause names in its comments. Two shortcuts of the reference

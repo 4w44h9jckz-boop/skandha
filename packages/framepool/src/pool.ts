@@ -22,7 +22,7 @@ import {
   staticPayer,
 } from "./prefix.js";
 import { Reserver } from "./reserver.js";
-import { FrameTx, dependencyId, replaces } from "./tx.js";
+import { FrameTx, claimId, dependencyId, replaces, slotId } from "./tx.js";
 
 export interface Entry {
   tx: FrameTx; // replaced only by a newer verdict (MD-8), which leaves its hash
@@ -80,6 +80,13 @@ export class FramePool {
   private claims = new Map<string, Map<string, number>>(); // MA-14: by sender, how many pending classes hold each element
   private credited: number | null = null; // MA-4: the highest block number credited
   readonly proven = new Set<string>(); // AG-6: the dependency triples this node holds proofs for
+  readonly relayed = new Set<string>(); // CG-7: the triples a relay has passed on unverified, which AG-6 counts as proven
+  // CG-4 to CG-6, under `claims`. CG-2 makes a claim name its transaction's slot, so a claim stands for the
+  // clauses' slot and claim.
+  private refusedSlots = new Map<string, number>(); // CG-4 under `slot`: by slot, the last epoch it is refused in
+  private refusedClaims = new Map<string, number>(); // CG-4 under `claim`: by claim, the same
+  private usedClaims = new Set<string>(); // CG-5: the claims a node has verified a proof under
+  private expiredClaims = new Map<string, number>(); // CG-6: by claim, the last epoch it is refused in
 
   constructor(
     head: Head,
@@ -390,6 +397,68 @@ export class FramePool {
     return this.entries.size;
   }
 
+  // --- claim-gated admission (CG-2 to CG-6) ---------------------------------
+
+  /** CG-1: the epoch of the head. */
+  epoch(): number {
+    return Math.floor(this.head.timestamp / this.config.claimEpoch);
+  }
+
+  /**
+   * CG-3 step 2 for one transaction: FP-2 to FP-10 with CG-2, CG-4 and CG-6,
+   * without AG-6, then CG-5. Throws the first failure and changes nothing but
+   * the work counted.
+   */
+  precheck(tx: FrameTx): void {
+    if (this.entries.has(tx.hash)) throw new TxError(E.ErrAlreadyKnown); // FP-2
+    const prefix = checkStatic(tx, this.head, this.config); // FP-3 to FP-6, AG-2 to AG-4
+    this.checkClaim(tx);
+    this.addWork(tx.sender, admissionGas(tx, prefix));
+    this.simulate(tx, prefix, this.head, this.state); // FP-7 to FP-10
+    if (tx.claim !== null && this.usedClaims.has(claimId(tx.claim)))
+      throw new TxError(E.ErrClaimUsed); // CG-5
+  }
+
+  /**
+   * CG-5, and CG-4 when `failed`: a mode 0 wrapper that passed CG-3 reached
+   * AG-5's step 5, and a proof of a triple `tx` declares did not verify.
+   */
+  proofVerified(tx: FrameTx, failed: boolean): void {
+    const claim = tx.claim;
+    if (claim === null) return;
+    const id = claimId(claim);
+    this.usedClaims.add(id);
+    const memory = this.config.claimMemory;
+    if (failed && memory === "slot")
+      this.refusedSlots.set(
+        tx.slot,
+        Math.max(this.refusedSlots.get(tx.slot) ?? claim.epoch, claim.epoch)
+      );
+    else if (failed && memory === "claim")
+      this.refusedClaims.set(id, claim.epoch);
+  }
+
+  /** CG-2, then CG-4, then CG-6, as the pool runs them after FP-6. */
+  private checkClaim(tx: FrameTx): void {
+    const claim = tx.claim;
+    if (claim === null) {
+      if (tx.dependencies.length > 0) throw new TxError(E.ErrClaimMissing);
+      return;
+    }
+    if (!claim.valid) throw new TxError(E.ErrClaimInvalid);
+    if (slotId(claim.sender, claim.nonceKeys, claim.nonceSeq) !== tx.slot)
+      throw new TxError(E.ErrClaimWrongSlot);
+    const epoch = this.epoch();
+    if (claim.epoch !== epoch) throw new TxError(E.ErrClaimEpoch);
+    const id = claimId(claim);
+    if ((this.refusedSlots.get(tx.slot) ?? -1) >= epoch)
+      throw new TxError(E.ErrSlotRefused);
+    if ((this.refusedClaims.get(id) ?? -1) >= epoch)
+      throw new TxError(E.ErrClaimRefused);
+    if ((this.expiredClaims.get(id) ?? -1) >= epoch)
+      throw new TxError(E.ErrClaimExpired);
+  }
+
   // --- admission ------------------------------------------------------------
 
   private addOne(tx: FrameTx, now: number): string {
@@ -397,11 +466,15 @@ export class FramePool {
       const cfg = this.config;
       if (this.entries.has(tx.hash)) throw new TxError(E.ErrAlreadyKnown); // FP-2
       const prefix = checkStatic(tx, this.head, cfg); // FP-3 to FP-6, AG-2 to AG-4
+      if (cfg.claims) this.checkClaim(tx); // CG-2, CG-4, CG-6
       if (
         cfg.dependencyFrames &&
-        tx.dependencies.some((d) => !this.proven.has(dependencyId(d)))
+        tx.dependencies.some((d) => {
+          const id = dependencyId(d);
+          return !this.proven.has(id) && !this.relayed.has(id);
+        })
       ) {
-        throw new TxError(E.ErrFrameDepsUnproven); // AG-6
+        throw new TxError(E.ErrFrameDepsUnproven); // AG-6, CG-7 step 3
       }
       this.addWork(tx.sender, admissionGas(tx, prefix));
       const oldHash = this.many(tx)
@@ -801,5 +874,13 @@ export class FramePool {
     }
     if (account) this.account(e, -1);
     this.index(e, -1);
+    if (this.config.claims && tx.claim !== null && reason !== "stale_nonce") {
+      // CG-6
+      const id = claimId(tx.claim);
+      this.expiredClaims.set(
+        id,
+        Math.max(this.expiredClaims.get(id) ?? tx.claim.epoch, tx.claim.epoch)
+      );
+    }
   }
 }

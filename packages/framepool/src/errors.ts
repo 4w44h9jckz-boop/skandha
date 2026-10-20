@@ -84,6 +84,18 @@ export const ErrSTMalformed = "ErrSTMalformed";
 export const ErrSTExceedsToB = "ErrSTExceedsToB";
 export const ErrSTNotIncludable = "ErrSTNotIncludable";
 
+// This repository's, for claim-gated admission (`docs/spec/10-claim-gated-admission.md`)
+export const ErrClaimMissing = "ErrClaimMissing";
+export const ErrClaimInvalid = "ErrClaimInvalid";
+export const ErrClaimWrongSlot = "ErrClaimWrongSlot";
+export const ErrClaimEpoch = "ErrClaimEpoch";
+export const ErrProofUnsigned = "ErrProofUnsigned";
+export const ErrSlotRefused = "ErrSlotRefused";
+export const ErrClaimRefused = "ErrClaimRefused";
+export const ErrClaimUsed = "ErrClaimUsed";
+export const ErrClaimExpired = "ErrClaimExpired";
+export const ErrRelayAggregate = "ErrRelayAggregate";
+
 // This repository's, for the surface (`docs/spec/11-surface.md`)
 export const ErrFrameDecode = "ErrFrameDecode";
 export const ErrFrameBlobs = "ErrFrameBlobs";

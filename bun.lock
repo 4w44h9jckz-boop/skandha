@@ -130,6 +130,9 @@
     "packages/framepool": {
       "name": "@skandha/framepool",
       "version": "4.0.2",
+      "dependencies": {
+        "@noble/curves": "1.8.1",
+      },
     },
     "packages/monitoring": {
       "name": "@skandha/monitoring",

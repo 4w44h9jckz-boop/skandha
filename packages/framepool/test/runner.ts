@@ -24,8 +24,12 @@ import {
   Read,
   Reserver,
   RootReference,
+  Claim,
   Signature,
   State,
+  TicketClaim,
+  TicketFrame,
+  Wrapper,
   Tx,
   Surface,
   SURFACE_PROFILES,
@@ -35,6 +39,7 @@ import {
   admitted,
   buildIl,
   builderOrder,
+  carriedTicket,
   decode,
   replay,
   verdict,
@@ -43,8 +48,12 @@ import {
   frame,
   intrinsicGas,
   nextBaseFee,
+  receive,
   recentroots,
   signature,
+  ticketMessage,
+  ticketValid,
+  union,
   withChanges,
 } from "../src/index.js";
 
@@ -350,7 +359,29 @@ const FRAME_TX_FIELDS = [
   "root_writes",
   "zero_bytes",
   "verdict",
+  "claim",
 ];
+
+const CLAIM_FIELDS = [
+  "sender",
+  "nonce_keys",
+  "nonce_seq",
+  "epoch",
+  "valid",
+  "salt",
+];
+
+function makeClaim(d: Record<string, Json>): Claim {
+  only(d, CLAIM_FIELDS, "claim");
+  return {
+    sender: d.sender,
+    nonceKeys: (d.nonce_keys ?? [0]).map(big),
+    nonceSeq: big(d.nonce_seq),
+    epoch: num(d.epoch),
+    valid: d.valid ?? true,
+    salt: d.salt ?? "",
+  };
+}
 
 function makeFrameTx(d: Record<string, Json>): FrameTx {
   only(d, FRAME_TX_FIELDS, "frame transaction");
@@ -373,7 +404,36 @@ function makeFrameTx(d: Record<string, Json>): FrameTx {
     rootWrites: d.root_writes,
     zeroBytes: d.zero_bytes === undefined ? undefined : num(d.zero_bytes),
     verdict: d.verdict,
+    claim: d.claim === undefined ? undefined : makeClaim(d.claim),
   });
+}
+
+/** AG-5; `deps`, `proofs` and `stark` default to an honest wrapper's (`conformance/README.md`). */
+function makeWrapper(d: Json): Wrapper {
+  const entries: (FrameTx | string)[] = [];
+  const txs: FrameTx[] = [];
+  for (const t of d.txs) {
+    const tx = makeFrameTx("hash" in t ? t.hash : t);
+    entries.push("hash" in t ? tx.hash : tx);
+    txs.push(tx);
+  }
+  const deps = d.deps !== undefined ? makeDeps(d.deps) : union(txs);
+  const stark =
+    d.mode === 0
+      ? null
+      : {
+          covers:
+            d.stark?.covers !== undefined ? makeDeps(d.stark.covers) : deps,
+          valid: d.stark?.valid ?? true,
+        };
+  return {
+    txs: entries,
+    mode: d.mode,
+    deps,
+    proofs: d.mode === 0 ? d.proofs ?? deps.map(() => true) : [],
+    stark,
+    signed: d.signed ?? [],
+  };
 }
 
 const TX_FIELDS = [
@@ -474,17 +534,14 @@ function focilConfig(c: Json): FocilConfig {
 // --- what a case needs --------------------------------------------------------------
 
 const STEP_NEEDS: Readonly<Record<string, string>> = {
-  wrapper: "an aggregator (AG-5 to AG-9)",
-  aggregate: "an aggregator (AG-5 to AG-9)",
+  aggregate: "an aggregator (AG-7 to AG-9)",
   build: "block building (03-block-building.md)",
   expect_state: "block building (03-block-building.md)",
   expect_selection: "the sealed pool (06-lucid.md)",
 };
 
 /** Profiles of exp-mempool-l2s's specification this package does not have, with where each is specified. */
-const PROFILE_NEEDS: Readonly<Record<string, string>> = {
-  "claim-gated": "claim-gated admission (10-claim-gated-admission.md)",
-};
+const PROFILE_NEEDS: Readonly<Record<string, string>> = {};
 
 /** What this package lacks to play `c`, as a sorted list; empty when it can play it. */
 export function needs(operation: string, c: Json): string[] {
@@ -591,6 +648,10 @@ function runPool(c: Json): void {
       now = step.now ?? now;
       const got = pool.add(step.add.map(makeFrameTx), now);
       if ("expect" in step) same(step.expect, got, `${where} add`);
+    } else if ("wrapper" in step) {
+      now = step.now ?? now;
+      const got = receive(pool, makeWrapper(step.wrapper), now);
+      if ("expect" in step) same(step.expect, got, `${where} wrapper`);
     } else if ("reset" in step) {
       now = step.now ?? now;
       Object.assign(headD, step.reset.head ?? {});
@@ -924,6 +985,67 @@ function runReplay(c: Json): void {
   partial(c.expect, got, "replay");
 }
 
+/** exp-mempool-l2s `docs/spec/10-claim-gated-admission.md`, CG-8 to CG-10. */
+function runClaimTicket(c: Json): void {
+  const hex = (s: string): Uint8Array => Buffer.from(s.slice(2), "hex");
+  const ticketClaim = (d: Json): TicketClaim => ({
+    chainId: BigInt(d.chain_id),
+    epoch: BigInt(d.epoch ?? "0x0"),
+    sender: hex(d.sender),
+    nonceSeq: BigInt(d.nonce_seq),
+    nonceKeys: d.nonce_keys.map((k: string) => BigInt(k)),
+    salt: hex(d.salt ?? "0x"),
+  });
+  const accepted = new Map<bigint, Set<string>>();
+  const accept = (epoch: string, key: string): void => {
+    const keys = accepted.get(BigInt(epoch)) ?? new Set<string>();
+    keys.add(key.toLowerCase());
+    accepted.set(BigInt(epoch), keys);
+  };
+  if (c.frames !== undefined) {
+    // CG-10
+    const head = BigInt(c.head_epoch);
+    const paymasters = new Map<string, Uint8Array>();
+    for (const p of c.paymasters) {
+      accept(p.epoch, p.key);
+      if (BigInt(p.epoch) === head)
+        paymasters.set(p.address.toLowerCase(), hex(p.key));
+    }
+    const frames: TicketFrame[] = c.frames.map((f: Json) => ({
+      mode: f.mode,
+      target: f.target.toLowerCase(),
+      data: hex(f.data),
+    }));
+    const t = carriedTicket(ticketClaim(c.tx), frames, paymasters, accepted);
+    const got: Json =
+      t === null
+        ? { claim: null }
+        : {
+            claim: {
+              epoch: t.epoch === null ? null : "0x" + t.epoch.toString(16),
+              salt:
+                t.salt === null
+                  ? null
+                  : "0x" + Buffer.from(t.salt).toString("hex"),
+              issuer: "0x" + Buffer.from(t.issuer).toString("hex"),
+            },
+            valid: t.valid,
+          };
+    same(c.expect, got, "claim_ticket");
+    return;
+  }
+  const claim = ticketClaim(c.claim);
+  const m = ticketMessage(claim);
+  const got: Json = {
+    message: m === null ? null : "0x" + Buffer.from(m).toString("hex"),
+  };
+  if (c.issuer !== undefined) {
+    for (const a of c.issuers) for (const k of a.keys) accept(a.epoch, k);
+    got.valid = ticketValid(claim, hex(c.issuer), hex(c.signature), accepted);
+  }
+  same(c.expect, got, "claim_ticket");
+}
+
 export const OPERATIONS: Readonly<Record<string, (c: Json) => void>> = {
   next_base_fee: runNextBaseFee,
   intrinsic_gas: runIntrinsicGas,
@@ -931,6 +1053,7 @@ export const OPERATIONS: Readonly<Record<string, (c: Json) => void>> = {
   pool: runPool,
   surface: runSurface,
   replay: runReplay,
+  claim_ticket: runClaimTicket,
 };
 
 export interface Outcome {

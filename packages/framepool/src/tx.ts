@@ -376,6 +376,32 @@ export interface FrameGas {
   readonly maxGas: bigint;
 }
 
+/** MD-6, CG-2: an admission claim for one slot in one epoch; `valid` is CG-9's verdict on its ticket. */
+export interface Claim {
+  readonly sender: string;
+  readonly nonceKeys: readonly bigint[];
+  readonly nonceSeq: bigint;
+  readonly epoch: number;
+  readonly valid: boolean;
+  readonly salt: string;
+}
+
+/** CG-2: a transaction's or a claim's slot, as one string. */
+export function slotId(
+  sender: string,
+  nonceKeys: readonly bigint[],
+  nonceSeq: bigint
+): string {
+  return `${sender}/${nonceKeys.join(",")}/${nonceSeq}`;
+}
+
+/** CG-2: two claims with equal fields are one claim. */
+export function claimId(c: Claim): string {
+  return `${slotId(c.sender, c.nonceKeys, c.nonceSeq)}/${c.epoch}/${c.valid}/${
+    c.salt
+  }`;
+}
+
 export interface FrameTxInit {
   sender: string;
   frames: readonly Frame[];
@@ -393,6 +419,8 @@ export interface FrameTxInit {
   zeroBytes?: number;
   /** MD-6: a client's answer for the prefix at the pool's head; not part of the identity (MD-7). */
   verdict?: string | null;
+  /** MD-6, CG-2: absent, it leaves the hash as it was. */
+  claim?: Claim | null;
 }
 
 const max = (a: bigint, b: bigint): bigint => (a > b ? a : b);
@@ -415,6 +443,7 @@ export class FrameTx {
   readonly rootWrites: readonly RootWrite[];
   readonly zeroBytes: number;
   readonly verdict: string | null;
+  readonly claim: Claim | null;
   readonly hash: string;
   /** FEE-4's D: frame data, signature bytes and the nonce fields. */
   readonly dataBytes: number;
@@ -440,6 +469,8 @@ export class FrameTx {
     this.rootWrites = init.rootWrites ?? [];
     this.zeroBytes = init.zeroBytes ?? 0;
     this.verdict = init.verdict ?? null;
+    this.claim = init.claim ?? null;
+    const claim = this.claim;
     this.hash = hashOf("FrameTx", [
       this.sender,
       this.frames.map(frameFields),
@@ -461,6 +492,7 @@ export class FrameTx {
       this.rootWrites.map((w) => [...w]),
       this.type,
       this.zeroBytes,
+      ...(claim === null ? [] : [["claim", claimId(claim)]]),
     ]);
 
     this.dataBytes =
@@ -509,6 +541,11 @@ export class FrameTx {
 
   get nonce(): bigint {
     return this.nonceSeq;
+  }
+
+  /** CG-2: the place only one transaction fills. */
+  get slot(): string {
+    return slotId(this.sender, this.nonceKeys, this.nonceSeq);
   }
 
   effectiveTip(baseFee: bigint): bigint {

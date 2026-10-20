@@ -28,5 +28,8 @@
     "test": "bun run test:unit",
     "test:unit": "vitest --run --dir test/unit/",
     "vectors": "bun test/run-vectors.ts"
+  },
+  "dependencies": {
+    "@noble/curves": "1.8.1"
   }
 }
