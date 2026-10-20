@@ -96,6 +96,9 @@ emem's `docs/spec/11-surface.md`, "Run procedure", is what a run passes on,
 and A and B answering differently at the same head is the result that would
 show the claim wrong.
 
+A recorded run is in
+[`docs/frames/runs/2026-10-20-two-nodes/`](docs/frames/runs/2026-10-20-two-nodes/README.md).
+
 ## What it does not do
 
 - Blob-carrying frame transactions, EIP-8288's dependency frames and
