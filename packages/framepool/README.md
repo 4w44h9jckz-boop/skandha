@@ -50,14 +50,25 @@ fold (below).
 | `11-surface.md` | SF-1 to SF-9: decoding, the model transaction, the verdict, `eth_sendRawTransaction`, relay, what is taken from peers, head changes and hand-off (`src/surface.ts`, `src/keccak.ts`) |
 | `12-replay.md` | RP-1 to RP-6: a profile's verdict on a transaction a chain mined (`src/replay.ts`, and `replay/` over every fixture) |
 | `07-focil.md` | IL-1 to IL-6 for frame transactions, version 2: an includer's list from the pool (IL-2), Profile 2 candidates (IL-3), the budget fill per list or per payload, profiles `eip-8369` and `ethrex` (IL-4), and, with validity at the end of the payload as a client's verdict, whether a payload satisfies the lists (IL-5, IL-6) (`src/focil.ts`) |
+| `06-lucid.md` | LU-2 to LU-11 and LU-14 to LU-19, profile `eip-8184`, version 3: the sealed pool beside the frame pool behind one reservation tracker, with every `policy` and `evict_first` (`src/sealed.ts`, `src/sealedpool.ts`), and the key round between the block that commits and the block that runs: the commitment, a key message's validity, the key-publisher role's release rule, a committee member's vote, the next slot's tally and what the record says of a missing key (`src/lucidkeys.ts`) |
 | `03-block-building.md` | BB-2's order, for frame transactions only |
 | `10-claim-gated-admission.md` | CG-2 to CG-10, profile `claim-gated` (a proposal), version 3: claims checked after FP-6, the checks before a wrapper's proofs, what a node remembers after a proof fails, relays, and a ticket's bytes, its BLS12-381 check and the paymaster frame that carries it (`src/claimticket.ts`) |
 | `13-descriptors.md` | DS-1 to DS-8: a ruleset as a file, its strict parse, canonical encoding and CIDv1 identifier, modules, inheritance, completeness, the profile it compiles to, and the rule and descriptor a refusal names (`src/descriptor.ts`) |
 | `14-erc-8421.md` | AM-2 to AM-14 and AM-16: ERC-8421's standard alternative mempool as a pool, entities, stake, per-entity budgets, `pre_verify` frames, trace and storage rules, keyed-nonce lifecycle and limits, local rules, solvency, reputation and blame (`src/erc8421.ts`, `StandardPool`) |
 
 It does not have the account-nonce pool of `01-nonce-pool.md`, which belongs
-to an execution client, the sealed pool of `06-lucid.md`, or block building,
-so not IL-7's appending or AG-8.
+to an execution client, or block building, so not IL-7's appending, LU-12's
+and LU-13's commitments and decrypted transactions, or AG-8.
+
+The key round reads tickets, the scheduling block, key messages, the times
+they arrived and votes. LU-15's last step, whether a released key decrypts
+its ciphertext, is the one that reads content; it goes through a `Decrypt`
+function, and the vectors check which ciphertexts each step asked about.
+Keys and commitments are real bytes, checked with this package's
+Keccak-256; the decryption itself, ChaCha20-Poly1305 and SSZ, is not here:
+the vectors give its outcome as the field `decrypts`. No chain runs
+EIP-8184 yet, so the key-publisher role is a rule a node can apply to a
+block it observes (`release`), not a service run against one.
 
 A ticket's signature is checked with `@noble/curves`, not with the code the
 ticket vectors were made with, so that they judge a verifier that shares
@@ -67,10 +78,11 @@ subgroup when it makes the points. noble's own decoder of compressed points
 is not used: it reduces a coordinate of $p$ or more rather than refusing it.
 
 The pool is a port of exp-mempool-l2s `ref/python/emem/`, read alongside the clauses,
-and keeps the clause names in its comments. Two shortcuts of the reference
+and keeps the clause names in its comments. Three shortcuts of the reference
 are not ported: FP-14's victim and MA-8's oldest transaction are found by a
-pass over the pool rather than kept in a heap. Both give the same
-transaction. Every amount (gas, fees, balances, nonce keys and sequences) and
+pass over the pool rather than kept in a heap, and the sealed pool runs
+LU-7's selection again for each question LU-8 and LU-10 ask rather than
+carrying it from one admission to the next. Each gives the same answer. Every amount (gas, fees, balances, nonce keys and sequences) and
 every deadline is a `bigint`, because the vectors use values up to
 $2^{256} - 1$ and a mined transaction's deadline can be $2^{64} - 1$, which a
 double cannot hold: the first surface vectors found exactly that in the port,
@@ -93,8 +105,8 @@ tools/sync-vectors.sh <path to an exp-mempool-l2s checkout> <commit>
 ```
 
 The runner decides from each case's contents whether it can play the case. A
-case that adds an account-nonce or sealed transaction, builds a block,
-runs an operation or names a profile this package does not have is
+case that adds an account-nonce transaction, builds a block, runs an
+operation or names a profile this package does not have is
 skipped, and the skip names what is missing. There is no list of
 skipped cases by name: a list could quietly take in a failing case, and a rule
 over what the case contains cannot.
