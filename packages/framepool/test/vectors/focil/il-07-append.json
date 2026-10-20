@@ -1,7 +1,7 @@
 {
   "clause": "IL-7",
   "document": "07-focil.md",
-  "version": 1,
+  "version": 2,
   "operation": "pool",
   "distinguishes": "What a builder appends after BB-3: a listed transaction its pool does not hold, at the end; a walk repeated until it appends nothing, so that one appended transaction can make another valid; nothing that does not fit or is already in the block.",
   "cases": [

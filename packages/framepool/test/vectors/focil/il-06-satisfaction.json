@@ -1,7 +1,7 @@
 {
   "clause": "IL-6",
   "document": "07-focil.md",
-  "version": 1,
+  "version": 2,
   "also": ["IL-8"],
   "operation": "pool",
   "distinguishes": "Whether a block satisfies its ILs: a listed transaction it contains, or whose gas limit exceeds the gas it left, is no omission; the first other valid one, in the order of the ILs with duplicates read once, is; and a block with an omission is not canonical, so the chain and the pool stay where they were.",

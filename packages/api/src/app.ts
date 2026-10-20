@@ -31,6 +31,11 @@ export interface FrameRpc {
     result?: string;
     error?: { code: number; message: string };
   }>;
+  /** IL-2 of `07-focil.md`: the inclusion list this node would publish from its pool. */
+  inclusionList(param: unknown): Promise<{
+    result?: unknown;
+    error?: { code: number; message: string };
+  }>;
 }
 
 export interface EtherspotBundlerOptions {
@@ -209,6 +214,12 @@ export class ApiApp {
     if (this.frames && method === "eth_sendRawTransaction") {
       // SF-5: with frames on, this node takes type 0x06 and refuses the rest (SF-2)
       const out = await this.frames.sendRawTransaction(params?.[0]);
+      return (out.error !== undefined
+        ? { jsonrpc, id, error: out.error }
+        : { jsonrpc, id, result: out.result }) as unknown as JsonRpcResponse;
+    }
+    if (this.frames && method === "skandha_frameInclusionList") {
+      const out = await this.frames.inclusionList(params?.[0]);
       return (out.error !== undefined
         ? { jsonrpc, id, error: out.error }
         : { jsonrpc, id, result: out.result }) as unknown as JsonRpcResponse;

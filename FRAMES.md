@@ -99,6 +99,29 @@ show the claim wrong.
 A recorded run is in
 [`docs/frames/runs/2026-10-20-two-nodes/`](docs/frames/runs/2026-10-20-two-nodes/README.md).
 
+## As an includer
+
+A node with `--frames.enable` also answers `skandha_frameInclusionList` with
+the inclusion list it would publish from its pool at its head, by emem's
+`docs/spec/07-focil.md`, IL-2: what is pending at the next block's base fee,
+by effective tip and then arrival, each frame transaction only if it is a
+Profile 2 candidate (IL-3) and its verify cost fits what remains of the
+list's budget of $2^{20}$ gas, the whole list within 8,192 bytes:
+
+```sh
+curl -s -X POST -H 'content-type: application/json' http://127.0.0.1:14337/rpc/ \
+  --data '{"jsonrpc":"2.0","id":1,"method":"skandha_frameInclusionList","params":[{"focil":"eip-8369"}]}'
+```
+
+The answer has the list's bytes and hashes in order, its verify cost and the
+budget, and its size; the node logs it as an `il` line. `eip-8369` budgets
+each list on its own; `ethrex` is the same list, since an includer can only
+budget what it lists, but whoever reads the slot's lists then fills one
+budget over all of them, in the order they arrive (IL-4). Which of the two
+lets one committee member's never-valid entries deny honest ones is what the
+inclusion-list vectors of `@skandha/framepool` test, on exp-frames
+experiment 25's transactions.
+
 ## What it does not do
 
 - Blob-carrying frame transactions and EIP-8288's dependency frames are not
@@ -112,6 +135,9 @@ A recorded run is in
   simulation per pending transaction per head.
 - A canonical paymaster is not recognised by its code at the surface, so a
   paymaster is held to FP-11's cap of one pending transaction.
+- The includer lists frame transactions only: the account-nonce half of a
+  list belongs to an execution client's pool. It does not gossip its list or
+  sign it; it answers with what it would publish.
 - gossipsub expects a topic validator to answer within about 100 ms; asking
   the client takes longer, which costs a peer score, not a delivery, between
   two nodes.

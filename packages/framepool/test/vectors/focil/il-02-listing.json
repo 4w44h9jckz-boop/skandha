@@ -1,7 +1,7 @@
 {
   "clause": "IL-2",
   "document": "07-focil.md",
-  "version": 1,
+  "version": 2,
   "also": ["IL-1"],
   "operation": "pool",
   "distinguishes": "What an includer lists and in what order: senders by their next transaction's tip under fee and by its arrival under age, each sender in nonce order, a transaction over the byte limit left out with the rest of its sender's, nothing the next block's base fee rules out, no frame transaction under eip-7805, and under eip-8369 only what the IL's verify budget still holds.",

@@ -3,7 +3,8 @@
  * `@skandha/framepool` under emem's `docs/spec/11-surface.md`: SF-5 for
  * `eth_sendRawTransaction`, SF-6 and SF-7 for the gossip topic, SF-8 for a new
  * head and SF-9 for hand-off. The prefix's outcome is the execution client's
- * verdict (SF-4); everything else the pool decides itself.
+ * verdict (SF-4); everything else the pool decides itself. As an includer it
+ * answers with the inclusion list it would publish (`07-focil.md`, IL-2).
  *
  * Admissions and head changes run one at a time, so a verdict, the state the
  * pool reads and the head they belong to always agree.
@@ -11,6 +12,7 @@
 import { appendFileSync } from "node:fs";
 import {
   APPROVE_PAYMENT,
+  FOCIL_PROFILES,
   FramePool,
   FrameTx,
   Head,
@@ -21,7 +23,10 @@ import {
   Surface,
   SurfaceConfig,
   addressForm,
+  buildIl,
+  costs,
   decode,
+  headNextBaseFee,
   gossipOutcome,
   OK,
   TxError,
@@ -41,6 +46,18 @@ export interface FrameServiceOptions {
 export interface SendResult {
   result?: string; // a hash on ok
   error?: { code: number; message: string };
+}
+
+/** IL-2: the list an includer at this node's head would publish, and what it costs. */
+export interface InclusionList {
+  profile: string; // the IL-1 profile whose budget and order it was built with
+  head: number;
+  baseFee: string; // the next block's, at which the pool's pending view was read
+  transactions: string[]; // the bytes, in list order
+  hashes: string[];
+  verifyGas: string; // IL-4's cost of the list, signatures and prefixes
+  budget: string; // MAX_VERIFY_GAS_PER_IL
+  bytes: number; // against MAX_BYTES_PER_INCLUSION_LIST
 }
 
 /** SF-6's topic for a chain. */
@@ -230,6 +247,59 @@ export class FrameService {
     this.log({ event: "relay", hash, peers });
     void this.handOff(hash, param.toLowerCase());
     return { result: hash };
+  }
+
+  /**
+   * IL-2 at the current head: what this node, as an includer, would list from
+   * its pool, under an inclusion-list profile with frames (`eip-8369` unless
+   * `{"focil": name}` says otherwise). It changes nothing in the pool.
+   */
+  async inclusionList(
+    param: unknown
+  ): Promise<{ result?: InclusionList; error?: SendResult["error"] }> {
+    const name =
+      param !== null && typeof param === "object" && "focil" in param
+        ? String((param as { focil: unknown }).focil)
+        : "eip-8369";
+    const focil = FOCIL_PROFILES.get(name);
+    if (focil === undefined || !focil.frames)
+      return {
+        error: {
+          code: -32602,
+          message: `invalid params: ${name} is not an inclusion-list profile with frame transactions`,
+        },
+      };
+    return this.serial(async () => {
+      const baseFee = headNextBaseFee(this.pool.head);
+      const listed = buildIl(this.pool, focil, baseFee);
+      let verifyGas = BigInt(0);
+      for (const tx of listed) {
+        const [signatures, prefix] = costs(tx, this.pool.config);
+        verifyGas += signatures + prefix;
+      }
+      const transactions = listed.map(
+        (tx) => this.raws.get(tx.label) as string
+      );
+      const result: InclusionList = {
+        profile: focil.name,
+        head: this.head.number,
+        baseFee: "0x" + baseFee.toString(16),
+        transactions,
+        hashes: listed.map((tx) => tx.label),
+        verifyGas: "0x" + verifyGas.toString(16),
+        budget: "0x" + focil.maxVerifyGasPerIl.toString(16),
+        bytes: transactions.reduce((n, raw) => n + (raw.length - 2) / 2, 0),
+      };
+      this.log({
+        event: "il",
+        profile: focil.name,
+        head: this.head.number,
+        hashes: result.hashes,
+        verifyGas,
+        pending: this.pool.size,
+      });
+      return { result };
+    });
   }
 
   /** SF-7: the gossip validator's outcome for bytes a peer sent. */

@@ -13,6 +13,8 @@ import { join } from "node:path";
 import {
   Dependency,
   EIP_8141,
+  FOCIL_PROFILES,
+  FocilConfig,
   Frame,
   FramePool,
   FramePoolConfig,
@@ -30,11 +32,14 @@ import {
   TxError,
   Write,
   addressForm,
+  admitted,
+  buildIl,
   builderOrder,
   decode,
   replay,
   verdict,
   floorDataGas,
+  omission,
   frame,
   intrinsicGas,
   nextBaseFee,
@@ -449,6 +454,23 @@ function frameConfig(
   return withChanges(profile, changes);
 }
 
+/** The IL-1 profile a case names, with its `focil` overrides, written with IL-1's parameter names. */
+function focilConfig(c: Json): FocilConfig {
+  const profile = FOCIL_PROFILES.get(c.focil ?? "off");
+  if (profile === undefined)
+    throw new Error(`unknown focil profile ${c.focil}`);
+  const changes: Record<string, Json> = {};
+  for (const [snake, value] of Object.entries(c.config?.focil ?? {})) {
+    const key = snake.replace(/_([a-z])/g, (_, ch: string) => ch.toUpperCase());
+    if (!(key in profile)) throw new Error(`unknown focil parameter ${snake}`);
+    changes[key] =
+      key === "maxVerifyGasPerIl" || key === "maxVerifyGasPerTx"
+        ? big(value)
+        : value;
+  }
+  return { ...profile, ...changes } as FocilConfig;
+}
+
 // --- what a case needs --------------------------------------------------------------
 
 const STEP_NEEDS: Readonly<Record<string, string>> = {
@@ -456,7 +478,6 @@ const STEP_NEEDS: Readonly<Record<string, string>> = {
   aggregate: "an aggregator (AG-5 to AG-9)",
   build: "block building (03-block-building.md)",
   expect_state: "block building (03-block-building.md)",
-  il: "inclusion lists (07-focil.md)",
   expect_selection: "the sealed pool (06-lucid.md)",
 };
 
@@ -476,12 +497,8 @@ export function needs(operation: string, c: Json): string[] {
   if (operation !== "pool") return [...out].sort();
   if (c.sealed !== undefined && c.sealed !== "off")
     out.add("the sealed pool (06-lucid.md)");
-  if (c.focil !== undefined && c.focil !== "off")
-    out.add("inclusion lists (07-focil.md)");
-  for (const part of ["sealed", "focil"]) {
-    if (Object.keys(c.config?.[part] ?? {}).length > 0)
-      out.add(`a ${part} configuration`);
-  }
+  if (Object.keys(c.config?.sealed ?? {}).length > 0)
+    out.add("a sealed configuration");
   for (const step of c.steps) {
     for (const key of Object.keys(step))
       if (key in STEP_NEEDS) out.add(STEP_NEEDS[key]);
@@ -590,6 +607,15 @@ function runPool(c: Json): void {
         ])
       ); // MD-8
       pool.reset(head, state, now, verdicts);
+    } else if ("il" in step) {
+      const focil = focilConfig(c);
+      const baseFee =
+        step.il.base_fee !== undefined ? big(step.il.base_fee) : undefined;
+      same(
+        step.expect,
+        buildIl(pool, focil, baseFee).map(label),
+        `${where} il`
+      );
     } else if ("tick" in step) {
       now = step.tick;
       pool.tick(now);
@@ -731,6 +757,15 @@ function runSurface(c: Json): void {
   let state = mergeState(null, c.state);
   const pool = new FramePool(makeHead(headD), state, cfg, new Reserver());
   const node = new Surface(pool, scfg, c.peers ?? []);
+  const focil = focilConfig(c);
+  const named = new Map<string, FrameTx>(
+    Object.entries(c.txs ?? {}).map(([l, raw]) => [
+      l,
+      decode(Buffer.from((raw as string).slice(2), "hex"), cfg, scfg),
+    ])
+  );
+  const byLabels = (labels: string[]): FrameTx[] =>
+    labels.map((l) => named.get(l) as FrameTx);
   const alias = new Map<string, string>();
   const names = (hashes: string[]): string[] =>
     hashes.map((h) => [...alias].find(([, x]) => x === h)?.[0] ?? h);
@@ -806,6 +841,47 @@ function runSurface(c: Json): void {
         );
       if ("expect_pending" in step)
         same(step.expect_pending, names(node.pending()), `${where} pending`);
+    } else if ("il" in step) {
+      const baseFee =
+        step.il.base_fee !== undefined ? big(step.il.base_fee) : undefined;
+      const got = names(buildIl(pool, focil, baseFee).map((tx) => tx.label));
+      same(step.expect, got, `${where} il`);
+    } else if ("inclusion" in step) {
+      const inc = step.inclusion;
+      const ils = (inc.ils as string[][]).map(byLabels);
+      let delivered: FrameTx[] | undefined;
+      if (inc.delivered !== undefined) {
+        const all = [...new Set((inc.ils as string[][]).flat())].sort();
+        if (JSON.stringify([...inc.delivered].sort()) !== JSON.stringify(all))
+          throw new Mismatch(
+            `${where} delivered is not the ILs' transactions, each once`
+          );
+        delivered = byLabels(inc.delivered);
+      }
+      const labelOf = new Map([...named].map(([l, tx]) => [tx.hash, l]));
+      const got = admitted(ils, pool.head, cfg, focil, delivered).map(
+        (h) => labelOf.get(h) as string
+      );
+      if ("expect_admitted" in step)
+        same(step.expect_admitted, got, `${where} admitted`);
+      if (inc.block !== undefined) {
+        const valid = new Set(byLabels(inc.valid ?? []).map((tx) => tx.hash));
+        const missing = omission(
+          byLabels(inc.block),
+          big(inc.gas_left),
+          ils,
+          pool.head,
+          cfg,
+          focil,
+          valid,
+          delivered
+        );
+        same(
+          step.expect_omission ?? null,
+          missing === null ? null : (labelOf.get(missing.hash) as string),
+          `${where} omission`
+        );
+      }
     } else {
       throw new Error(`${where} unknown step ${Object.keys(step).sort()}`);
     }

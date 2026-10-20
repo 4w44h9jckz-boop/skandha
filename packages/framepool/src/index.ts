@@ -2,6 +2,7 @@ export * from "./config.js";
 export * from "./dependencies.js";
 export * from "./deps.js";
 export * from "./errors.js";
+export * from "./focil.js";
 export * from "./matcha.js";
 export * from "./model.js";
 export * from "./pool.js";
