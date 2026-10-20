@@ -1,0 +1,107 @@
+{
+  "clause": "LU-18",
+  "document": "06-lucid.md",
+  "version": 3,
+  "operation": "key_round",
+  "distinguishes": "How the next slot's committee counts timely, late and equivocated votes for each key, and which treatments of the key, missing, observed or both, the two conditions allow.",
+  "cases": [
+    {"name": "four timely ones: observed only (8 > 4; not 8 <= 4)",
+     "block": {"commitments": [{"label": "a"}]},
+     "steps": [
+       {"tally": {"ptc": ["m1", "m2", "m3", "m4"], "vote_deadline": 6000, "attestation": 9000,
+                  "votes": [["m1", [1], 100], ["m2", [1], 100], ["m3", [1], 100], ["m4", [1], 100]]},
+        "expect": [["observed"]],
+        "expect_counts": [{"t1": 4, "t0": 0, "l1": 0, "l0": 0, "e": 0}]}
+     ]},
+    {"name": "four timely zeros, a withheld key: missing only (0 <= 4; not 0 > 4)",
+     "block": {"commitments": [{"label": "a"}]},
+     "steps": [
+       {"tally": {"ptc": ["m1", "m2", "m3", "m4"], "vote_deadline": 6000, "attestation": 9000,
+                  "votes": [["m1", [0], 100], ["m2", [0], 100], ["m3", [0], 100], ["m4", [0], 100]]},
+        "expect": [["missing"]],
+        "expect_counts": [{"t1": 0, "t0": 4, "l1": 0, "l0": 0, "e": 0}]}
+     ]},
+    {"name": "a tie of timely votes is missing only (4 <= 4; not 4 > 4)",
+     "block": {"commitments": [{"label": "a"}]},
+     "steps": [
+       {"tally": {"ptc": ["m1", "m2", "m3", "m4"], "vote_deadline": 6000, "attestation": 9000,
+                  "votes": [["m1", [1], 100], ["m2", [1], 100], ["m3", [0], 100], ["m4", [0], 100]]},
+        "expect": [["missing"]]}
+     ]},
+    {"name": "three timely ones of four: observed only (6 > 4; not 6 <= 4)",
+     "block": {"commitments": [{"label": "a"}]},
+     "steps": [
+       {"tally": {"ptc": ["m1", "m2", "m3", "m4"], "vote_deadline": 6000, "attestation": 9000,
+                  "votes": [["m1", [1], 100], ["m2", [1], 100], ["m3", [1], 100], ["m4", [0], 100]]},
+        "expect": [["observed"]]}
+     ]},
+    {"name": "a late zero makes a timely majority ambiguous: both (4 <= 2+1+1; 4 > 3)",
+     "block": {"commitments": [{"label": "a"}]},
+     "steps": [
+       {"tally": {"ptc": ["m1", "m2", "m3", "m4"], "vote_deadline": 6000, "attestation": 9000,
+                  "votes": [["m1", [1], 100], ["m2", [1], 6000], ["m3", [0], 100], ["m4", [0], 6001]]},
+        "expect": [["missing", "observed"]],
+        "expect_counts": [{"t1": 2, "t0": 1, "l1": 0, "l0": 1, "e": 0}]}
+     ]},
+    {"name": "late ones may tip a timely tie towards observed: both (2 <= 2; 6 > 4)",
+     "block": {"commitments": [{"label": "a"}]},
+     "steps": [
+       {"tally": {"ptc": ["m1", "m2", "m3", "m4"], "vote_deadline": 6000, "attestation": 9000,
+                  "votes": [["m1", [1], 100], ["m2", [0], 100], ["m3", [1], 7000], ["m4", [1], 9000]]},
+        "expect": [["missing", "observed"]],
+        "expect_counts": [{"t1": 1, "t0": 1, "l1": 2, "l0": 0, "e": 0}]}
+     ]},
+    {"name": "an equivocating member is counted only as equivocated: both (4 <= 2+1+1; 6 > 4)",
+     "block": {"commitments": [{"label": "a"}]},
+     "steps": [
+       {"tally": {"ptc": ["m1", "m2", "m3", "m4"], "vote_deadline": 6000, "attestation": 9000,
+                  "votes": [["m1", [1], 100], ["m1", [0], 8000], ["m2", [1], 100], ["m3", [1], 100], ["m4", [0], 100]]},
+        "expect": [["missing", "observed"]],
+        "expect_counts": [{"t1": 2, "t0": 1, "l1": 0, "l0": 0, "e": 1}]}
+     ]},
+    {"name": "the same vote twice is not equivocation, and is timed by its first receipt",
+     "block": {"commitments": [{"label": "a"}]},
+     "steps": [
+       {"tally": {"ptc": ["m1", "m2"], "vote_deadline": 6000, "attestation": 9000,
+                  "votes": [["m1", [1], 100], ["m1", [1], 7000], ["m2", [1], 100]]},
+        "expect": [["observed"]],
+        "expect_counts": [{"t1": 2, "t0": 0, "l1": 0, "l0": 0, "e": 0}]}
+     ]},
+    {"name": "votes after the attestation time count for nothing, not even as equivocation",
+     "block": {"commitments": [{"label": "a"}]},
+     "steps": [
+       {"tally": {"ptc": ["m1", "m2", "m3"], "vote_deadline": 6000, "attestation": 9000,
+                  "votes": [["m1", [1], 100], ["m1", [0], 9001], ["m2", [1], 100], ["m3", [0], 9001]]},
+        "expect": [["observed"]],
+        "expect_counts": [{"t1": 2, "t0": 0, "l1": 0, "l0": 0, "e": 0}]}
+     ]},
+    {"name": "votes from outside the committee, and votes of the wrong length, are ignored",
+     "block": {"commitments": [{"label": "a"}]},
+     "steps": [
+       {"tally": {"ptc": ["m1", "m2"], "vote_deadline": 6000, "attestation": 9000,
+                  "votes": [["m1", [0], 100], ["x1", [1], 100], ["x2", [1], 100], ["m2", [1, 1], 100]]},
+        "expect": [["missing"]],
+        "expect_counts": [{"t1": 0, "t0": 1, "l1": 0, "l0": 0, "e": 0}]}
+     ]},
+    {"name": "no votes at all: missing only (0 <= 0; not 0 > 0)",
+     "block": {"commitments": [{"label": "a"}]},
+     "steps": [
+       {"tally": {"ptc": ["m1", "m2"], "vote_deadline": 6000, "attestation": 9000, "votes": []},
+        "expect": [["missing"]],
+        "expect_counts": [{"t1": 0, "t0": 0, "l1": 0, "l0": 0, "e": 0}]}
+     ]},
+    {"name": "each key is tallied on its own bit",
+     "block": {"commitments": [
+       {"label": "a", "sender": "alice"},
+       {"label": "b", "sender": "bob"},
+       {"label": "c", "sender": "carol"}]},
+     "steps": [
+       {"tally": {"ptc": ["m1", "m2", "m3"], "vote_deadline": 6000, "attestation": 9000,
+                  "votes": [["m1", [1, 0, 1], 100], ["m2", [1, 0, 0], 100], ["m3", [1, 0, 1], 7000]]},
+        "expect": [["observed"], ["missing"], ["missing", "observed"]],
+        "expect_counts": [{"t1": 2, "t0": 0, "l1": 1, "l0": 0, "e": 0},
+                          {"t1": 0, "t0": 2, "l1": 0, "l0": 1, "e": 0},
+                          {"t1": 1, "t0": 1, "l1": 1, "l0": 0, "e": 0}]}
+     ]}
+  ]
+}

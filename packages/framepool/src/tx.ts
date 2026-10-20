@@ -13,7 +13,7 @@ export const FRAME = 6;
 
 export const DEFAULT_TO = "sink";
 
-type Rendered =
+export type Rendered =
   | string
   | number
   | bigint
@@ -41,7 +41,7 @@ function render(value: Rendered): string {
  * on the value, only on two transactions differing in a field having
  * different hashes.
  */
-function hashOf(kind: string, fields: readonly Rendered[]): string {
+export function hashOf(kind: string, fields: readonly Rendered[]): string {
   return (
     "0x" +
     createHash("sha256")

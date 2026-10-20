@@ -1,7 +1,7 @@
 {
   "clause": "LU-13",
   "document": "06-lucid.md",
-  "version": 2,
+  "version": 3,
   "also": ["LU-12", "BB-3", "BB-4"],
   "operation": "pool",
   "distinguishes": "The next block's decrypted transactions: run first in commitment order when revealed, their gas counted in the block and taken from its regular transactions, the unused gas refunded at the committing block's base fee with 127/128 of the ToB fee, the key fee paid only on reveal, and nothing for a key that never came; and what a revealed one pulls and pays, applied at the top of the next block, a pull a spend in the committing block uncovered reverting it at the gas it declares, and a spend sent after the commitment finding the unit gone.",

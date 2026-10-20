@@ -1,0 +1,46 @@
+{
+  "clause": "LU-14",
+  "document": "06-lucid.md",
+  "version": 3,
+  "operation": "key_round",
+  "distinguishes": "A commitment is read from the ticket alone: its root is the ticket's hash, its key the ticket's key_commitment, keccak256 of the DEM key unless the ticket says otherwise, and its gas obligation the ticket's gas limit, in the block's commitment order.",
+  "cases": [
+    {"name": "one commitment with the default key: keccak256 of 32 zero bytes",
+     "provenance": "keccak256 of 32 zero bytes, 0x290dec...e563, computed with @noble/hashes 1.x keccak_256 and with ref/python/emem/keccak.py, which agree",
+     "block": {"commitments": [{"label": "a"}]},
+     "steps": [
+       {"commitments": {},
+        "expect": [{"root": "a", "key": "0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563", "gas_obligation": 100000, "executable": []}]}
+     ]},
+    {"name": "the key is keccak256 of the ticket's DEM key",
+     "provenance": "keccak256 of 32 bytes of 0x11, 0xb56932...f816, computed with @noble/hashes 1.x keccak_256 and with ref/python/emem/keccak.py, which agree",
+     "block": {"commitments": [{"label": "a", "k_dem": "0x1111111111111111111111111111111111111111111111111111111111111111"}]},
+     "steps": [
+       {"commitments": {},
+        "expect": [{"root": "a", "key": "0xb569321de72d0af89c2fb48a484de3fc9343f31600ae1f3e13d633cb48cbf816", "gas_obligation": 100000, "executable": []}]}
+     ]},
+    {"name": "a ticket's own key_commitment is the commitment's key, whatever its DEM key",
+     "block": {"commitments": [{"label": "a", "key_commitment": "0xabababababababababababababababababababababababababababababababab"}]},
+     "steps": [
+       {"commitments": {},
+        "expect": [{"root": "a", "key": "0xabababababababababababababababababababababababababababababababab", "gas_obligation": 100000, "executable": []}]}
+     ]},
+    {"name": "three commitments keep the block's order and each its own gas limit",
+     "block": {"commitments": [
+       {"label": "a", "sender": "alice", "gas_limit": 300000, "key_commitment": "0x0101010101010101010101010101010101010101010101010101010101010101"},
+       {"label": "b", "sender": "bob", "gas_limit": 200000, "key_commitment": "0x0202020202020202020202020202020202020202020202020202020202020202"},
+       {"label": "c", "sender": "carol", "gas_limit": 250000, "key_commitment": "0x0303030303030303030303030303030303030303030303030303030303030303"}]},
+     "steps": [
+       {"commitments": {},
+        "expect": [
+          {"root": "a", "key": "0x0101010101010101010101010101010101010101010101010101010101010101", "gas_obligation": 300000, "executable": []},
+          {"root": "b", "key": "0x0202020202020202020202020202020202020202020202020202020202020202", "gas_obligation": 200000, "executable": []},
+          {"root": "c", "key": "0x0303030303030303030303030303030303030303030303030303030303030303", "gas_obligation": 250000, "executable": []}]}
+     ]},
+    {"name": "a block with no sealed transactions has no commitments",
+     "block": {"commitments": []},
+     "steps": [
+       {"commitments": {}, "expect": []}
+     ]}
+  ]
+}
