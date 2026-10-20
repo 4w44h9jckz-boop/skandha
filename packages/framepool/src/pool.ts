@@ -14,6 +14,7 @@ import { Head, State, headNextBaseFee, isDelegation } from "./model.js";
 import {
   Prefix,
   Simulation,
+  analyse,
   checkExpiring,
   checkNonce,
   checkStatic,
@@ -24,6 +25,24 @@ import {
 } from "./prefix.js";
 import { Reserver } from "./reserver.js";
 import { FrameTx, claimId, dependencyId, replaces, slotId } from "./tx.js";
+
+/** AM-13's states. */
+export type Reputation = "ACTIVE" | "THROTTLED" | "BANNED";
+
+/** AM-3 [STAKING-010], and CG-11's bonded: never a default-code account. */
+export function isStaked(
+  addr: string,
+  state: State,
+  cfg: FramePoolConfig
+): boolean {
+  const [stake, delay, withdrawing] = state.stake(addr);
+  return (
+    state.code(addr) !== "" &&
+    stake >= cfg.minStakeValue &&
+    delay >= cfg.minUnstakeDelay &&
+    !withdrawing
+  );
+}
 
 export interface Entry {
   tx: FrameTx; // replaced only by a newer verdict (MD-8), which leaves its hash
@@ -88,6 +107,10 @@ export class FramePool {
   private refusedClaims = new Map<string, number>(); // CG-4 under `claim`: by claim, the same
   private usedClaims = new Set<string>(); // CG-5: the claims a node has verified a proof under
   private expiredClaims = new Map<string, number>(); // CG-6: by claim, the last epoch it is refused in
+  // AM-13's counters, kept for ERC-8421's entities and, under `bond`, for ticket paymasters (CG-11)
+  protected readonly counters = new Map<string, [number, number]>(); // by address, [seen, included]
+  private refreshed = 0; // how many refreshes the pool's time has passed
+  private readonly counted = new Set<string>(); // CG-11: the transactions counted in a ticket paymaster's `seen`
 
   constructor(
     head: Head,
@@ -428,12 +451,14 @@ export class FramePool {
   }
 
   /**
-   * CG-5, and CG-4 when `failed`: a mode 0 wrapper that passed CG-3 reached
-   * AG-5's step 5, and a proof of a triple `tx` declares did not verify.
+   * CG-5, and CG-4 and CG-11's count when `failed`: a mode 0 wrapper that
+   * passed CG-3 reached AG-5's step 5, and a proof of a triple `tx` declares
+   * did not verify.
    */
   proofVerified(tx: FrameTx, failed: boolean): void {
     const claim = tx.claim;
     if (claim === null) return;
+    if (failed) this.see(tx); // CG-11
     const id = claimId(claim);
     this.usedClaims.add(id);
     const memory = this.config.claimMemory;
@@ -446,7 +471,7 @@ export class FramePool {
       this.refusedClaims.set(id, claim.epoch);
   }
 
-  /** CG-2, then CG-4, then CG-6, as the pool runs them after FP-6. */
+  /** CG-11 under `bond`, then CG-2, then CG-4, then CG-6, as the pool runs them after FP-6. */
   private checkClaim(tx: FrameTx): void {
     const claim = tx.claim;
     if (claim === null) {
@@ -454,6 +479,7 @@ export class FramePool {
         throw new TxError(E.ErrClaimMissing);
       return;
     }
+    this.checkBond(tx);
     if (!claim.valid) throw new TxError(E.ErrClaimInvalid);
     if (slotId(claim.sender, claim.nonceKeys, claim.nonceSeq) !== tx.slot)
       throw new TxError(E.ErrClaimWrongSlot);
@@ -466,6 +492,85 @@ export class FramePool {
       throw new TxError(E.ErrClaimRefused);
     if ((this.expiredClaims.get(id) ?? -1) >= epoch)
       throw new TxError(E.ErrClaimExpired);
+  }
+
+  // --- AM-13's reputation, and CG-11's bond on the ticket paymaster ----------
+
+  /** AM-13: the counters a node was given for `addr`. */
+  give(addr: string, seen: number, included: number): void {
+    this.counters.set(addr, [seen, included]);
+  }
+
+  /** AM-13: an entity's counters and state (MD-9). */
+  reputation(addr: string): {
+    seen: number;
+    included: number;
+    status: Reputation;
+  } {
+    const [seen, included] = this.counters.get(addr) ?? [0, 0];
+    return { seen, included, status: this.stateOf(addr) };
+  }
+
+  stateOf(addr: string): Reputation {
+    const cfg = this.config;
+    const [seen, included] = this.counters.get(addr) ?? [0, 0];
+    const m = Math.floor(seen / cfg.minInclusionRateDenominator);
+    if (m > included + cfg.banSlack) return "BANNED";
+    if (included + cfg.throttlingSlack < m) return "THROTTLED";
+    return "ACTIVE";
+  }
+
+  protected bump(addr: string, seen = 0, included = 0): void {
+    const [s, i] = this.counters.get(addr) ?? [0, 0];
+    this.counters.set(addr, [Math.max(0, s + seen), Math.max(0, i + included)]);
+  }
+
+  /** AM-13 [REPUTATION-010]: every `refreshSeconds` of the pool's time, counted from 0. */
+  private refresh(now: number): void {
+    const due = Math.floor(now / this.config.refreshSeconds);
+    for (; this.refreshed < due; this.refreshed++)
+      for (const [a, [s, i]] of this.counters)
+        this.counters.set(a, [
+          Math.floor((s * 23) / 24),
+          Math.floor((i * 23) / 24),
+        ]);
+  }
+
+  /** CG-11: the payer of a transaction that carries a claim, when that is not its sender. */
+  ticketPaymaster(tx: FrameTx): string | null {
+    if (!this.config.bond || tx.claim === null) return null;
+    const prefix = analyse(tx, this.config);
+    if (prefix === null) return null;
+    const last = prefix.frames[prefix.frames.length - 1];
+    const payer = last.target ?? tx.sender;
+    return payer === tx.sender ? null : payer;
+  }
+
+  /** CG-11's three refusals, in order. */
+  private checkBond(tx: FrameTx): void {
+    const paymaster = this.ticketPaymaster(tx);
+    if (paymaster === null) return;
+    const cfg = this.config;
+    if (!isStaked(paymaster, this.state, cfg))
+      throw new TxError(E.ErrIssuerUnbonded);
+    const status = this.stateOf(paymaster);
+    if (status === "BANNED") throw new TxError(E.ErrEntityBanned);
+    if (status === "THROTTLED") {
+      let n = 0;
+      for (const e of this.entries.values())
+        if (this.ticketPaymaster(e.tx) === paymaster) n++;
+      if (n >= cfg.throttledEntityMempoolCount)
+        throw new TxError(E.ErrEntityThrottled);
+    }
+  }
+
+  /** CG-11: `seen`, once for each transaction, when its proof fails or when it is admitted. */
+  private see(tx: FrameTx): void {
+    const paymaster = this.ticketPaymaster(tx);
+    if (paymaster !== null && !this.counted.has(tx.hash)) {
+      this.counted.add(tx.hash);
+      this.bump(paymaster, 1);
+    }
   }
 
   // --- admission ------------------------------------------------------------
@@ -730,8 +835,9 @@ export class FramePool {
     }
   }
 
-  /** MA-8, oldest first. */
+  /** AM-13's refresh, then MA-8, oldest first. */
   protected expire(now: number): void {
+    this.refresh(now);
     if (!this.matcha) return;
     const oldest = [...this.entries.values()].sort(
       (a, b) => a.admitted - b.admitted || a.seq - b.seq
@@ -844,6 +950,7 @@ export class FramePool {
       for (const x of e.cls) claims.set(x, (claims.get(x) ?? 0) + 1);
     }
     this.reserver.hold(tx.sender, this);
+    this.see(tx); // CG-11
   }
 
   protected remove(
@@ -883,6 +990,8 @@ export class FramePool {
     }
     if (account) this.account(e, -1);
     this.index(e, -1);
+    if (reason === "stale_nonce" && this.counted.has(tx.hash))
+      this.bump(this.ticketPaymaster(tx) as string, 0, 1); // CG-11: included
     if (this.config.claims && tx.claim !== null && reason !== "stale_nonce") {
       // CG-6
       const id = claimId(tx.claim);

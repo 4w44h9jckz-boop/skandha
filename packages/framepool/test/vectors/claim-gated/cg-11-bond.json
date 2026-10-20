@@ -1,0 +1,2638 @@
+{
+ "clause": "CG-11",
+ "document": "10-claim-gated-admission.md",
+ "version": 5,
+ "also": [
+  "CG-3",
+  "CG-5",
+  "FP-11",
+  "FP-15",
+  "AM-3",
+  "AM-13"
+ ],
+ "operation": "pool",
+ "distinguishes": "Under bond a ticket paymaster must be staked, and is refused when banned and, at its pending limit, when throttled, all before CG-2's checks and before any proof; seen counts each of its transactions once, a junk proof when its proof fails and any other at admission, and included counts FP-15's step 1; the counters refresh every refresh_seconds; a transaction that pays for itself has no ticket paymaster; without bond none of this applies.",
+ "cases": [
+  {
+   "name": "a bonded ticket paymaster: admitted, counted once in seen",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    },
+    "frank": {
+     "balance": 1000000000
+    },
+    "tpm": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    },
+    "loose": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster"
+    },
+    "low": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 100000000000000000,
+     "unstake_delay": 86400
+    },
+    "short": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 3600
+    },
+    "leaving": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400,
+     "withdrawing": true
+    },
+    "bare": {
+     "balance": 1000000000000000000,
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-A",
+            "vk-alice"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-A"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "reputation": "tpm",
+     "expect": {
+      "seen": 1,
+      "included": 0,
+      "status": "ACTIVE"
+     }
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "tpm has code, a stake of 10^18 and a delay of 86400: bonded. A's proof verifies, so A counts in seen when the pool admits it, once."
+  },
+  {
+   "name": "an unstaked ticket paymaster is refused, and nothing is counted",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    },
+    "frank": {
+     "balance": 1000000000
+    },
+    "tpm": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    },
+    "loose": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster"
+    },
+    "low": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 100000000000000000,
+     "unstake_delay": 86400
+    },
+    "short": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 3600
+    },
+    "leaving": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400,
+     "withdrawing": true
+    },
+    "bare": {
+     "balance": 1000000000000000000,
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-A",
+            "vk-alice"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "loose",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-A"
+        }
+       }
+      ]
+     },
+     "expect": "ErrIssuerUnbonded"
+    },
+    {
+     "add": [
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           17,
+           "pub-B",
+           "vk-bob"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 20000
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "loose",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 30000
+        }
+       ],
+       "claim": {
+        "sender": "bob",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t-B"
+       }
+      }
+     ],
+     "expect": [
+      "ErrIssuerUnbonded"
+     ]
+    },
+    {
+     "reputation": "loose",
+     "expect": {
+      "seen": 0,
+      "included": 0,
+      "status": "ACTIVE"
+     }
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    }
+   ],
+   "derivation": "loose has no stake. CG-3 runs CG-11 for A and refuses the wrapper with its code, so no proof is verified; B is refused at admission before AG-6. Neither is counted."
+  },
+  {
+   "name": "a stake too small, a delay too short, a stake being withdrawn, an account without code",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    },
+    "frank": {
+     "balance": 1000000000
+    },
+    "tpm": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    },
+    "loose": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster"
+    },
+    "low": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 100000000000000000,
+     "unstake_delay": 86400
+    },
+    "short": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 3600
+    },
+    "leaving": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400,
+     "withdrawing": true
+    },
+    "bare": {
+     "balance": 1000000000000000000,
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           17,
+           "pub-A",
+           "vk-alice"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 20000
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "low",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 30000
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t-A"
+       }
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           17,
+           "pub-B",
+           "vk-bob"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 20000
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "short",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 30000
+        }
+       ],
+       "claim": {
+        "sender": "bob",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t-B"
+       }
+      },
+      {
+       "label": "C",
+       "type": 6,
+       "sender": "carol",
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           17,
+           "pub-C",
+           "vk-carol"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 20000
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "leaving",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 30000
+        }
+       ],
+       "claim": {
+        "sender": "carol",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t-C"
+       }
+      },
+      {
+       "label": "D",
+       "type": 6,
+       "sender": "dave",
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           17,
+           "pub-D",
+           "vk-dave"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 20000
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "bare",
+         "exec_gas": 30000
+        },
+        {
+         "mode": 2,
+         "exec_gas": 30000
+        }
+       ],
+       "signatures": [
+        {
+         "scheme": "secp256k1"
+        },
+        {
+         "scheme": "secp256k1",
+         "signer": "bare"
+        }
+       ],
+       "claim": {
+        "sender": "dave",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t-D"
+       }
+      }
+     ],
+     "expect": [
+      "ErrIssuerUnbonded",
+      "ErrIssuerUnbonded",
+      "ErrIssuerUnbonded",
+      "ErrIssuerUnbonded"
+     ]
+    }
+   ],
+   "derivation": "Bonded is AM-3's staked: a stake of at least min_stake_value (low has 10^17), a delay of at least min_unstake_delay (short has 3600), withdrawing false (leaving), and code that is not empty (bare has none)."
+  },
+  {
+   "name": "the bond comes before CG-2's checks",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    },
+    "frank": {
+     "balance": 1000000000
+    },
+    "tpm": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    },
+    "loose": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster"
+    },
+    "low": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 100000000000000000,
+     "unstake_delay": 86400
+    },
+    "short": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 3600
+    },
+    "leaving": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400,
+     "withdrawing": true
+    },
+    "bare": {
+     "balance": 1000000000000000000,
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           17,
+           "pub-A",
+           "vk-alice"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 20000
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "loose",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 30000
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t-A",
+        "valid": false
+       }
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           17,
+           "pub-B",
+           "vk-bob"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 20000
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "loose",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 30000
+        }
+       ],
+       "claim": {
+        "sender": "bob",
+        "nonce_seq": 0,
+        "epoch": 7,
+        "salt": "t-B"
+       }
+      },
+      {
+       "label": "C",
+       "type": 6,
+       "sender": "carol",
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           17,
+           "pub-C",
+           "vk-carol"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 20000
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "tpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 30000
+        }
+       ],
+       "claim": {
+        "sender": "carol",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t-C",
+        "valid": false
+       }
+      },
+      {
+       "label": "D",
+       "type": 6,
+       "sender": "dave",
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           17,
+           "pub-D",
+           "vk-dave"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 20000
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "tpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 30000
+        }
+       ],
+       "claim": {
+        "sender": "dave",
+        "nonce_seq": 0,
+        "epoch": 7,
+        "salt": "t-D"
+       }
+      }
+     ],
+     "expect": [
+      "ErrIssuerUnbonded",
+      "ErrIssuerUnbonded",
+      "ErrClaimInvalid",
+      "ErrClaimEpoch"
+     ]
+    }
+   ],
+   "derivation": "CG-11 runs after FP-6 and before CG-2: an unbonded paymaster's ticket is refused without its signature or its epoch being looked at; a bonded one's goes on to CG-2."
+  },
+  {
+   "name": "a transaction that pays for itself has no ticket paymaster",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    },
+    "frank": {
+     "balance": 1000000000
+    },
+    "tpm": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    },
+    "loose": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster"
+    },
+    "low": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 100000000000000000,
+     "unstake_delay": 86400
+    },
+    "short": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 3600
+    },
+    "leaving": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400,
+     "withdrawing": true
+    },
+    "bare": {
+     "balance": 1000000000000000000,
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-A",
+            "vk-alice"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-A"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "reputation": "alice",
+     "expect": {
+      "seen": 0,
+      "included": 0,
+      "status": "ACTIVE"
+     }
+    }
+   ],
+   "derivation": "A's payer is its sender, so it has no ticket paymaster: CG-11 checks nothing and counts nothing for it."
+  },
+  {
+   "name": "a banned paymaster is refused before its ticket",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    },
+    "frank": {
+     "balance": 1000000000
+    },
+    "tpm": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    },
+    "loose": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster"
+    },
+    "low": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 100000000000000000,
+     "unstake_delay": 86400
+    },
+    "short": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 3600
+    },
+    "leaving": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400,
+     "withdrawing": true
+    },
+    "bare": {
+     "balance": 1000000000000000000,
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    }
+   },
+   "reputation": {
+    "tpm": {
+     "seen": 510,
+     "included": 0
+    }
+   },
+   "steps": [
+    {
+     "reputation": "tpm",
+     "expect": {
+      "seen": 510,
+      "included": 0,
+      "status": "BANNED"
+     }
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-A",
+            "vk-alice"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-A"
+        }
+       }
+      ]
+     },
+     "expect": "ErrEntityBanned"
+    },
+    {
+     "add": [
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           17,
+           "pub-B",
+           "vk-bob"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 20000
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "tpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 30000
+        }
+       ],
+       "claim": {
+        "sender": "bob",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t-B",
+        "valid": false
+       }
+      }
+     ],
+     "expect": [
+      "ErrEntityBanned"
+     ]
+    },
+    {
+     "reputation": "tpm",
+     "expect": {
+      "seen": 510,
+      "included": 0,
+      "status": "BANNED"
+     }
+    }
+   ],
+   "derivation": "m = floor(510 / 10) = 51 > 0 + 50: BANNED. The ban comes before CG-2, so B's invalid ticket is refused as banned; nothing refused here is counted."
+  },
+  {
+   "name": "509 is throttled, not banned",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    },
+    "frank": {
+     "balance": 1000000000
+    },
+    "tpm": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    },
+    "loose": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster"
+    },
+    "low": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 100000000000000000,
+     "unstake_delay": 86400
+    },
+    "short": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 3600
+    },
+    "leaving": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400,
+     "withdrawing": true
+    },
+    "bare": {
+     "balance": 1000000000000000000,
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    }
+   },
+   "reputation": {
+    "tpm": {
+     "seen": 509,
+     "included": 0
+    }
+   },
+   "steps": [
+    {
+     "reputation": "tpm",
+     "expect": {
+      "seen": 509,
+      "included": 0,
+      "status": "THROTTLED"
+     }
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-A",
+            "vk-alice"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-A"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "reputation": "tpm",
+     "expect": {
+      "seen": 510,
+      "included": 0,
+      "status": "BANNED"
+     }
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-B",
+            "vk-bob"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "bob",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-B"
+        }
+       }
+      ]
+     },
+     "expect": "ErrEntityBanned"
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "m = 50, not above 50, and 0 + 10 < 50: THROTTLED, with no pending transaction, so A passes CG-11 and is admitted; its count at admission makes seen 510 and m = 51: BANNED, so B is refused. A stays pending."
+  },
+  {
+   "name": "junk proofs count in seen, and the 510th bans",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    },
+    "frank": {
+     "balance": 1000000000
+    },
+    "tpm": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    },
+    "loose": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster"
+    },
+    "low": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 100000000000000000,
+     "unstake_delay": 86400
+    },
+    "short": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 3600
+    },
+    "leaving": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400,
+     "withdrawing": true
+    },
+    "bare": {
+     "balance": 1000000000000000000,
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    }
+   },
+   "reputation": {
+    "tpm": {
+     "seen": 508,
+     "included": 0
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-A",
+            "vk-alice"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-A"
+        }
+       }
+      ],
+      "proofs": [
+       false
+      ]
+     },
+     "expect": "ErrWrapperProof"
+    },
+    {
+     "reputation": "tpm",
+     "expect": {
+      "seen": 509,
+      "included": 0,
+      "status": "THROTTLED"
+     }
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-B",
+            "vk-bob"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "bob",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-B"
+        }
+       }
+      ],
+      "proofs": [
+       false
+      ]
+     },
+     "expect": "ErrWrapperProof"
+    },
+    {
+     "reputation": "tpm",
+     "expect": {
+      "seen": 510,
+      "included": 0,
+      "status": "BANNED"
+     }
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-C",
+            "vk-carol"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "carol",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-C"
+        }
+       }
+      ]
+     },
+     "expect": "ErrEntityBanned"
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    }
+   ],
+   "derivation": "A junk proof's transaction passed the bond, the ticket and the prefix (CG-3), and counts in seen when its proof fails at AG-5's step 5, since it is never admitted. At 510, m = 51: BANNED."
+  },
+  {
+   "name": "an inclusion counts in included",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    },
+    "frank": {
+     "balance": 1000000000
+    },
+    "tpm": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    },
+    "loose": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster"
+    },
+    "low": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 100000000000000000,
+     "unstake_delay": 86400
+    },
+    "short": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 3600
+    },
+    "leaving": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400,
+     "withdrawing": true
+    },
+    "bare": {
+     "balance": 1000000000000000000,
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-A",
+            "vk-alice"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-A"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "reset": {
+      "state": {
+       "alice": {
+        "nonce": 1
+       }
+      }
+     }
+    },
+    {
+     "reputation": "tpm",
+     "expect": {
+      "seen": 1,
+      "included": 1,
+      "status": "ACTIVE"
+     }
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    }
+   ],
+   "derivation": "FP-15's step 1 removes A, whose nonce the block consumed: the model's inclusion, which adds 1 to tpm's included."
+  },
+  {
+   "name": "a transaction in an aggregate counts at its admission",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    },
+    "frank": {
+     "balance": 1000000000
+    },
+    "tpm": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    },
+    "loose": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster"
+    },
+    "low": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 100000000000000000,
+     "unstake_delay": 86400
+    },
+    "short": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 3600
+    },
+    "leaving": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400,
+     "withdrawing": true
+    },
+    "bare": {
+     "balance": 1000000000000000000,
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-A",
+            "vk-alice"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-A"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "reputation": "tpm",
+     "expect": {
+      "seen": 1,
+      "included": 0,
+      "status": "ACTIVE"
+     }
+    }
+   ],
+   "derivation": "A mode 1 wrapper carries no proof of A's own; the pool admits A, which adds 1 to seen."
+  },
+  {
+   "name": "a refresh lifts a ban",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    },
+    "frank": {
+     "balance": 1000000000
+    },
+    "tpm": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    },
+    "loose": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster"
+    },
+    "low": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 100000000000000000,
+     "unstake_delay": 86400
+    },
+    "short": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 3600
+    },
+    "leaving": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400,
+     "withdrawing": true
+    },
+    "bare": {
+     "balance": 1000000000000000000,
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    }
+   },
+   "reputation": {
+    "tpm": {
+     "seen": 530,
+     "included": 0
+    }
+   },
+   "steps": [
+    {
+     "reputation": "tpm",
+     "expect": {
+      "seen": 530,
+      "included": 0,
+      "status": "BANNED"
+     }
+    },
+    {
+     "tick": 3600
+    },
+    {
+     "reputation": "tpm",
+     "expect": {
+      "seen": 507,
+      "included": 0,
+      "status": "THROTTLED"
+     }
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-A",
+            "vk-alice"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-A"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "reputation": "tpm",
+     "expect": {
+      "seen": 508,
+      "included": 0,
+      "status": "THROTTLED"
+     }
+    }
+   ],
+   "derivation": "m = 53 > 50: BANNED. At 3600 s of the pool's time seen = floor(530 * 23 / 24) = 507, m = 50: throttled, not banned, and A, with none pending, is admitted."
+  },
+  {
+   "name": "a throttled paymaster backs four pending at most, where FP-11 lets it pay for more",
+   "profile": "claim-gated",
+   "config": {
+    "frame": {
+     "max_pending_noncanonical": 8
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    },
+    "frank": {
+     "balance": 1000000000
+    },
+    "tpm": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    },
+    "loose": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster"
+    },
+    "low": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 100000000000000000,
+     "unstake_delay": 86400
+    },
+    "short": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 3600
+    },
+    "leaving": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400,
+     "withdrawing": true
+    },
+    "bare": {
+     "balance": 1000000000000000000,
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    }
+   },
+   "reputation": {
+    "tpm": {
+     "seen": 200,
+     "included": 0
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-A",
+            "vk-alice"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-A"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-B",
+            "vk-bob"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "bob",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-B"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-C",
+            "vk-carol"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "carol",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-C"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "D",
+        "type": 6,
+        "sender": "dave",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-D",
+            "vk-dave"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "dave",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-D"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "E",
+        "type": 6,
+        "sender": "erin",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-E",
+            "vk-erin"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "erin",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-E"
+        }
+       }
+      ]
+     },
+     "expect": "ErrEntityThrottled"
+    },
+    {
+     "reputation": "tpm",
+     "expect": {
+      "seen": 204,
+      "included": 0,
+      "status": "THROTTLED"
+     }
+    }
+   ],
+   "derivation": "m = 20 > 0 + 10 and not above 50: THROTTLED. With four pending under tpm, E is refused at CG-3 before its proof, so it is not counted."
+  },
+  {
+   "name": "under claim-gated's own FP-11 the throttle does not bind",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    },
+    "frank": {
+     "balance": 1000000000
+    },
+    "tpm": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    },
+    "loose": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster"
+    },
+    "low": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 100000000000000000,
+     "unstake_delay": 86400
+    },
+    "short": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 3600
+    },
+    "leaving": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400,
+     "withdrawing": true
+    },
+    "bare": {
+     "balance": 1000000000000000000,
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    }
+   },
+   "reputation": {
+    "tpm": {
+     "seen": 200,
+     "included": 0
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-A",
+            "vk-alice"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-A"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-B",
+            "vk-bob"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "bob",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-B"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ErrFramePaymasterBusy"
+     ]
+    },
+    {
+     "reputation": "tpm",
+     "expect": {
+      "seen": 201,
+      "included": 0,
+      "status": "THROTTLED"
+     }
+    }
+   ],
+   "derivation": "FP-11 holds a non-canonical paymaster to one pending transaction, fewer than throttled_entity_mempool_count: B passes CG-11 with one pending, its proof verifies, and the pool refuses it at FP-11. Only A, admitted, is counted."
+  },
+  {
+   "name": "without bond, version 4's admission",
+   "profile": "claim-gated",
+   "config": {
+    "frame": {
+     "bond": false
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    },
+    "frank": {
+     "balance": 1000000000
+    },
+    "tpm": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    },
+    "loose": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster"
+    },
+    "low": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 100000000000000000,
+     "unstake_delay": 86400
+    },
+    "short": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 3600
+    },
+    "leaving": {
+     "balance": 1000000000000000000,
+     "code": "ticket-paymaster",
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400,
+     "withdrawing": true
+    },
+    "bare": {
+     "balance": 1000000000000000000,
+     "stake": 1000000000000000000,
+     "unstake_delay": 86400
+    }
+   },
+   "reputation": {
+    "tpm": {
+     "seen": 510,
+     "included": 0
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-A",
+            "vk-alice"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "loose",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-A"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "nonce_seq": 0,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-B",
+            "vk-bob"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 2,
+          "exec_gas": 20000
+         },
+         {
+          "mode": 1,
+          "flags": 1,
+          "target": "tpm",
+          "exec_gas": 30000,
+          "approves": 1
+         },
+         {
+          "mode": 2,
+          "exec_gas": 30000
+         }
+        ],
+        "claim": {
+         "sender": "bob",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t-B"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    }
+   ],
+   "derivation": "With bond false CG-11 does not apply: an unstaked paymaster and a banned one are each a payer like any other."
+  }
+ ]
+}

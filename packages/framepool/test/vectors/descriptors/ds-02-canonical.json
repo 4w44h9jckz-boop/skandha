@@ -2,7 +2,7 @@
  "clause": "DS-2",
  "also": [],
  "document": "13-descriptors.md",
- "version": 1,
+ "version": 2,
  "operation": "descriptor",
  "distinguishes": "One value has one canonical encoding: sorted members, no whitespace, integers in plain decimal, and only quote and backslash escaped. An encoder that keeps the file's order or spaces, escapes a slash, or writes integers otherwise fails here.",
  "cases": [

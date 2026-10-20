@@ -15,7 +15,7 @@ import { FramePoolConfig } from "./config.js";
 import { Deps, depKey } from "./deps.js";
 import { admissionGas } from "./matcha.js";
 import { Head, State } from "./model.js";
-import { Entry, FramePool } from "./pool.js";
+import { Entry, FramePool, isStaked } from "./pool.js";
 import {
   BANNED_OPCODES,
   DEPLOY,
@@ -54,8 +54,6 @@ const STAKED_ONLY = new Set(["BALANCE", "SELFBALANCE"]); // OPCODES-010
 const BANNED = new Set(
   [...BANNED_OPCODES].filter((op) => !CREATION.has(op) && op !== "SSTORE")
 );
-
-export type Reputation = "ACTIVE" | "THROTTLED" | "BANNED";
 
 /** A refusal attributed to an entity (AM-14): the address of the frame, or the budget, that failed. */
 export class Refusal extends TxError {
@@ -134,20 +132,6 @@ export interface Entities {
 }
 
 /** AM-3 [STAKING-010]: never a default-code entity. */
-export function isStaked(
-  addr: string,
-  state: State,
-  cfg: FramePoolConfig
-): boolean {
-  const [stake, delay, withdrawing] = state.stake(addr);
-  return (
-    state.code(addr) !== "" &&
-    stake >= cfg.minStakeValue &&
-    delay >= cfg.minUnstakeDelay &&
-    !withdrawing
-  );
-}
-
 /** AM-3. */
 export function entities(
   tx: FrameTx,
@@ -385,34 +369,7 @@ const ents = (e: Entry): Entities => (e.sim as ErcSimulation).entities;
 
 /** A frame pool under ERC-8421's standard ruleset (`config.ruleset === "erc-8421"`). */
 export class StandardPool extends FramePool {
-  private readonly counters = new Map<string, [number, number]>(); // AM-13: by address, [seen, included]
-  private refreshed = 0; // how many refreshes the pool's time has passed
-
-  // --- AM-13: reputation ----------------------------------------------------
-
-  /** AM-13: the counters a node was given for `addr`. */
-  give(addr: string, seen: number, included: number): void {
-    this.counters.set(addr, [seen, included]);
-  }
-
-  /** AM-13: an entity's counters and state (MD-9). */
-  reputation(addr: string): {
-    seen: number;
-    included: number;
-    status: Reputation;
-  } {
-    const [seen, included] = this.counters.get(addr) ?? [0, 0];
-    return { seen, included, status: this.stateOf(addr) };
-  }
-
-  stateOf(addr: string): Reputation {
-    const cfg = this.config;
-    const [seen, included] = this.counters.get(addr) ?? [0, 0];
-    const m = Math.floor(seen / cfg.minInclusionRateDenominator);
-    if (m > included + cfg.banSlack) return "BANNED";
-    if (included + cfg.throttlingSlack < m) return "THROTTLED";
-    return "ACTIVE";
-  }
+  // --- AM-13: reputation, with the counters the frame pool keeps -------------
 
   /** REPUTATION-220, in integers as written. */
   opsAllowed(addr: string): number {
@@ -426,23 +383,6 @@ export class StandardPool extends FramePool {
           )
         : 0;
     return cfg.sameUnstakedEntityMempoolCount + extra;
-  }
-
-  private bump(addr: string, seen = 0, included = 0): void {
-    const [s, i] = this.counters.get(addr) ?? [0, 0];
-    this.counters.set(addr, [Math.max(0, s + seen), Math.max(0, i + included)]);
-  }
-
-  /** REPUTATION-010's refresh, every `refreshSeconds` of the pool's time. */
-  protected expire(now: number): void {
-    super.expire(now);
-    const due = Math.floor(now / this.config.refreshSeconds);
-    for (; this.refreshed < due; this.refreshed++)
-      for (const [a, [s, i]] of this.counters)
-        this.counters.set(a, [
-          Math.floor((s * 23) / 24),
-          Math.floor((i * 23) / 24),
-        ]);
   }
 
   private count(test: (e: Entry) => boolean, replaced: string[]): number {

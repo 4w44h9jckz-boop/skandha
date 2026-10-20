@@ -2,7 +2,7 @@
  "clause": "DS-4",
  "also": [],
  "document": "13-descriptors.md",
- "version": 1,
+ "version": 2,
  "operation": "descriptor",
  "distinguishes": "Every module is one a node implements, with exactly its parameters, each of its type, checked in the byte order of the names: a loader that ignores an unknown module, fills a default, accepts an extra parameter or a value of another type, or checks in another order, fails here.",
  "cases": [

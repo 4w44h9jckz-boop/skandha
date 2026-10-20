@@ -798,11 +798,7 @@ function runPool(c: Json): void {
   const sealed = new SealedPool(head, state, sealedConfig(c), reserver); // LU-4 to LU-11, behind one tracker
   const aggregator = new Aggregator(pool); // AG-5 to AG-7, AG-9 and AG-10
   for (const [addr, r] of Object.entries(c.reputation ?? {}))
-    (pool as StandardPool).give(
-      addr,
-      num((r as Json).seen),
-      num((r as Json).included)
-    ); // AM-13
+    pool.give(addr, num((r as Json).seen), num((r as Json).included)); // AM-13
   let now = 0;
   c.steps.forEach((step: Json, n: number) => {
     const where = `step ${n}:`;
@@ -841,7 +837,7 @@ function runPool(c: Json): void {
       // AM-13
       same(
         step.expect,
-        (pool as StandardPool).reputation(step.reputation),
+        pool.reputation(step.reputation),
         `${where} reputation of ${step.reputation}`
       );
     } else if ("wrapper" in step) {
