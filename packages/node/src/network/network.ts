@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
+import fs from "node:fs";
+import path from "node:path";
+import { TopicValidatorResult } from "@libp2p/interface-pubsub";
 import { Connection } from "@libp2p/interface-connection";
 import { Multiaddr } from "@multiformats/multiaddr";
 import { PeerId } from "@libp2p/interface-peer-id";
@@ -9,6 +12,7 @@ import { serializeMempoolId } from "@skandha/params/lib/index.js";
 import { Config } from "@skandha/executor/lib/config";
 import { AllChainsMetrics } from "@skandha/monitoring/lib/index.js";
 import { Executor } from "@skandha/executor/lib/executor";
+import { FrameService } from "../frames/service.js";
 import { INetworkOptions } from "../options/index.js";
 import { getConnectionsMap } from "../utils/index.js";
 import { INetwork, Libp2p } from "./interface.js";
@@ -25,8 +29,6 @@ import { getCoreTopics } from "./gossip/topic.js";
 import { Discv5Worker } from "./discv5/index.js";
 import { NetworkProcessor } from "./processor/index.js";
 import { pooledUserOpHashes, pooledUserOpsByHash } from "./reqresp/index.js";
-import fs from "node:fs";
-import path from "node:path";
 
 type NetworkModules = {
   libp2p: Libp2p;
@@ -103,7 +105,8 @@ export class Network implements INetwork {
   }
 
   static async init(options: NetworkInitOptions): Promise<Network> {
-    const { peerId, relayersConfig, executor, metrics, dataDir, retainPeerId } = options;
+    const { peerId, relayersConfig, executor, metrics, dataDir, retainPeerId } =
+      options;
     const libp2p = await createNodeJsLibp2p(peerId, options.opts, {
       peerStoreDir: options.peerStoreDir,
     });
@@ -122,7 +125,9 @@ export class Network implements INetwork {
     const supportedMempools = relayersConfig.getSupportedMempools();
     for (const mempool of supportedMempools) {
       if (mempool.mempoolId) {
-        defaultMetadata.supported_mempools.push(serializeMempoolId(mempool.mempoolId));
+        defaultMetadata.supported_mempools.push(
+          serializeMempoolId(mempool.mempoolId)
+        );
       }
     }
     const metadata = new MetadataController({
@@ -172,6 +177,29 @@ export class Network implements INetwork {
     network.dataDir = dataDir;
     network.retainPeerId = retainPeerId;
     return network;
+  }
+
+  /**
+   * emem `docs/spec/11-surface.md`, SF-6 and SF-7: subscribe to the frame
+   * transaction topic, let `frames` decide every message on it before
+   * gossipsub forwards it, and publish what it admits from JSON-RPC.
+   */
+  enableFrames(frames: FrameService): void {
+    const topic = frames.topic;
+    const outcome = {
+      accept: TopicValidatorResult.Accept,
+      reject: TopicValidatorResult.Reject,
+      ignore: TopicValidatorResult.Ignore,
+    };
+    this.gossip.topicValidators.set(
+      topic,
+      async (peer, msg) =>
+        outcome[await frames.onGossip(msg.data, peer.toString())]
+    );
+    this.gossip.subscribe(topic);
+    frames.publish = async (raw) =>
+      (await this.gossip.publish(topic, raw)).recipients.length;
+    this.logger.info({ topic }, "Frame transactions on gossipsub");
   }
 
   /** Shutdown the bundler node */

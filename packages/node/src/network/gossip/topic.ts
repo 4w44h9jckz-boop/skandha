@@ -59,7 +59,9 @@ function stringifyGossipTopicType(topic: GossipTopic): string {
   }
 }
 
-export function getGossipSSZType(topic: GossipTopic): typeof ssz.VerifiedUserOperation {
+export function getGossipSSZType(
+  topic: GossipTopic
+): typeof ssz.VerifiedUserOperation {
   switch (topic.type) {
     case GossipType.user_operation:
       return ssz.VerifiedUserOperation;
@@ -125,4 +127,9 @@ function parseEncodingStr(encodingStr: string): GossipEncoding {
     default:
       throw Error(`Unknown encoding ${encodingStr}`);
   }
+}
+
+/** emem `docs/spec/11-surface.md`, SF-6: the frame transaction topic, outside the user-operation topics. */
+export function isFrameTopic(topicStr: string): boolean {
+  return topicStr.startsWith("/frame-transactions/");
 }

@@ -84,7 +84,7 @@ export async function nodeHandler(args: IGlobalArgs): Promise<void> {
   };
 
   const version = getVersionData();
-  
+
   const node = await BundlerNode.init({
     nodeOptions: options,
     relayersConfig: config,
@@ -96,6 +96,15 @@ export async function nodeHandler(args: IGlobalArgs): Promise<void> {
     metricsOptions: params.metrics,
     version,
     retainPeerId: params.p2p.retainPeerId,
+    frames: args["frames.enable"]
+      ? {
+          rpcUrl: args["frames.rpc"] ?? config.config.rpcEndpoint,
+          profile: args["frames.profile"],
+          handoff: args["frames.handoff"],
+          logFile: args["frames.log"],
+          name: args["frames.name"],
+        }
+      : undefined,
   });
 
   await node.start();
