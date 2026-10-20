@@ -1,7 +1,7 @@
 {
   "clause": "RR-5",
   "document": "08-recent-roots.md",
-  "version": 1,
+  "version": 2,
   "also": ["FP-8"],
   "operation": "pool",
   "distinguishes": "The verifier frame is evaluated directly: the code at the address first, then each tuple in order, refused for a slot at or after the current one, then for an age above W less the margin, then for an entry that is not exactly (source, slot, root); then its own revert.",

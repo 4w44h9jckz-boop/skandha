@@ -1,7 +1,7 @@
 {
   "clause": "RR-4",
   "document": "08-recent-roots.md",
-  "version": 1,
+  "version": 2,
   "also": ["FP-3", "FP-5", "FP-6"],
   "operation": "pool",
   "distinguishes": "Only a VERIFY frame to the recent root address with flags, value and state limit 0 and one to sixteen 72-byte tuples is the verifier frame; there is at most one, first or right after an expiry frame; FP-5's shapes are matched with both skipped; and its gas counts toward max_verify_gas.",

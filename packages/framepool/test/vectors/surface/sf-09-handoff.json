@@ -5,7 +5,7 @@
   "SF-7"
  ],
  "document": "11-surface.md",
- "version": 1,
+ "version": 2,
  "operation": "surface",
  "distinguishes": "A node with handoff true sends its client exactly what its pool admits, from JSON-RPC or from a peer, and a node with handoff false sends nothing.",
  "cases": [

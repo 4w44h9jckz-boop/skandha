@@ -101,9 +101,12 @@ A recorded run is in
 
 ## What it does not do
 
-- Blob-carrying frame transactions, EIP-8288's dependency frames and
-  EIP-8272's recent-root frames are not decoded beyond their bytes; a
-  recent-root frame's outcome reaches the pool only through the verdict.
+- Blob-carrying frame transactions and EIP-8288's dependency frames are not
+  decoded beyond their bytes. EIP-8272's recent-root verifier frame is: the
+  `hegota-testnet` profile models it, its tuples give the slots the pool
+  evicts by, and the client's verdict stands for their check against the
+  contract. A node's slot is the header's `slotNumber`, not its block
+  number.
 - The client is asked about every pending transaction at every head, because
   its simulation does not return the sender slots a prefix read. That is one
   simulation per pending transaction per head.

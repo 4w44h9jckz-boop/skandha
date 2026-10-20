@@ -10,6 +10,7 @@ export const NONCE_MANAGER = "0x0000000000000000000000000000000000008250";
 
 export interface ClientHead {
   number: number;
+  slot: number; // EIP-7843's slotNumber, which RR-2 reads; not the block number
   hash: string;
   timestamp: number;
   gasLimit: bigint;
@@ -65,6 +66,7 @@ export class FrameClient {
     ]);
     return {
       number: Number(b.number),
+      slot: Number(b.slotNumber ?? b.number),
       hash: b.hash,
       timestamp: Number(b.timestamp),
       gasLimit: BigInt(b.gasLimit),

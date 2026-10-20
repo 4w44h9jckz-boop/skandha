@@ -100,7 +100,7 @@ export class FrameService {
       gasLimit: h.gasLimit,
       gasUsed: h.gasUsed,
       baseFee: h.baseFee,
-      slot: h.number,
+      slot: h.slot, // SF-8 step 1: the header's slotNumber (RR-2)
     };
   }
 

@@ -1,7 +1,7 @@
 {
   "clause": "FP-8",
   "document": "02-frame-pool.md",
-  "version": 6,
+  "version": 7,
   "operation": "pool",
   "distinguishes": "What simulating the prefix decides: the expiry verifier's code and deadline, against the head's timestamp plus expiry_margin, the default code's signature lookup by scope, a contract's own outcome, the deploy frame's obligation to install code, and the payer's raw balance at APPROVE.",
   "cases": [

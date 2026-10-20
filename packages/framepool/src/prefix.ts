@@ -404,6 +404,7 @@ function byVerdict(
   deps: Deps
 ): Simulation {
   let deadline: bigint | null = null;
+  let roots: [number, number] | null = null;
   for (let i = 0; i < prefix.frames.length; i++) {
     if (prefix.kinds[i] === EXPIRY) {
       deps.set(
@@ -411,6 +412,10 @@ function byVerdict(
         state.code(cfg.expiryVerifier)
       );
       deadline = prefix.frames[i].deadline;
+    } else if (prefix.kinds[i] === ROOT) {
+      // RR-6: the tuples' slots, read from the transaction, for RR-7
+      const slots = prefix.frames[i].roots.map(([, slot]) => slot);
+      roots = [Math.min(...slots), Math.max(...slots)];
     }
   }
   if (tx.verdict !== E.OK) fail(tx.verdict as string);
@@ -425,7 +430,7 @@ function byVerdict(
     payerClass,
     deps,
     deadline,
-    roots: null,
+    roots,
     verdict: tx.verdict,
   };
 }

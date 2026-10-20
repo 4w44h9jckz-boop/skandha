@@ -1,7 +1,7 @@
 {
   "clause": "RR-8",
   "document": "08-recent-roots.md",
-  "version": 1,
+  "version": 2,
   "also": ["BB-5", "RR-2"],
   "operation": "pool",
   "distinguishes": "A builder checks a spend's roots against the block's own slot with no margin, so a spend admitted at age W fails in a block that follows a slot without one and lands in one that does not.",

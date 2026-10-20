@@ -23,7 +23,7 @@ says how to run two such nodes against the Hegota testnet.
 | `02-frame-pool.md` | FP-2 to FP-16, profiles `eip-8141` and `hegota-testnet`, with the `reuse_balance`, `evict_first`, `expiry_margin` and `static_first` variants, and FP-8 to FP-10 and FP-15 through a client's verdict |
 | `04-matcha.md` | MA-2 to MA-14, profile `matcha` (a proposal) |
 | `05-aggregation.md` | AG-2 to AG-4 and AG-6's admission rule, profile `eip-8288`; not the aggregator (AG-5, AG-7 to AG-9) |
-| `08-recent-roots.md` | RR-3 to RR-7, profile `eip-8272` |
+| `08-recent-roots.md` | RR-3 to RR-7, profiles `eip-8272` and, since emem's version 2, `hegota-testnet` |
 | `09-expiring-nonces.md` | EN-2 to EN-6, profile `eip-8266` |
 | `11-surface.md` | SF-1 to SF-9: decoding, the model transaction, the verdict, `eth_sendRawTransaction`, relay, what is taken from peers, head changes and hand-off (`src/surface.ts`, `src/keccak.ts`) |
 | `12-replay.md` | RP-1 to RP-6: a profile's verdict on a transaction a chain mined (`src/replay.ts`, and `replay/` over every fixture) |

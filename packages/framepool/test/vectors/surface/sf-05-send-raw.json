@@ -5,7 +5,7 @@
   "SF-6"
  ],
  "document": "11-surface.md",
- "version": 1,
+ "version": 2,
  "operation": "surface",
  "distinguishes": "eth_sendRawTransaction answers the chain's hash for what the pool admits and relays it, answers a refusal as an error carrying its code and relays nothing, and asks the client only about a transaction that SF-2 and FP-2 to FP-7 let through.",
  "cases": [

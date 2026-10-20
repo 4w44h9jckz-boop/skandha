@@ -1,7 +1,7 @@
 {
   "clause": "RR-7",
   "document": "08-recent-roots.md",
-  "version": 1,
+  "version": 2,
   "also": ["FP-15"],
   "operation": "pool",
   "distinguishes": "A spend leaves the pool, with nothing re-run, at the first head whose next slot is L or more after its oldest tuple's slot, or no later than one of its tuples' slots; the margin does not evict.",

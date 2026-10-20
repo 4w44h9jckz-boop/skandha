@@ -1,13 +1,14 @@
 {
  "clause": "SF-3",
  "also": [
-  "SF-2",
   "FEE-4",
   "MD-6",
-  "MD-7"
+  "MD-7",
+  "RR-4",
+  "SF-2"
  ],
  "document": "11-surface.md",
- "version": 1,
+ "version": 2,
  "operation": "surface",
  "distinguishes": "A transaction a chain mined decodes to the model transaction its fields give, its hash is the chain's, and its max gas and max cost are the client's: a decoder that reads a field wrongly, hashes anything but the bytes, miscounts zero bytes or prices them as non-zero fails here.",
  "provenance": "Each raw transaction is exp-frames' encoding of a mined fixture at exp-frames 85ee60d, kept only because its keccak256 is the hash the chain gives it, so the bytes are the chain's. The expected fields are those of the transaction so encoded, written in the model's names; zero_bytes counts the zero bytes among them; max_cost is the client's. Nothing here was produced by this repository's reference (decision record 0051).",
@@ -999,6 +1000,84 @@
      "chain_id": 7034189865
     }
    }
+  },
+  {
+   "name": "a privacy withdrawal opening with EIP-8272's verifier frame: its one tuple decoded",
+   "profile": "hegota-testnet",
+   "steps": [
+    {
+     "decode": "0x06f9030e821fcde1a01ba8645ce343a7e0a5b59d617dc857ead276917974a55a844594967bc25a94758094e19605853a749322655470199fd31d3f3e53baf9f902c2f8670180940000000000000000000000000000000000008272c4822ec58080b848377359fb3160077a95d6f9aaab59fc72144e644e3f93fd09f29df7473a809d1c000000000007bcaa0491c6bf4c74a9950f60a837a106b872141ec6b836042e806d1d203d0f2a107ace010380c88304be9283017e808080f90228028094e19605853a749322655470199fd31d3f3e53baf9c8830186a08302cd3080b9020421a0adb600000000000000000000000000000000000000000000000000000000000000e00491c6bf4c74a9950f60a837a106b872141ec6b836042e806d1d203d0f2a107a1ba8645ce343a7e0a5b59d617dc857ead276917974a55a844594967bc25a947500000000000000000000000095f57e54d5c645fcb6154080802d94cca91f09ef000000000000000000000000e19605853a749322655470199fd31d3f3e53baf900000000000000000000000000000000000000000000000000008905d87e5600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000b475da29f1b63ab97b2db8dd04723fa2fd1c7c7b90c37a72718af5dd281fad414539efe2e0484374345a79164d212241b2c3db07ddb6004c097e8bf2293a81c1b97a5f5ff942b16062a71a8429fef61f5606ed6dcf5f0fc476e4c546cdb792926798bb297f309c890270c564308681e8016e0139f90037d6c483c67d4862bc82128f8e57151c1e543d794e8cb7fd4b093999c1fe2cce791acee6655d84dd90f133f1598ed7b3d1ca70882720ffd4a89c679f9fd70c61ca85990792c04f3f6410cbbfe1c065ce162a00461a3932d5f1f14f328179dc60963b34b3ebd5f6c95e029874692a548eaede49991d5bf680d6395cbea3b4fbb18abdd873f468d169b9bde808094e19605853a749322655470199fd31d3f3e53baf9c48261a8808080c0cb8405f5e100840bebc20080c0",
+     "expect": {
+      "result": "ok",
+      "hash": "0x339af560b79b175b240b4250809cc14e84b34799023cb2a847053bd2e7119659",
+      "tx": {
+       "sender": "0xe19605853a749322655470199fd31d3f3e53baf9",
+       "nonce_keys": [
+        12509969897514455666572325916687023457888404574607860089239320027434812347509
+       ],
+       "nonce_seq": 0,
+       "tip": 100000000,
+       "max_fee": 200000000,
+       "size": 786,
+       "zero_bytes": 150,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 0,
+         "target": "0x0000000000000000000000000000000000008272",
+         "exec_gas": 11973,
+         "state_gas": 0,
+         "value": 0,
+         "data_size": 72,
+         "roots": [
+          [
+           "0x377359fb3160077a95d6f9aaab59fc72144e644e3f93fd09f29df7473a809d1c",
+           507050,
+           "0x0491c6bf4c74a9950f60a837a106b872141ec6b836042e806d1d203d0f2a107a"
+          ]
+         ]
+        },
+        {
+         "mode": 1,
+         "flags": 3,
+         "target": null,
+         "exec_gas": 310930,
+         "state_gas": 97920,
+         "value": 0,
+         "data_size": 0,
+         "roots": []
+        },
+        {
+         "mode": 2,
+         "flags": 0,
+         "target": "0xe19605853a749322655470199fd31d3f3e53baf9",
+         "exec_gas": 100000,
+         "state_gas": 183600,
+         "value": 0,
+         "data_size": 516,
+         "roots": []
+        },
+        {
+         "mode": 0,
+         "flags": 0,
+         "target": "0xe19605853a749322655470199fd31d3f3e53baf9",
+         "exec_gas": 25000,
+         "state_gas": 0,
+         "value": 0,
+         "data_size": 0,
+         "roots": []
+        }
+       ],
+       "signatures": []
+      },
+      "gas": {
+       "max_gas": 751491,
+       "max_cost": 150298200000000
+      }
+     }
+    }
+   ],
+   "source": "exp-frames claude/nifty-einstein-llp9cd, test/fixtures/chain/0x339af560b79b175b240b4250809cc14e84b34799023cb2a847053bd2e7119659.json, mined in block 477,924 and read from ethrex v23.0.0-hegota-testnet-hotfix-64b8fc09; the tuple is the frame's 72 data bytes split as source_id(32) || uint64_be(slot) || root(32); max_cost is ethrex's maxCost from ethrex_simulateFrameTransaction, 2026-10-20"
   }
  ]
 }

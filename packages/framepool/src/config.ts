@@ -140,6 +140,7 @@ export const HEGOTA_TESTNET = withChanges(EIP_8141, {
   capCodelessPayers: true,
   perSender: "disjoint-keys",
   expiryVerifier: EXPIRY_VERIFIER_TESTNET,
+  recentRoots: true, // RR-1's hegota-testnet column: the testnet runs EIP-8272, at eip-8272's constants
 });
 
 export const MATCHA = withChanges(EIP_8141, {

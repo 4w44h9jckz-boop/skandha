@@ -5,7 +5,7 @@
   "FEE-4"
  ],
  "document": "11-surface.md",
- "version": 1,
+ "version": 2,
  "operation": "surface",
  "distinguishes": "The order of SF-2's checks and the line between bytes that are not a frame transaction and a frame transaction with a field out of range: a decoder that accepts non-canonical RLP or trailing bytes, checks the chain id before the fields, or calls a malformed field a decoding failure, fails here.",
  "provenance": "Every byte string is ethrex's golden vector, or that vector with the pieces each case names written in by hand; every expected value is derived by hand from the clauses, and the golden vector's max_cost was also checked against ethrex.",

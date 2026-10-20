@@ -15,7 +15,14 @@ import { FramePoolConfig, withChanges } from "./config.js";
 import { keccak256 } from "./keccak.js";
 import { Head, State } from "./model.js";
 import { FramePool } from "./pool.js";
-import { Frame, FrameTx, Signature, frame, signature } from "./tx.js";
+import {
+  Frame,
+  FrameTx,
+  RootReference,
+  Signature,
+  frame,
+  signature,
+} from "./tx.js";
 
 export const FRAME_TX_TYPE = 0x06;
 const SCHEMES: Readonly<Record<number, string>> = {
@@ -57,7 +64,10 @@ export const SURFACE_PROFILES: ReadonlyMap<string, SurfaceConfig> = new Map([
 
 /** SF-3: the profile's distinguished address in the form the surface writes addresses in. */
 export function addressForm(cfg: FramePoolConfig): FramePoolConfig {
-  return withChanges(cfg, { expiryVerifier: cfg.expiryVerifier.toLowerCase() });
+  return withChanges(cfg, {
+    expiryVerifier: cfg.expiryVerifier.toLowerCase(),
+    recentRootAddress: cfg.recentRootAddress.toLowerCase(),
+  });
 }
 
 // --- canonical RLP, SF-2 step 3 ------------------------------------------------------
@@ -254,6 +264,27 @@ function rlpList(items: Uint8Array[]): Uint8Array {
   return Buffer.concat([Uint8Array.of(0xf7 + n.length), n, body]);
 }
 
+/**
+ * SF-3: a recent-root verifier frame's tuples, `source_id(32) || uint64_be(slot) || root(32)`.
+ * A slot is a number: one at or above 2^53 rounds but stays above every real slot, so RR-7 and the
+ * client both still find it in the future.
+ */
+function rootsOf(data: Uint8Array): RootReference[] {
+  if (data.length % 72 !== 0) return [];
+  const out: RootReference[] = [];
+  for (let i = 0; i < data.length; i += 72) {
+    const slot = Number(
+      Buffer.from(data.subarray(i + 32, i + 40)).readBigUInt64BE(0)
+    );
+    out.push([
+      hex(data.subarray(i, i + 32)),
+      slot,
+      hex(data.subarray(i + 40, i + 72)),
+    ]);
+  }
+  return out;
+}
+
 /** SF-3: the chain's hash, keccak256 of the bytes received. */
 export function txHash(raw: Uint8Array): string {
   return hex(keccak256(raw));
@@ -280,6 +311,9 @@ export function decode(
   if (t.chainId !== cfg.chainId) throw new TxError(E.ErrInvalidChainId);
   const keys = t.nonceKeys ?? [0n];
   const expiry = frameCfg.expiryVerifier.toLowerCase();
+  const rootVerifier = frameCfg.recentRoots
+    ? frameCfg.recentRootAddress.toLowerCase()
+    : null;
   const counted: Uint8Array[] = [];
   const frames: Frame[] = t.frames.map((f) => {
     const target = f.target.length > 0 ? hex(f.target) : null;
@@ -292,6 +326,7 @@ export function decode(
       stateGas: f.state,
       value: f.value,
       dataSize: f.data.length,
+      roots: target !== null && target === rootVerifier ? rootsOf(f.data) : [],
       deadline:
         target === expiry && f.data.length === 8
           ? Buffer.from(f.data).readBigUInt64BE(0)

@@ -693,6 +693,7 @@ function modelJson(tx: FrameTx): Json {
       value: f.value,
       data_size: f.dataSize,
       deadline: f.deadline,
+      roots: f.roots.map((r) => [...r]),
     })),
     signatures: tx.signatures.map((s) => ({
       scheme: s.scheme,

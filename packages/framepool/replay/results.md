@@ -7,7 +7,7 @@ not edit; run the command again and compare.
 
 ## Totals
 
-- **hegota-testnet**: 172 agree; 10 explained (recent-roots)
+- **hegota-testnet**: 182 agree
 - **eip-8141**: 154 agree; 8 explained (expiry_verifier); 3 explained (expiry_verifier, recent-roots); 10 explained (max_verify_gas); 6 explained (max_verify_gas, recent-roots); 1 explained (recent-roots)
 - **eip-8141 (plain)**: 5 agree; 1 explained (expiry_verifier); 6 header missing
 
@@ -29,7 +29,7 @@ not edit; run the command again and compare.
 | `0x0fa9ce58662705c8` | 8141 | 305326 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x1071aec56d95978b` | 8141 | 66 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x10ad88695c05ee04` | 8141 | 305054 | hegota-testnet: ok, agree<br>eip-8141: ErrFrameVerifyGas, explained (max_verify_gas) |
-| `0x11594d4ddea48ab6` | 8141 | 316318 | hegota-testnet: ErrFrameUnrecognizedPrefix, explained (recent-roots)<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (expiry_verifier, recent-roots) |
+| `0x11594d4ddea48ab6` | 8141 | 316318 | hegota-testnet: ok, agree<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (expiry_verifier, recent-roots) |
 | `0x13a2d8a6511f35af` | 8141 | 306340 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x1746a1a68f68281c` | 8141 | 305328 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x17e40b0ace92c462` | 8141 | 127677 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
@@ -41,21 +41,21 @@ not edit; run the command again and compare.
 | `0x243ea12619fcb733` | 8141 | 304987 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x24d95a900830b8a6` | 8141 | 305533 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x26ed3e31ef89ea6f` | 8141 | 49563 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
-| `0x2719e9459155a1c3` | 8141 | 304240 | hegota-testnet: ErrFrameUnrecognizedPrefix, explained (recent-roots)<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (max_verify_gas, recent-roots) |
+| `0x2719e9459155a1c3` | 8141 | 304240 | hegota-testnet: ok, agree<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (max_verify_gas, recent-roots) |
 | `0x287b27c3808d1aab` | 8141 | 305533 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x2a0afccfa97f2053` | 8141 | 304983 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
-| `0x2b90c598179b0cb8` | 8141 | 8155 | hegota-testnet: ErrFrameUnrecognizedPrefix, explained (recent-roots)<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (max_verify_gas, recent-roots) |
+| `0x2b90c598179b0cb8` | 8141 | 8155 | hegota-testnet: ok, agree<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (max_verify_gas, recent-roots) |
 | `0x2c7be31990ca69af` | 8141 | 303137 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x2c8171116f1f5171` | 8141 | 304888 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x2e1062eff4108169` | 8141 | 304500 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x2f734f97812a2b36` | 8141 | 304989 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
-| `0x316eb3f1f300f874` | 8141 | 316312 | hegota-testnet: ErrFrameUnrecognizedPrefix, explained (recent-roots)<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (expiry_verifier, recent-roots) |
+| `0x316eb3f1f300f874` | 8141 | 316312 | hegota-testnet: ok, agree<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (expiry_verifier, recent-roots) |
 | `0x327eaf95192e82e3` | 8141 | 305065 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x3389926a0e1e3df0` | 8141 | 306469 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x344bde97d1380e08` | 8141 | 305423 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x34ae87b165ac15ca` | 8141 | 320285 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x35291ed9ee356043` | 8141 | 305574 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
-| `0x35a01d1149d8b341` | 8141 | 304225 | hegota-testnet: ErrFrameUnrecognizedPrefix, explained (recent-roots)<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (max_verify_gas, recent-roots) |
+| `0x35a01d1149d8b341` | 8141 | 304225 | hegota-testnet: ok, agree<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (max_verify_gas, recent-roots) |
 | `0x35ee10cd62157664` | 8141 | 305463 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x3626bfffa2fc1638` | 8141 | 305422 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x3650463db2e5bcb0` | 8141 | 305249 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
@@ -81,7 +81,7 @@ not edit; run the command again and compare.
 | `0x5cd226e75d7303ad` | 8141 | 305254 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x5d2311bc4668e551` | 8141 | 304733 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x5d5d194459e3cd6c` | 8141 | 305400 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
-| `0x5fb29fe15de91029` | 8141 | 304240 | hegota-testnet: ErrFrameUnrecognizedPrefix, explained (recent-roots)<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (max_verify_gas, recent-roots) |
+| `0x5fb29fe15de91029` | 8141 | 304240 | hegota-testnet: ok, agree<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (max_verify_gas, recent-roots) |
 | `0x624ad97d70719a3d` | 8141 | 67 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x6256f61748c76a0d` | 8141 | 315371 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x642c7f1207ae6302` | 8141 | 305066 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
@@ -94,12 +94,12 @@ not edit; run the command again and compare.
 | `0x7350bf5f3b043455` | 8141 | 316309 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x738854c6d0850576` | 8141 | 305976 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x75b9fae8678a950f` | 8141 | 305354 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
-| `0x7c36ba99b08c3aad` | 8141 | 304223 | hegota-testnet: ErrFrameUnrecognizedPrefix, explained (recent-roots)<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (max_verify_gas, recent-roots) |
+| `0x7c36ba99b08c3aad` | 8141 | 304223 | hegota-testnet: ok, agree<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (max_verify_gas, recent-roots) |
 | `0x7d3e237f2256863a` | 8141 | 304887 | hegota-testnet: ok, agree<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (expiry_verifier) |
 | `0x7d656faf6de87e98` | 8141 | 72 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x7e7f0d836fda3f07` | 8141 | 305355 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x7f53ae0cf1ed9a94` | 8141 | 305233 | hegota-testnet: ok, agree<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (expiry_verifier) |
-| `0x7fa5825c35412025` | 8141 | 304501 | hegota-testnet: ErrFrameUnrecognizedPrefix, explained (recent-roots)<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (max_verify_gas, recent-roots) |
+| `0x7fa5825c35412025` | 8141 | 304501 | hegota-testnet: ok, agree<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (max_verify_gas, recent-roots) |
 | `0x7fbe019993c20930` | 8141 | 302623 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x80ca74022f3cdddd` | 8141 | 49562 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0x80f2c88b35662f48` | 8141 | 303016 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
@@ -183,7 +183,7 @@ not edit; run the command again and compare.
 | `0xe22b0d5ce4f6831d` | 8141 | 304739 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0xe23a53ac89083dab` | 8141 | 305056 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0xe4a94f7b09f0fb98` | 8141 | 306344 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
-| `0xea13068da88d0d6b` | 8141 | 91066 | hegota-testnet: ErrFrameUnrecognizedPrefix, explained (recent-roots)<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (recent-roots) |
+| `0xea13068da88d0d6b` | 8141 | 91066 | hegota-testnet: ok, agree<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (recent-roots) |
 | `0xeb293eb7ea7ac27f` | 8141 | 306131 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0xebbf8e6f879b057f` | 8141 | 303121 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0xec1af2384b905289` | 8141 | 304735 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
@@ -198,7 +198,7 @@ not edit; run the command again and compare.
 | `0xf34ec26c02d93978` | 8141 | 38219 | hegota-testnet: ok, agree<br>eip-8141: ErrFrameVerifyGas, explained (max_verify_gas) |
 | `0xf57451a7523d427e` | 8141 | 304743 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0xf790e5adbda3e680` | 8141 | 302876 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
-| `0xf7d46af177260a3d` | 8141 | 316311 | hegota-testnet: ErrFrameUnrecognizedPrefix, explained (recent-roots)<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (expiry_verifier, recent-roots) |
+| `0xf7d46af177260a3d` | 8141 | 316311 | hegota-testnet: ok, agree<br>eip-8141: ErrFrameUnrecognizedPrefix, explained (expiry_verifier, recent-roots) |
 | `0xfb8bb650f4d4ff7f` | 8141 | 306345 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0xfd663ca66585d808` | 8141 | 305344 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |
 | `0xfde5cf2a22d33ef7` | 8141 | 304985 | hegota-testnet: ok, agree<br>eip-8141: ok, agree |

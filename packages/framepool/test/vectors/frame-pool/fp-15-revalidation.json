@@ -1,7 +1,7 @@
 {
   "clause": "FP-15",
   "document": "02-frame-pool.md",
-  "version": 6,
+  "version": 7,
   "operation": "pool",
   "distinguishes": "A new head removes included and expired transactions, expired against its timestamp plus expiry_margin, re-simulates exactly those whose recorded dependencies changed (a payer's balance rising by one wei among them), and re-checks payer reservations in arrival order; under reuse_balance a change to non-zero balances alone re-simulates nothing and leaves the payer check to step 4.",
   "cases": [

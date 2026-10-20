@@ -1,7 +1,7 @@
 {
   "clause": "RR-3",
   "document": "08-recent-roots.md",
-  "version": 1,
+  "version": 2,
   "also": ["RR-2", "RR-5"],
   "operation": "pool",
   "distinguishes": "A root written by a transaction in a block at slot S is stored for the source named by the caller's address and salt, at slot S, so it is referenceable from slot S + 1 with exactly that source, slot and root; the last write in a block to one source is the one stored.",

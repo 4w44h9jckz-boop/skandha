@@ -11,7 +11,7 @@
   "FP-6"
  ],
  "document": "12-replay.md",
- "version": 1,
+ "version": 2,
  "operation": "replay",
  "distinguishes": "A replay compares a profile's verdict with a mined transaction's receipt as RP-4 says: ok with the receipt's payer agrees, a refusal one named difference or two turn into ok is explained by them, and anything else disagrees; a replay that reads state, credits an unnamed difference, ignores the payer or replays bytes that are not the chain's fails here.",
  "provenance": "The bytes, hashes and receipt payers are mined fixtures of exp-frames 85ee60d, as in sf-03-model-transaction.json; the parent headers were read from the Hegota testnet's eth_getBlockByNumber on 2026-10-20. Where a case writes a value in by hand, its derivation says so.",
@@ -70,8 +70,36 @@
    "derivation": "Under eip-8141 the frame to 0x..8141 is a VERIFY frame with flags 0 that is not expiry_verify, so the prefix is not a recognised shape (FP-5 rule 4). With expiry_verifier set to 0x..8141 it is [expiry_verify, self_verify] and passes."
   },
   {
-   "name": "a recent-root frame in the prefix is a named difference on the testnet's profile",
+   "name": "a recent-root frame in the prefix agrees on the testnet's profile, which models EIP-8272",
    "profile": "hegota-testnet",
+   "fixture": {
+    "raw": "0x06f902ba821fcdc1808094a0000a32cbe575fcebb54eb8dcc99aa5c49264f8f90249e60180940000000000000000000000000000000000008141c4821388808088000000006ac72d23f8670180940000000000000000000000000000000000008272c4824e208080b848d71ef1abfe32a48902521ace80efa0e27234c61c98198af7de3e165d54723fb50000000000052016f1ab625c4342a76adb3aab7f6b535afbc797994039a1bf1ffe0ba27099c4c4c1ca010280c4824e20808080f9014301019456208581d049a396e81f6c3cea6decde79006189c7824e208302cd3080b90120000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000038d7ea4c68000000000000000000000000000000000000000000000000000000000006ac72d5900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004eb4152d7d7145df52ab700190616576ff54a7c76552493351e65b19c063fd878ad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5b4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d3021ddb9a356815c3fac1026b6dec5df3124afbadb485c9ba5a3e3398a04b7ba85f8660280943d071fca1612acac37652cd60ebc41316539254fc782ea608302fd0080b84440c10f19000000000000000000000000a0000a32cbe575fcebb54eb8dcc99aa5c49264f80000000000000000000000000000000000000000000000000de0b6b3a7640000f848f846018080b84101d4a41cc565572cc0800d2ec8ac8d59bfeb8a2e8300208a61e4cab66911dd26f518350ac9fa4ff157ec077253c7ce8d434b5ae8bed12ea7c9cec40710e7baab80c78203e88203f680c0",
+    "hash": "0x11594d4ddea48ab65af7649c9a0fa5fb95041628c5601380433d7d832d0c987a",
+    "payer": "0x56208581d049a396e81f6c3cea6decde79006189",
+    "parent": {
+     "number": 316317,
+     "timestamp": 1791437875,
+     "gas_limit": 200000000,
+     "gas_used": 97920,
+     "base_fee": 7
+    }
+   },
+   "expect": {
+    "verdict": "ok",
+    "payer": "0x56208581d049a396e81f6c3cea6decde79006189",
+    "comparison": "agree",
+    "differences": []
+   },
+   "derivation": "Under 08-recent-roots.md version 2, hegota-testnet classifies the frame to 0x..8272 as recent_root_verify (RR-4: VERIFY, flags, value and state limit 0, 72 data bytes holding one tuple, second after expiry_verify), and FP-5 matches [only_verify, pay] with both skipped; FP-6: 5000 + 20000 + 20000 + 20000 + 2800 = 67800. The pay frame's target is the receipt's payer. Version 1 of 12-replay.md expected ErrFrameUnrecognizedPrefix, explained by recent-roots."
+  },
+  {
+   "name": "the same fixture under the EIP's profile needs two named differences",
+   "profile": "eip-8141",
+   "config": {
+    "surface": {
+     "chain_id": 8141
+    }
+   },
    "fixture": {
     "raw": "0x06f902ba821fcdc1808094a0000a32cbe575fcebb54eb8dcc99aa5c49264f8f90249e60180940000000000000000000000000000000000008141c4821388808088000000006ac72d23f8670180940000000000000000000000000000000000008272c4824e208080b848d71ef1abfe32a48902521ace80efa0e27234c61c98198af7de3e165d54723fb50000000000052016f1ab625c4342a76adb3aab7f6b535afbc797994039a1bf1ffe0ba27099c4c4c1ca010280c4824e20808080f9014301019456208581d049a396e81f6c3cea6decde79006189c7824e208302cd3080b90120000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000038d7ea4c68000000000000000000000000000000000000000000000000000000000006ac72d5900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004eb4152d7d7145df52ab700190616576ff54a7c76552493351e65b19c063fd878ad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5b4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d3021ddb9a356815c3fac1026b6dec5df3124afbadb485c9ba5a3e3398a04b7ba85f8660280943d071fca1612acac37652cd60ebc41316539254fc782ea608302fd0080b84440c10f19000000000000000000000000a0000a32cbe575fcebb54eb8dcc99aa5c49264f80000000000000000000000000000000000000000000000000de0b6b3a7640000f848f846018080b84101d4a41cc565572cc0800d2ec8ac8d59bfeb8a2e8300208a61e4cab66911dd26f518350ac9fa4ff157ec077253c7ce8d434b5ae8bed12ea7c9cec40710e7baab80c78203e88203f680c0",
     "hash": "0x11594d4ddea48ab65af7649c9a0fa5fb95041628c5601380433d7d832d0c987a",
@@ -88,10 +116,11 @@
     "verdict": "ErrFrameUnrecognizedPrefix",
     "comparison": "explained",
     "differences": [
+     "expiry_verifier",
      "recent-roots"
     ]
    },
-   "derivation": "The prefix is [expiry_verify, VERIFY flags 0 to 0x..8272, only_verify, pay]; the second frame has no class, so the shape is not recognised. Without the frames to 0x..8272 it is [expiry_verify, only_verify, pay], a recognised shape, within 500000."
+   "derivation": "Under eip-8141 neither the frame to 0x..8141 nor the one to 0x..8272 has a class, so the shape is not recognised. expiry_verifier alone leaves the 0x..8272 frame unclassified, recent-roots alone leaves the 0x..8141 one; with both, the prefix is [expiry_verify, only_verify, pay], within 100000 at 67800."
   },
   {
    "name": "a prefix of 102901 gas: refused by the EIP's budget, explained by the testnet's",
