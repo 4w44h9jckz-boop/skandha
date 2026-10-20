@@ -26,6 +26,17 @@ replaced. The node loads a descriptor with `--frames.descriptor`; ERC-8421's
 needs a tracer the execution client does not offer, so the node refuses it
 and only the vectors play it.
 
+Since exp-mempool-l2s's `05-aggregation.md` version 4 it also has the
+aggregator, `Aggregator` in `src/aggregation.ts`: a node's side of EIP-8288,
+which receives wrappers (AG-5, AG-6) and folds, once an interval, every
+transaction it holds into one aggregate (AG-7), within the limits of AG-5,
+a proving budget (AG-9) and a memory budget (AG-10). Under the profile
+`eip-8288-master`, EIP-8288 as ethereum/EIPs master has it, the defined
+scheme is leanSPHINCS: a dependency frame that uses leanSTARK is refused,
+as the EIP reserves it. `test/two-folds.ts` runs two pools, each with its
+aggregator, that fold the same dependencies and each accept the other's
+fold (below).
+
 ## What it covers
 
 | exp-mempool-l2s document | Clauses |
@@ -33,7 +44,7 @@ and only the vectors play it.
 | `00-model.md` | MD-2 to MD-4, version 10: an account's stake, and MD-6 with `zero_bytes`, `verdict` and a slot's association, MD-7, MD-8 with `reset`'s verdicts, FEE-1 to FEE-4 |
 | `02-frame-pool.md` | FP-2 to FP-16, profiles `eip-8141` and `hegota-testnet`, with the `reuse_balance`, `evict_first`, `expiry_margin` and `static_first` variants, and FP-8 to FP-10 and FP-15 through a client's verdict |
 | `04-matcha.md` | MA-2 to MA-14, profile `matcha` (a proposal) |
-| `05-aggregation.md` | AG-2 to AG-6, profile `eip-8288`: dependency frames, and receiving a wrapper and admitting its transactions (`src/aggregation.ts`); not building an aggregate (AG-7 to AG-9) |
+| `05-aggregation.md` | AG-2 to AG-7, AG-9 and AG-10, version 4, profiles `eip-8288` and `eip-8288-master`: dependency frames, receiving a wrapper and admitting its transactions, and the aggregator's fold with its proving time and memory (`src/aggregation.ts`); not AG-8's charge to a block, which is block building |
 | `08-recent-roots.md` | RR-3 to RR-7, profiles `eip-8272` and, since its version 2, `hegota-testnet` |
 | `09-expiring-nonces.md` | EN-2 to EN-6, profile `eip-8266` |
 | `11-surface.md` | SF-1 to SF-9: decoding, the model transaction, the verdict, `eth_sendRawTransaction`, relay, what is taken from peers, head changes and hand-off (`src/surface.ts`, `src/keccak.ts`) |
@@ -45,8 +56,8 @@ and only the vectors play it.
 | `14-erc-8421.md` | AM-2 to AM-14 and AM-16: ERC-8421's standard alternative mempool as a pool, entities, stake, per-entity budgets, `pre_verify` frames, trace and storage rules, keyed-nonce lifecycle and limits, local rules, solvency, reputation and blame (`src/erc8421.ts`, `StandardPool`) |
 
 It does not have the account-nonce pool of `01-nonce-pool.md`, which belongs
-to an execution client, the sealed pool of `06-lucid.md`, block building, so
-not IL-7's appending, or an aggregator's side of `05-aggregation.md`.
+to an execution client, the sealed pool of `06-lucid.md`, or block building,
+so not IL-7's appending or AG-8.
 
 A ticket's signature is checked with `@noble/curves`, not with the code the
 ticket vectors were made with, so that they judge a verifier that shares
@@ -83,7 +94,7 @@ tools/sync-vectors.sh <path to an exp-mempool-l2s checkout> <commit>
 
 The runner decides from each case's contents whether it can play the case. A
 case that adds an account-nonce or sealed transaction, builds a block,
-drives an aggregator or names a profile this package does not have is
+runs an operation or names a profile this package does not have is
 skipped, and the skip names what is missing. There is no list of
 skipped cases by name: a list could quietly take in a failing case, and a rule
 over what the case contains cannot.
@@ -108,6 +119,35 @@ state, because the testnet answers a state read at an old block with the
 latest state. `replay/results.md` is generated: run the second command again
 and compare. Its totals are the result.
 
+## Two aggregators
+
+`bun run two-folds` plays the exchange in `test/two-folds.ts`, and
+`test/unit/two-folds.test.ts` checks it. Two nodes, A and B, each a frame
+pool with its aggregator under `eip-8288-master`, take twelve users' mode 0
+wrappers, each spend with one leanSPHINCS dependency and every third with a
+zero `data_hash`, which stands for the spend's signature hash. Even users go
+to A, odd ones to B. Proving time is AG-9's at the laptop's costs that
+exp-mempool-l2s's experiment 24 reports, within a budget of one aggregation
+interval.
+
+| Round | Each node folds | Its dependencies | Proving time | The other's answer |
+| --- | --- | --- | --- | --- |
+| 1 | its own 6, directly | 6 | 99.5 ms | `ok` for each of 6 |
+| 2 | all 12, its last aggregate and the other's as inputs | 12, the other's | 435.1 ms | `ErrAlreadyKnown` for each of 12 |
+| 3 | the 10 left after a block includes one spend from each | 10, the other's | 257.1 ms | `ErrAlreadyKnown` for each of 10 |
+| 4 | A's fold with one dependency left out | 9 | | `ErrWrapperDeps` |
+
+In rounds 2 and 3 neither node refuses the other's fold, and each spend in it
+is one it already holds. After the block, each node folds again with its last
+aggregate as one recursive input, which discards the two included spends'
+dependencies: the price of a dropped dependency is one recursive input, not a
+proof of each dependency left.
+
+The two nodes are two pools in one process. Two running nodes cannot
+exchange a fold yet: `AGGREGATED_VK` and `DEPS_HASH` are still to be chosen
+in EIP-8288, so no recursive STARK can be made or checked to it. The
+model's recursive STARK is the list of dependencies it covers.
+
 ## Running
 
 ```sh
@@ -115,5 +155,6 @@ bun install                 # at the repository root
 cd packages/framepool
 bun run test                # vitest, one test a vector case
 bun run vectors             # one line a failure, the skips by what they need, and the totals
+bun run two-folds           # two aggregators fold the same dependencies
 bun run check-types
 ```

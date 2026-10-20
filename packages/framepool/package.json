@@ -27,7 +27,8 @@
     "lint": "eslint --color --ext .ts src/ test/",
     "test": "bun run test:unit",
     "test:unit": "vitest --run --dir test/unit/",
-    "vectors": "bun test/run-vectors.ts"
+    "vectors": "bun test/run-vectors.ts",
+    "two-folds": "bun test/run-two-folds.ts"
   },
   "dependencies": {
     "@noble/curves": "1.8.1"

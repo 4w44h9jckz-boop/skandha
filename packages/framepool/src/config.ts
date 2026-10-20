@@ -45,6 +45,11 @@ export interface FramePoolConfig {
   readonly contention: "sender" | "storage" | "slot"; // MA-14
   // AG-1, read only when dependencyFrames is true
   readonly dependencyFrames: boolean;
+  readonly depFrameMode: number; // DEP_VERIFY_FRAME_MODE: 3 at the pinned commit, 4 on master
+  readonly leanstark: "defined" | "reserved"; // AG-2
+  readonly depInBatch: boolean; // whether a dependency frame may follow a frame with ATOMIC_BATCH_FLAG (AG-2)
+  readonly zeroDataHash: "literal" | "sig_hash"; // AG-4: whether a zero data_hash stands for the signature hash
+  readonly mode1Union: boolean; // whether AG-5 checks a mode 1 wrapper's deps against its transactions
   readonly maxDependenciesPerFrame: number;
   readonly maxSigsPerTx: number;
   readonly maxStarksPerTx: number;
@@ -53,12 +58,18 @@ export interface FramePoolConfig {
   readonly aggregationInterval: number;
   readonly capAggregates: boolean;
   readonly forwardWrappers: boolean;
-  // AG-9: ms; null bounds nothing. Read by an aggregator, which this package does not have.
+  // AG-9: ms; null bounds nothing. Read by the aggregator (`Aggregator`).
   readonly provingBudget: number | null;
   readonly proveBase: number;
   readonly proveRecursive: number;
   readonly proveSig: number;
   readonly proveStark: number;
+  // AG-10: MiB; null bounds nothing
+  readonly memoryBudget: number | null;
+  readonly memoryBase: number;
+  readonly memoryRecursive: number;
+  readonly memorySig: number;
+  readonly memoryStark: number;
   // RR-1, read only when recentRoots is true
   readonly recentRoots: boolean;
   readonly recentRootAddress: string;
@@ -122,6 +133,11 @@ export const EIP_8141: FramePoolConfig = Object.freeze({
   loadPrice: 0n,
   contention: "sender",
   dependencyFrames: false,
+  depFrameMode: 3,
+  leanstark: "defined",
+  depInBatch: true,
+  zeroDataHash: "literal",
+  mode1Union: false,
   maxDependenciesPerFrame: 256,
   maxSigsPerTx: 16,
   maxStarksPerTx: 1,
@@ -135,6 +151,11 @@ export const EIP_8141: FramePoolConfig = Object.freeze({
   proveRecursive: 0,
   proveSig: 0,
   proveStark: 0,
+  memoryBudget: null,
+  memoryBase: 0,
+  memoryRecursive: 0,
+  memorySig: 0,
+  memoryStark: 0,
   recentRoots: false,
   recentRootAddress: RECENT_ROOT_ADDRESS,
   recentRootCode: "recent-root",
@@ -198,6 +219,16 @@ export const EIP_8288 = withChanges(EIP_8141, {
   dependencyFrames: true,
 });
 
+/** AG-1: EIP-8288 at master `899bef0a`, with leanSTARK reserved (exp-mempool-l2s decision record 0063). */
+export const EIP_8288_MASTER = withChanges(EIP_8288, {
+  name: "eip-8288-master",
+  depFrameMode: 4,
+  leanstark: "reserved",
+  depInBatch: false,
+  zeroDataHash: "sig_hash",
+  mode1Union: true,
+});
+
 export const EIP_8272 = withChanges(EIP_8141, {
   name: "eip-8272",
   recentRoots: true,
@@ -219,6 +250,7 @@ export const PROFILES: ReadonlyMap<string, FramePoolConfig> = new Map(
     HEGOTA_TESTNET,
     MATCHA,
     EIP_8288,
+    EIP_8288_MASTER,
     EIP_8272,
     EIP_8266,
     CLAIM_GATED,

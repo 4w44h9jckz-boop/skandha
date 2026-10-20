@@ -22,7 +22,6 @@ import {
   APPROVE_SCOPE_MASK,
   ATOMIC_BATCH_FLAG,
   DEFAULT_MODE,
-  DEP_VERIFY_MODE,
   Frame,
   FrameTx,
   MAX_FRAMES,
@@ -131,7 +130,7 @@ export function classify(
 /** AG-3: the frames FP-4 to FP-6 see, which are all of them unless the profile admits dependency frames. */
 export function executed(tx: FrameTx, cfg: FramePoolConfig): readonly Frame[] {
   if (!cfg.dependencyFrames) return tx.frames;
-  return tx.frames.filter((f) => f.mode !== DEP_VERIFY_MODE);
+  return tx.frames.filter((f) => f.mode !== cfg.depFrameMode);
 }
 
 /** FP-4: the frames up to and including the first that carries APPROVE_PAYMENT. */
@@ -176,8 +175,14 @@ export function checkFp3(
   }
   let expiryFrames = 0;
   frames.forEach((f, i) => {
-    if (f.mode === DEP_VERIFY_MODE && cfg.dependencyFrames) {
-      checkFrame(f, cfg.maxDependenciesPerFrame); // AG-2 in place of the rules below
+    if (f.mode === cfg.depFrameMode && cfg.dependencyFrames) {
+      checkFrame(f, cfg); // AG-2 in place of the rules below
+      if (
+        !cfg.depInBatch &&
+        i > 0 &&
+        (frames[i - 1].flags & ATOMIC_BATCH_FLAG) !== 0
+      )
+        fail(E.ErrDepFrameMalformed);
       return;
     }
     if (
@@ -249,8 +254,7 @@ export function checkStatic(
   checkFp3(tx, head.gasLimit, cfg);
 
   // AG-4: limits per transaction
-  if (cfg.dependencyFrames)
-    checkLimits(tx, cfg.maxSigsPerTx, cfg.maxStarksPerTx);
+  if (cfg.dependencyFrames) checkLimits(tx, cfg);
 
   // FP-5: structure, over the frames AG-3 leaves
   const kinds = executed(tx, cfg).map((f) => classify(f, sender, cfg));

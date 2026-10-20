@@ -529,9 +529,9 @@ export class FrameTx {
       maxGas: max(intrinsic + execSum + stateSum, floor + stateSum),
     };
 
-    const depFrames = this.frames.filter((f) => f.mode === DEP_VERIFY_MODE);
-    this.dependencies = sortedUnique(depFrames.flatMap((f) => f.deps));
-    this.declared = depFrames.reduce((k, f) => k + f.deps.length, 0);
+    // only a dependency frame has deps (MD-6), whichever mode the profile gives it
+    this.dependencies = sortedUnique(this.frames.flatMap((f) => f.deps));
+    this.declared = this.frames.reduce((k, f) => k + f.deps.length, 0);
   }
 
   get maxGas(): bigint {

@@ -1,0 +1,92 @@
+{
+  "clause": "LU-19",
+  "document": "06-lucid.md",
+  "version": 3,
+  "operation": "key_round",
+  "also": ["LU-14", "LU-15", "LU-16", "LU-17", "LU-18"],
+  "distinguishes": "Which commitments run in the next block, a key the tally allows either way being treated as observed, and what the public record says of each one that does not: a withheld key, a late one, a ciphertext that does not decrypt, or a key in time that the committee voted against.",
+  "cases": [
+    {"name": "a round: committed, then released; a withheld key shows up as a missing vote and names its publisher",
+     "block": {"root": "B", "slot": 7, "commitments": [
+       {"label": "a", "sender": "alice", "key_publisher": "kp1", "k_dem": "0x1111111111111111111111111111111111111111111111111111111111111111"},
+       {"label": "b", "sender": "bob", "key_publisher": "kp2", "k_dem": "0x2222222222222222222222222222222222222222222222222222222222222222"},
+       {"label": "c", "sender": "carol", "key_publisher": "kp1", "k_dem": "0x3333333333333333333333333333333333333333333333333333333333333333", "decrypts": false},
+       {"label": "d", "sender": "dave", "key_publisher": "kp3", "k_dem": "0x4444444444444444444444444444444444444444444444444444444444444444"}]},
+     "steps": [
+       {"release": {"publisher": "kp1", "observed": false}, "expect": []},
+       {"release": {"publisher": "kp1"}, "expect": ["a", "c"]},
+       {"release": {"publisher": "kp3"}, "expect": ["d"]},
+       {"vote": {"deadline": 4000, "received": [["a", 3000], ["c", 3100], ["d", 4500]]},
+        "expect": [1, 0, 0, 0], "expect_read": ["a", "c"]},
+       {"tally": {"ptc": ["m1", "m2", "m3"], "vote_deadline": 6000, "attestation": 9000,
+                  "votes": [["m1", [1, 0, 0, 0], 4100], ["m2", [1, 0, 0, 0], 4200], ["m3", [1, 0, 0, 0], 4300]]},
+        "expect": [["observed"], ["missing"], ["missing"], ["missing"]]},
+       {"blame": {"deadline": 4000, "received": [["a", 3000], ["c", 3100], ["d", 4500]]},
+        "expect": {"revealed": ["a"], "missing": {"b": "withheld", "c": "undecryptable", "d": "late"}}}
+     ]},
+    {"name": "the sender releases its own key when its publisher withholds",
+     "block": {"commitments": [
+       {"label": "a", "sender": "alice", "key_publisher": "kp1"}]},
+     "steps": [
+       {"release": {"publisher": "alice"}, "expect": ["a"]},
+       {"vote": {"deadline": 4000, "received": [["a", 3500]]}, "expect": [1], "expect_read": ["a"]},
+       {"tally": {"ptc": ["m1", "m2"], "vote_deadline": 6000, "attestation": 9000,
+                  "votes": [["m1", [1], 4100], ["m2", [1], 4100]]},
+        "expect": [["observed"]]},
+       {"blame": {"deadline": 4000, "received": [["a", 3500]]},
+        "expect": {"revealed": ["a"], "missing": {}}}
+     ]},
+    {"name": "a key the tally allows either way is treated as observed and runs",
+     "block": {"commitments": [{"label": "a", "key_publisher": "kp1"}]},
+     "steps": [
+       {"release": {"publisher": "kp1"}, "expect": ["a"]},
+       {"tally": {"ptc": ["m1", "m2", "m3", "m4"], "vote_deadline": 6000, "attestation": 9000,
+                  "votes": [["m1", [1], 4100], ["m2", [1], 4100], ["m3", [0], 4100], ["m4", [0], 7000]]},
+        "expect": [["missing", "observed"]]},
+       {"blame": {"deadline": 4000, "received": [["a", 3900]]},
+        "expect": {"revealed": ["a"], "missing": {}}}
+     ]},
+    {"name": "a key treated as observed whose ciphertext does not decrypt does not run, and is not missing",
+     "block": {"commitments": [{"label": "a", "key_publisher": "kp1", "decrypts": false}]},
+     "steps": [
+       {"release": {"publisher": "kp1"}, "expect": ["a"]},
+       {"tally": {"ptc": ["m1"], "vote_deadline": 6000, "attestation": 9000, "votes": [["m1", [1], 4100]]},
+        "expect": [["observed"]]},
+       {"blame": {"deadline": 4000, "received": [["a", 3900]]},
+        "expect": {"revealed": [], "missing": {}}}
+     ]},
+    {"name": "a key in time that the committee voted against is unvoted on this record",
+     "block": {"commitments": [{"label": "a", "key_publisher": "kp1"}]},
+     "steps": [
+       {"release": {"publisher": "kp1"}, "expect": ["a"]},
+       {"tally": {"ptc": ["m1", "m2"], "vote_deadline": 6000, "attestation": 9000,
+                  "votes": [["m1", [0], 4100], ["m2", [0], 4100]]},
+        "expect": [["missing"]]},
+       {"blame": {"deadline": 4000, "received": [["a", 3900]]},
+        "expect": {"revealed": [], "missing": {"a": "unvoted"}}}
+     ]},
+    {"name": "a wrong key is no key: withheld; and a right one after a wrong one in time is undecryptable when it does not decrypt",
+     "block": {"commitments": [
+       {"label": "a", "sender": "alice", "k_dem": "0x1111111111111111111111111111111111111111111111111111111111111111"},
+       {"label": "b", "sender": "bob", "k_dem": "0x2222222222222222222222222222222222222222222222222222222222222222", "decrypts": false}]},
+     "steps": [
+       {"message": {"commit_index": 0, "k_dems": ["0x2222222222222222222222222222222222222222222222222222222222222222"]}, "as": "wrong_a", "expect": "key", "expect_read": false},
+       {"message": {"commit_index": 1, "k_dems": ["0x1111111111111111111111111111111111111111111111111111111111111111"]}, "as": "wrong_b", "expect": "key", "expect_read": false},
+       {"message": {"commit_index": 1}, "as": "right_b", "expect": "decrypt", "expect_read": true},
+       {"tally": {"ptc": ["m1"], "vote_deadline": 6000, "attestation": 9000, "votes": [["m1", [0, 0], 4100]]},
+        "expect": [["missing"], ["missing"]]},
+       {"blame": {"deadline": 4000, "received": [["wrong_a", 100], ["wrong_b", 100], ["right_b", 200]]},
+        "expect": {"revealed": [], "missing": {"a": "withheld", "b": "undecryptable"}}}
+     ]},
+    {"name": "a key both late and, from another sender, in time but undecryptable: the one in time decides",
+     "block": {"commitments": [{"label": "a", "key_publisher": "kp1", "decrypts": false}]},
+     "steps": [
+       {"release": {"publisher": "kp1"}, "expect": ["a"]},
+       {"release": {"publisher": "alice"}, "expect": ["a"]},
+       {"tally": {"ptc": ["m1"], "vote_deadline": 6000, "attestation": 9000, "votes": [["m1", [0], 4100]]},
+        "expect": [["missing"]]},
+       {"blame": {"deadline": 4000, "received": [["a", 3000], ["a", 5000]]},
+        "expect": {"revealed": [], "missing": {"a": "undecryptable"}}}
+     ]}
+  ]
+}

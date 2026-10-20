@@ -202,6 +202,11 @@ vectors play it instead, against `StandardPool`.
   evicts by, and the client's verdict stands for their check against the
   contract. A node's slot is the header's `slotNumber`, not its block
   number.
+- A node neither takes EIP-8288 wrappers nor folds them. The aggregator is in
+  `@skandha/framepool`, and its two-node exchange runs in one process
+  ([`packages/framepool/README.md`](packages/framepool/README.md), "Two
+  aggregators"): `AGGREGATED_VK` and `DEPS_HASH` are still to be chosen in
+  the EIP, so no recursive STARK can be made or checked to it.
 - The client is asked about every pending transaction at every head, because
   its simulation does not return the sender slots a prefix read. That is one
   simulation per pending transaction per head.

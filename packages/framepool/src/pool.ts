@@ -8,6 +8,7 @@ import * as E from "./errors.js";
 import { TxError } from "./errors.js";
 import { EIP_8141, FramePoolConfig } from "./config.js";
 import { DepKey, DepValue, depValue } from "./deps.js";
+import { dependencies } from "./dependencies.js";
 import { admissionGas, charge } from "./matcha.js";
 import { Head, State, headNextBaseFee, isDelegation } from "./model.js";
 import {
@@ -449,7 +450,8 @@ export class FramePool {
   private checkClaim(tx: FrameTx): void {
     const claim = tx.claim;
     if (claim === null) {
-      if (tx.dependencies.length > 0) throw new TxError(E.ErrClaimMissing);
+      if (dependencies(tx, this.config).length > 0)
+        throw new TxError(E.ErrClaimMissing);
       return;
     }
     if (!claim.valid) throw new TxError(E.ErrClaimInvalid);
@@ -476,7 +478,7 @@ export class FramePool {
       if (cfg.claims) this.checkClaim(tx); // CG-2, CG-4, CG-6
       if (
         cfg.dependencyFrames &&
-        tx.dependencies.some((d) => {
+        dependencies(tx, cfg).some((d) => {
           const id = dependencyId(d);
           return !this.proven.has(id) && !this.relayed.has(id);
         })

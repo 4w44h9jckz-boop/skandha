@@ -24,6 +24,7 @@ import {
   Read,
   Reserver,
   RootReference,
+  Aggregator,
   Claim,
   Descriptor,
   DescriptorError,
@@ -54,7 +55,6 @@ import {
   frame,
   intrinsicGas,
   nextBaseFee,
-  receive,
   recentroots,
   signature,
   ticketMessage,
@@ -485,7 +485,7 @@ function makeFrameTx(d: Record<string, Json>): FrameTx {
 }
 
 /** AG-5; `deps`, `proofs` and `stark` default to an honest wrapper's (`conformance/README.md`). */
-function makeWrapper(d: Json): Wrapper {
+function makeWrapper(d: Json, cfg: FramePoolConfig | null = null): Wrapper {
   const entries: (FrameTx | string)[] = [];
   const txs: FrameTx[] = [];
   for (const t of d.txs) {
@@ -493,7 +493,7 @@ function makeWrapper(d: Json): Wrapper {
     entries.push("hash" in t ? tx.hash : tx);
     txs.push(tx);
   }
-  const deps = d.deps !== undefined ? makeDeps(d.deps) : union(txs);
+  const deps = d.deps !== undefined ? makeDeps(d.deps) : union(txs, cfg); // honest under the case's profile
   const stark =
     d.mode === 0
       ? null
@@ -610,7 +610,6 @@ function focilConfig(c: Json): FocilConfig {
 // --- what a case needs --------------------------------------------------------------
 
 const STEP_NEEDS: Readonly<Record<string, string>> = {
-  aggregate: "an aggregator (AG-7 to AG-9)",
   build: "block building (03-block-building.md)",
   expect_state: "block building (03-block-building.md)",
   expect_selection: "the sealed pool (06-lucid.md)",
@@ -623,6 +622,8 @@ const PROFILE_NEEDS: Readonly<Record<string, string>> = {};
 export function needs(operation: string, c: Json): string[] {
   const out = new Set<string>();
   if (operation === "ticket_fee") out.add("the sealed pool (06-lucid.md)");
+  if (!(operation in OPERATIONS))
+    return out.size > 0 ? [...out] : [`the ${operation} operation`];
   if (operation !== "pool" && operation !== "surface" && operation !== "replay")
     return [...out];
   if (c.profile !== undefined && !PROFILES.has(c.profile))
@@ -724,6 +725,7 @@ function runPool(c: Json): void {
     cfg.ruleset === "erc-8421"
       ? new StandardPool(head, state, cfg, new Reserver())
       : new FramePool(head, state, cfg, new Reserver());
+  const aggregator = new Aggregator(pool); // AG-5 to AG-7, AG-9 and AG-10
   for (const [addr, r] of Object.entries(c.reputation ?? {}))
     (pool as StandardPool).give(
       addr,
@@ -758,8 +760,44 @@ function runPool(c: Json): void {
       );
     } else if ("wrapper" in step) {
       now = step.now ?? now;
-      const got = receive(pool, makeWrapper(step.wrapper), now);
+      const got = aggregator.receive(makeWrapper(step.wrapper, cfg), now);
       if ("expect" in step) same(step.expect, got, `${where} wrapper`);
+    } else if ("aggregate" in step) {
+      const w = aggregator.aggregate();
+      if (w === null) {
+        if (step.expect !== undefined && step.expect !== null)
+          throw new Mismatch(
+            `${where} aggregate expected ${step.expect}, got none`
+          );
+        return;
+      }
+      if ("expect" in step && step.expect === null)
+        throw new Mismatch(`${where} aggregate expected none, got one`);
+      const names = w.txs.map((e) =>
+        typeof e === "string" ? label(pool.get(e) as FrameTx) : label(e)
+      );
+      const hashed = names.filter((_, i) => typeof w.txs[i] === "string");
+      if ("expect" in step) same(step.expect, names, `${where} aggregate`);
+      if ("expect_hashed" in step)
+        same(step.expect_hashed, hashed, `${where} aggregate hashes`);
+      if ("expect_deps" in step)
+        same(
+          step.expect_deps,
+          w.deps.map((d) => [d.scheme, d.dataHash, d.vkHash]),
+          `${where} aggregate deps`
+        );
+      if ("expect_time" in step)
+        same(
+          step.expect_time,
+          aggregator.provingTime,
+          `${where} aggregate proving time`
+        );
+      if ("expect_memory" in step)
+        same(
+          step.expect_memory,
+          aggregator.memory,
+          `${where} aggregate memory`
+        );
     } else if ("reset" in step) {
       now = step.now ?? now;
       Object.assign(headD, step.reset.head ?? {});
