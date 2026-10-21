@@ -20,7 +20,11 @@
  * it, and every refusal names the descriptor and the rule (DS-7). The surface
  * is specified for the canonical mempool only, so a descriptor of ERC-8421's
  * ruleset, whose trace and storage rules need a tracer the client does not
- * offer (`14-erc-8421.md`, AM-8, AM-9, AM-15), is refused at start.
+ * offer (`14-erc-8421.md`, AM-8, AM-9, AM-15), is refused at start, and so is
+ * one with claim-gated admission's bond (`10-claim-gated-admission.md`
+ * version 5, CG-11), which needs a ticket paymaster's stake from ERC-8421's
+ * staking registry, which the surface does not read. `claims` runs version
+ * 4's admission, without the bond.
  */
 import { appendFileSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -155,6 +159,10 @@ export class FrameService {
     )
       throw new Error(
         `${opts.descriptor} is ERC-8421's ruleset, whose trace and storage rules need a tracer; the surface runs the canonical mempool's (14-erc-8421.md, AM-15)`
+      );
+    if (this.ruleset !== null && compileConfig(this.ruleset).bond)
+      throw new Error(
+        `${opts.descriptor} puts a bond on the ticket paymaster, which needs its stake from ERC-8421's staking registry; the surface reads none (10-claim-gated-admission.md, CG-11)`
       );
   }
 

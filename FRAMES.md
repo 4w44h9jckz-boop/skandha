@@ -126,9 +126,12 @@ experiment 25's transactions.
 
 With `--frames.claims` as well, a node checks the ticket a transaction
 carries before it asks its client anything about the prefix, by exp-mempool-l2s
-`docs/spec/10-claim-gated-admission.md` (version 4) and
-`docs/spec/11-surface.md` (version 3). There is nothing to configure: no
-list of paymasters and no issuer keys.
+`docs/spec/10-claim-gated-admission.md` and `docs/spec/11-surface.md`
+(version 3). There is nothing to configure: no list of paymasters and no
+issuer keys. The node runs version 4's admission: version 5 accepts a ticket
+paymaster only under a bond, ERC-8421's stake and reputation (CG-11), and
+the surface reads no staking registry, so the node has no stake to check;
+`@skandha/framepool` plays the bond's vectors instead.
 
 1. For each `VERIFY` frame's target, the node reads the code at its head
    with `eth_getCode`. An account whose code is the 1,105-byte
@@ -179,7 +182,7 @@ descriptors are in `packages/framepool/test/descriptors/`:
 | File | Identifier | Runs on the node |
 | --- | --- | --- |
 | `eip-8141.json` | `bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4` | yes |
-| `claim-gated.json` | `bafkreid2yhoz2it5mzjhejpm2f3tthv5npcvxaahxujjhds63mwfpx4ahm` | yes |
+| `claim-gated.json` | `bafkreifhtepzdwqnimltyd573ba7wsmln556axhbbxhqez6be547llopxe` | no: refused at start |
 | `erc-8421.json` | `bafkreieanbgdpq22vtfsa4rz4zll2lhf4qofoi75hbubqqhlqzepvyvjsy` | no: refused at start |
 
 The `start` line says `descriptor`, the loaded identifier, and `ruleset`,
@@ -193,6 +196,12 @@ associated with, which an execution client's verdict does not give, and
 `11-surface.md` specifies the surface for the canonical mempool only. So the
 node refuses that descriptor with the reason, and `@skandha/framepool`'s
 vectors play it instead, against `StandardPool`.
+
+`claim-gated.json` carries, since `10-claim-gated-admission.md` version 5,
+the bond on the ticket paymaster (CG-11), which reads each paymaster's stake
+from ERC-8421's staking registry. The surface reads no registry, so the node
+refuses that descriptor too, and `--frames.claims` runs claim-gated
+admission without the bond.
 
 ## What it does not do
 

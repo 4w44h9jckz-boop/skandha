@@ -1,7 +1,7 @@
 {
  "clause": "CG-8",
  "document": "10-claim-gated-admission.md",
- "version": 4,
+ "version": 5,
  "operation": "claim_ticket",
  "distinguishes": "The 132 bytes a ticket signs: chain ID, sender, EIP-8250's nonce_keys_hash, sequence number, epoch and salt at fixed widths, and no message for a field that does not fit its width. An encoder that hashes the keys without their count, writes integers little-endian, swaps the epoch and the sequence number, or truncates a field rather than refusing it, fails here.",
  "provenance": "Written from CG-8: each message is the concatenation the clause gives, with nonce_keys_hash computed by @noble/hashes' keccak_256, not by this repository's keccak. Two cases are tickets the Hegota testnet mined, whose message their paymaster rebuilt from the transaction: one from the first run of exp-frames experiment 36 (f0749cb), whose signature verifies over this message under that run's namespace, and one from its re-run under FRAME_TICKET_V1 (kohaku-rs eea02a3, tests/fixtures/record.json), whose signature verifies under this one. Integers are 0x-prefixed hexadecimal strings.",

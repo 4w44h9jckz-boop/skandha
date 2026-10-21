@@ -342,6 +342,19 @@ export const CLAIMS: Readonly<Record<string, Module>> = {
     template_length: [TEMPLATE_LENGTH],
     template_keccak: [TEMPLATE_KECCAK],
   }),
+  "CG-11": m(
+    "rule",
+    ["ErrIssuerUnbonded", "ErrEntityBanned", "ErrEntityThrottled"],
+    {
+      min_stake_value: "amount",
+      min_unstake_delay: "int",
+      min_inclusion_rate_denominator: "int",
+      throttling_slack: "int",
+      ban_slack: "int",
+      refresh_seconds: "int",
+      throttled_entity_mempool_count: "int",
+    }
+  ),
 };
 
 const ERC_CODES: Readonly<Record<string, readonly string[]>> = {
@@ -680,5 +693,6 @@ export function compileConfig(d: Descriptor): FramePoolConfig {
     : "eip-8141";
   changes.dependencyFrames = eff.has("AG-2");
   changes.claims = eff.has("CG-2");
+  changes.bond = eff.has("CG-11");
   return withChanges(EIP_8141, changes as Partial<FramePoolConfig>);
 }
