@@ -1,13 +1,13 @@
 {
  "clause": "CG-12",
  "document": "10-claim-gated-admission.md",
- "version": 7,
+ "version": 8,
  "also": [
   "CG-2",
   "FP-6"
  ],
  "operation": "pool",
- "distinguishes": "Under binding, a claim that is not bound is refused with ErrClaimUnbound after CG-2's first step and before its others, with a dependency or without; without binding, or under eip-8288, it is not read; and the binder's secp256k1 signature counts 2800 gas against max_verify_gas. A pool that checks the binding after validity or the slot, or not at all, fails here. A holder's re-pricing under the same bound ticket is admitted once at the bump without a dependency and refused after that (CG-6), and refused at once with one (CG-5); a claim whose epoch ends while it is pending stays pending.",
+ "distinguishes": "Under binding, a claim that is not bound is refused with ErrClaimUnbound after CG-2's first step and before its others, with a dependency or without; without binding, or under eip-8288, it is not read; and the binder's secp256k1 signature counts 2800 gas against max_verify_gas. A pool that checks the binding after validity or the slot, or not at all, fails here. A holder's re-pricing under the same bound ticket is admitted at each bump without a dependency, while the client's verdict accepts its max_cost (CG-6, version 8), and refused at once with one (CG-5); a claim whose epoch ends while it is pending stays pending.",
  "cases": [
   {
    "name": "a bound claim",
@@ -679,7 +679,7 @@
    "derivation": "A secp256k1 signature costs 2800 of FEE-4's verification cost, which FP-6 adds to the prefix's execution gas: 97200 + 2800 = 100000 is max_verify_gas under claim-gated, and 97201 + 2800 is above it. FP-6 runs before CG-2. The senders have code, so their VERIFY frames approve without a signature of their own."
   },
   {
-   "name": "the holder re-prices once at the bump, and not again under the same ticket",
+   "name": "the holder re-prices at each bump, and not beyond the ticket's price",
    "profile": "claim-gated",
    "state": {
     "alice": {
@@ -823,20 +823,89 @@
       }
      ],
      "expect": [
-      "ErrClaimExpired"
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A3",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ],
+       "max_fee": 134,
+       "tip": 15
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A4",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ],
+       "max_fee": 148,
+       "tip": 17,
+       "verdict": "ErrFramePrefixReverted"
+      }
+     ],
+     "expect": [
+      "ErrFramePrefixReverted"
      ]
     },
     {
      "expect_pool": {
       "pending": {
        "alice": [
-        "A1"
+        "A3"
        ]
       }
      }
     }
    ],
-   "derivation": "No dependency, so no proof and no CG-5. Each re-pricing carries the same ticket, re-signed by the binder, so its claim is the same claim and bound (CG-2, CG-12). A0 raises neither fee by 10 percent: FP-12, ErrReplaceUnderpriced, and nothing is removed. A1 raises both by the bump and replaces A; CG-6 counts that removal (decision record 0037) and records the slot and claim for epoch 2, so A2, a second re-pricing under the same ticket, is ErrClaimExpired before FP-12 is reached. The bound template, which keeps no record, would pay for A2 on chain."
+   "derivation": "No dependency, so no proof and no CG-5. Each re-pricing carries the same ticket, re-signed by the binder, so its claim is the same claim and bound (CG-2, CG-12). A0 raises neither fee by 10 percent: FP-12, ErrReplaceUnderpriced. A1, A2 and A3 each raise both fees by the bump over the one they replace (110 and 11, 121 and 13, 134 and 15), and under binding CG-6 records nothing when FP-12 replaces a transaction with one under the same claim (version 8), so each is admitted. A4 raises both again by the bump, but its max_cost is above the ticket's price: the bound template refuses it, and the client's verdict says so (MD-6's verdict, SF-4), ErrFramePrefixReverted; A3 stays pending."
   },
   {
    "name": "with a dependency, the holder's re-pricing under the same ticket is refused",
