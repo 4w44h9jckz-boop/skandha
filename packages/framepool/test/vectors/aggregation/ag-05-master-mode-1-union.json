@@ -1,0 +1,559 @@
+{
+ "clause": "AG-5",
+ "also": [
+  "AG-6"
+ ],
+ "document": "05-aggregation.md",
+ "version": 4,
+ "operation": "pool",
+ "distinguishes": "Under eip-8288-master a mode 1 wrapper's deps must hold every dependency of each transaction it carries or the node holds by hash, and nothing more once every entry resolves; under eip-8288 its transactions are not checked against its deps. An implementation that skips check 5 under the master profile, or refuses for a hash it cannot resolve, fails here.",
+ "cases": [
+  {
+   "name": "a mode 1 wrapper whose deps leave out a carried transaction's",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-A-0",
+            "pk-alice"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       },
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-B-0",
+            "pk-bob"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "deps": [
+       [
+        16,
+        "msg-A-0",
+        "pk-alice"
+       ]
+      ]
+     },
+     "expect": "ErrWrapperDeps"
+    }
+   ],
+   "derivation": "B's dependency is not in deps."
+  },
+  {
+   "name": "the same wrapper under eip-8288",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "msg-A-0",
+            "pk-alice"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       },
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "msg-B-0",
+            "pk-bob"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "deps": [
+       [
+        16,
+        "msg-A-0",
+        "pk-alice"
+       ]
+      ]
+     },
+     "expect": [
+      "ok",
+      "ErrFrameDepsUnproven"
+     ]
+    }
+   ],
+   "derivation": "Not checked against its transactions: B is offered to the pool and AG-6 refuses it."
+  },
+  {
+   "name": "deps with one too many when every entry resolves",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-A-0",
+            "pk-alice"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "deps": [
+       [
+        16,
+        "msg-A-0",
+        "pk-alice"
+       ],
+       [
+        16,
+        "msg-C-0",
+        "pk-carol"
+       ]
+      ]
+     },
+     "expect": "ErrWrapperDeps"
+    }
+   ],
+   "derivation": "The node sees every transaction and C's dependency belongs to none."
+  },
+  {
+   "name": "one too many next to a hash the node cannot resolve",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-A-0",
+            "pk-alice"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       },
+       {
+        "hash": {
+         "label": "C",
+         "type": 6,
+         "sender": "carol",
+         "frames": [
+          {
+           "mode": 4,
+           "deps": [
+            [
+             16,
+             "msg-C-0",
+             "pk-carol"
+            ]
+           ],
+           "exec_gas": 3000,
+           "data_size": 96
+          },
+          {
+           "mode": 1,
+           "flags": 3
+          }
+         ]
+        }
+       }
+      ],
+      "deps": [
+       [
+        16,
+        "msg-A-0",
+        "pk-alice"
+       ],
+       [
+        16,
+        "msg-C-0",
+        "pk-carol"
+       ]
+      ]
+     },
+     "expect": [
+      "ok",
+      "ErrWrapperUnknownTx"
+     ]
+    }
+   ],
+   "derivation": "C is named by a hash the node does not hold, so the extra dependency may be C's; only A is checked."
+  },
+  {
+   "name": "a hash the node holds is checked",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-A-0",
+            "pk-alice"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "hash": {
+         "label": "A",
+         "type": 6,
+         "sender": "alice",
+         "frames": [
+          {
+           "mode": 4,
+           "deps": [
+            [
+             16,
+             "msg-A-0",
+             "pk-alice"
+            ]
+           ],
+           "exec_gas": 3000,
+           "data_size": 96
+          },
+          {
+           "mode": 1,
+           "flags": 3
+          }
+         ]
+        }
+       },
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-B-0",
+            "pk-bob"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "deps": [
+       [
+        16,
+        "msg-B-0",
+        "pk-bob"
+       ]
+      ]
+     },
+     "expect": "ErrWrapperDeps"
+    }
+   ],
+   "derivation": "The node holds A, so A's dependency must be in deps."
+  },
+  {
+   "name": "the honest fold of a held and a carried transaction",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-A-0",
+            "pk-alice"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "hash": {
+         "label": "A",
+         "type": 6,
+         "sender": "alice",
+         "frames": [
+          {
+           "mode": 4,
+           "deps": [
+            [
+             16,
+             "msg-A-0",
+             "pk-alice"
+            ]
+           ],
+           "exec_gas": 3000,
+           "data_size": 96
+          },
+          {
+           "mode": 1,
+           "flags": 3
+          }
+         ]
+        }
+       },
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-B-0",
+            "pk-bob"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "deps": [
+       [
+        16,
+        "msg-A-0",
+        "pk-alice"
+       ],
+       [
+        16,
+        "msg-B-0",
+        "pk-bob"
+       ]
+      ]
+     },
+     "expect": [
+      "ErrAlreadyKnown",
+      "ok"
+     ]
+    }
+   ],
+   "derivation": "deps is the union of A's and B's."
+  }
+ ]
+}

@@ -1,0 +1,149 @@
+{
+ "clause": "DS-5",
+ "also": [],
+ "document": "13-descriptors.md",
+ "version": 1,
+ "operation": "descriptor",
+ "distinguishes": "A child's effective modules are its parent's, without those it removes, with its own added or replacing whole, each remembering who set it; a parent must be held and a removal must name a module the parent has. A loader that merges parameters, ignores an unknown parent, or forgets who set a module fails here.",
+ "cases": [
+  {
+   "name": "a parent the node does not hold",
+   "store": [],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {}
+   },
+   "expect": {
+    "result": "ErrDescriptorParentUnknown"
+   },
+   "derivation": "The node holds no descriptor with eip-8141.json's identifier."
+  },
+  {
+   "name": "a parent named by an identifier no file has",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreiaaaa",
+    "remove": [],
+    "rules": {}
+   },
+   "expect": {
+    "result": "ErrDescriptorParentUnknown"
+   },
+   "derivation": "No held descriptor has that identifier."
+  },
+  {
+   "name": "removing a module the parent does not have",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [
+     "AG-2"
+    ],
+    "rules": {}
+   },
+   "expect": {
+    "result": "ErrDescriptorRemove",
+    "rule": "AG-2"
+   },
+   "derivation": "eip-8141.json has no AG-2."
+  },
+  {
+   "name": "a child replaces one module whole and keeps the rest",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "budget 200000",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "FP-6": {
+      "max_verify_gas": 200000,
+      "max_verify_state_gas": 500000
+     }
+    }
+   },
+   "expect": {
+    "result": "ok",
+    "set_by": {
+     "FP-6": "bafkreig2ui55swx6atuquk7wkrykkrid5xq4jal6ov7nm3ncriodzjr2ji",
+     "FP-3": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+     "FP-12": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4"
+    },
+    "config": {
+     "max_verify_gas": 200000,
+     "price_limit": 1
+    }
+   },
+   "derivation": "FP-6 comes from the child, every other module from eip-8141.json."
+  },
+  {
+   "name": "a grandchild: each module from the descriptor that set it",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "format": 1,
+     "name": "budget 200000",
+     "source": "a vector",
+     "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+     "remove": [],
+     "rules": {
+      "FP-6": {
+       "max_verify_gas": 200000,
+       "max_verify_state_gas": 500000
+      }
+     }
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "and a tip floor",
+    "source": "a vector",
+    "parent": "bafkreig2ui55swx6atuquk7wkrykkrid5xq4jal6ov7nm3ncriodzjr2ji",
+    "remove": [],
+    "rules": {
+     "FP-3": {
+      "price_limit": 5
+     }
+    }
+   },
+   "expect": {
+    "result": "ok",
+    "set_by": {
+     "FP-6": "bafkreig2ui55swx6atuquk7wkrykkrid5xq4jal6ov7nm3ncriodzjr2ji",
+     "FP-3": "bafkreicuvejyunwdp6f6ito6ppzyeoewsnqglkupiiznr33zkssqnj53yq",
+     "FP-2": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4"
+    },
+    "config": {
+     "max_verify_gas": 200000,
+     "price_limit": 5
+    }
+   },
+   "derivation": "Inheritance chains: the grandchild's FP-3, its parent's FP-6, the root's others."
+  }
+ ]
+}

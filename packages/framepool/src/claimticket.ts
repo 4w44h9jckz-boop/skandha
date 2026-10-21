@@ -19,8 +19,8 @@ const U64 = BigInt(2) ** BigInt(64);
 const U256 = BigInt(2) ** BigInt(256);
 const VERIFY = 1;
 // CG-10: the ticket-paymaster template, then a 256-byte key and 32 bytes
-const TEMPLATE_LENGTH = 1105;
-const TEMPLATE_KECCAK =
+export const TEMPLATE_LENGTH = 1105;
+export const TEMPLATE_KECCAK =
   "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0";
 
 /** A claim's fields as a ticket names them, with the chain it is for. */

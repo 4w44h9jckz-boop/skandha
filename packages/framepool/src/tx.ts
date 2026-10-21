@@ -13,7 +13,7 @@ export const FRAME = 6;
 
 export const DEFAULT_TO = "sink";
 
-type Rendered =
+export type Rendered =
   | string
   | number
   | bigint
@@ -41,7 +41,7 @@ function render(value: Rendered): string {
  * on the value, only on two transactions differing in a field having
  * different hashes.
  */
-function hashOf(kind: string, fields: readonly Rendered[]): string {
+export function hashOf(kind: string, fields: readonly Rendered[]): string {
   return (
     "0x" +
     createHash("sha256")
@@ -58,7 +58,13 @@ export const CALLDATA_NONZERO = 16n;
 export const PER_AUTHORIZATION = 25000n;
 export const TOKENS_PER_NONZERO_BYTE = 4n;
 
-export type Write = readonly [address: string, slot: bigint, value: bigint];
+/** MD-6: a state write; the fourth element, when present, is the address a tracer finds the slot associated with. */
+export type Write = readonly [
+  address: string,
+  slot: bigint,
+  value: bigint,
+  associated?: string
+];
 export type RootWrite = readonly [
   sourceAddress: string,
   salt: string,
@@ -268,7 +274,8 @@ export function sortedUnique(deps: Iterable<Dependency>): Dependency[] {
 export type Read = readonly [
   address: string,
   slot: bigint,
-  expected: bigint | null
+  expected: bigint | null,
+  associated?: string
 ];
 export type RootReference = readonly [
   sourceId: string,
@@ -522,9 +529,9 @@ export class FrameTx {
       maxGas: max(intrinsic + execSum + stateSum, floor + stateSum),
     };
 
-    const depFrames = this.frames.filter((f) => f.mode === DEP_VERIFY_MODE);
-    this.dependencies = sortedUnique(depFrames.flatMap((f) => f.deps));
-    this.declared = depFrames.reduce((k, f) => k + f.deps.length, 0);
+    // only a dependency frame has deps (MD-6), whichever mode the profile gives it
+    this.dependencies = sortedUnique(this.frames.flatMap((f) => f.deps));
+    this.declared = this.frames.reduce((k, f) => k + f.deps.length, 0);
   }
 
   get maxGas(): bigint {

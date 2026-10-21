@@ -1,7 +1,7 @@
 {
   "clause": "LU-6",
   "document": "06-lucid.md",
-  "version": 2,
+  "version": 3,
   "also": ["LU-7"],
   "operation": "pool",
   "distinguishes": "The commitment order: the ToB fee computed at the base fee, not max_tob_fee, then the gas limit. No case depends on the order of hashes, which a reader cannot compute.",

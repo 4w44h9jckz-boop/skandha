@@ -10,7 +10,8 @@ export type DepKind =
   | "code"
   | "balance"
   | "storage"
-  | "withdrawal";
+  | "withdrawal"
+  | "stake"; // 14-erc-8421.md, AM-14
 export type DepValue = string | bigint;
 
 export interface DepKey {
@@ -63,5 +64,7 @@ export function depValue(state: State, key: DepKey): DepValue {
       return state.storage(key.addr, key.n as bigint);
     case "withdrawal":
       return state.withdrawal(key.addr);
+    case "stake":
+      return state.stake(key.addr).join("|"); // compared as one value
   }
 }

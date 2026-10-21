@@ -1,7 +1,7 @@
 {
   "clause": "AG-3",
   "document": "05-aggregation.md",
-  "version": 3,
+  "version": 4,
   "also": ["FP-5", "FP-6", "FP-3"],
   "operation": "pool",
   "distinguishes": "Dependency frames are invisible to the validation prefix: they may sit before, inside or after it, their gas is outside max_verify_gas and inside max_gas, and a transaction of dependency frames alone has no payer. Placing and pricing them so is an Interpretation (decision record 0012).",

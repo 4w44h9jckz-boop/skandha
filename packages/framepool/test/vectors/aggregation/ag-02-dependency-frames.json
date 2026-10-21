@@ -1,7 +1,7 @@
 {
   "clause": "AG-2",
   "document": "05-aggregation.md",
-  "version": 3,
+  "version": 4,
   "also": ["AG-6"],
   "operation": "pool",
   "distinguishes": "Which dependency frames are well formed: one to max_dependencies_per_frame triples of a known scheme, 96 bytes each, no target, value or flags, an execution limit equal to 3000 per leanSPHINCS and 30000 per leanSTARK triple, and no state limit. A well-formed one passes to AG-6, which refuses it alone because nothing proves it.",

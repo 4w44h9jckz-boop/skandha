@@ -1,0 +1,72 @@
+{
+ "clause": "DS-2",
+ "also": [],
+ "document": "13-descriptors.md",
+ "version": 1,
+ "operation": "descriptor",
+ "distinguishes": "One value has one canonical encoding: sorted members, no whitespace, integers in plain decimal, and only quote and backslash escaped. An encoder that keeps the file's order or spaces, escapes a slash, or writes integers otherwise fails here.",
+ "cases": [
+  {
+   "name": "a descriptor written with indentation",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "text": "{\n    \"format\": 1,\n    \"name\": \"tip floor 2\",\n    \"source\": \"a vector\",\n    \"parent\": \"bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4\",\n    \"remove\": [],\n    \"rules\": {\n        \"FP-3\": {\n            \"price_limit\": 2\n        }\n    }\n}",
+   "expect": {
+    "result": "ok",
+    "canonical": "{\"format\":1,\"name\":\"tip floor 2\",\"parent\":\"bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4\",\"remove\":[],\"rules\":{\"FP-3\":{\"price_limit\":2}},\"source\":\"a vector\"}"
+   },
+   "derivation": "Members sorted by name, no whitespace outside strings."
+  },
+  {
+   "name": "the same descriptor with members reversed and spaces around separators",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "text": "{\"rules\" : {\"FP-3\" : {\"price_limit\" : 2}} , \"remove\" : [] , \"parent\" : \"bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4\" , \"source\" : \"a vector\" , \"name\" : \"tip floor 2\" , \"format\" : 1}",
+   "expect": {
+    "result": "ok",
+    "canonical": "{\"format\":1,\"name\":\"tip floor 2\",\"parent\":\"bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4\",\"remove\":[],\"rules\":{\"FP-3\":{\"price_limit\":2}},\"source\":\"a vector\"}"
+   },
+   "derivation": "The canonical encoding is the value's, whatever the file's order and whitespace."
+  },
+  {
+   "name": "quotes and backslashes are escaped and a slash is not",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a \"quoted\" back\\slash /name",
+    "source": "x",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "FP-3": {
+      "price_limit": 2
+     }
+    }
+   },
+   "expect": {
+    "result": "ok",
+    "canonical": "{\"format\":1,\"name\":\"a \\\"quoted\\\" back\\\\slash /name\",\"parent\":\"bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4\",\"remove\":[],\"rules\":{\"FP-3\":{\"price_limit\":2}},\"source\":\"x\"}"
+   },
+   "derivation": "Only the quote and the backslash are escaped, each with a backslash; the slash stays as it is."
+  },
+  {
+   "name": "eip-8141.json",
+   "file": "docs/spec/descriptors/eip-8141.json",
+   "expect": {
+    "result": "ok",
+    "canonical": "{\"format\":1,\"name\":\"EIP-8141 canonical public mempool\",\"parent\":null,\"remove\":[],\"rules\":{\"FP-10\":{},\"FP-11\":{\"cap_codeless_payers\":false,\"max_pending_noncanonical\":1},\"FP-12\":{\"per_sender\":\"one\",\"price_bump\":10},\"FP-13\":{},\"FP-14\":{\"evict_first\":\"expiry\",\"max_pending\":4096},\"FP-15\":{\"reuse_balance\":false},\"FP-16\":{},\"FP-2\":{},\"FP-3\":{\"price_limit\":1},\"FP-4\":{},\"FP-5\":{\"expiry_verifier\":\"0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf\"},\"FP-6\":{\"max_verify_gas\":100000,\"max_verify_state_gas\":500000},\"FP-7\":{},\"FP-8\":{\"expiry_margin\":0,\"expiry_verifier_code\":\"expiry-verifier\"},\"FP-9\":{\"canonical_paymaster_code\":\"canonical-paymaster\",\"precompiles\":[\"0x0000000000000000000000000000000000000001\",\"0x0000000000000000000000000000000000000002\",\"0x0000000000000000000000000000000000000003\",\"0x0000000000000000000000000000000000000004\",\"0x0000000000000000000000000000000000000005\",\"0x0000000000000000000000000000000000000006\",\"0x0000000000000000000000000000000000000007\",\"0x0000000000000000000000000000000000000008\",\"0x0000000000000000000000000000000000000009\",\"0x000000000000000000000000000000000000000a\",\"0x000000000000000000000000000000000000000b\",\"0x000000000000000000000000000000000000000c\",\"0x000000000000000000000000000000000000000d\",\"0x000000000000000000000000000000000000000e\",\"0x000000000000000000000000000000000000000f\",\"0x0000000000000000000000000000000000000010\",\"0x0000000000000000000000000000000000000011\",\"0x0000000000000000000000000000000000000100\"]}},\"source\":\"02-frame-pool.md version 7, FP-1's eip-8141 column; ethereum/EIPs at 258836f9\"}"
+   },
+   "derivation": "The file's value, canonical."
+  }
+ ]
+}

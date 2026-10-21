@@ -14,10 +14,23 @@
  * SF-4): a ticket paymaster is any account whose code is the template, a key
  * and a denomination (CG-10), found by `eth_getCode`, with nothing to
  * configure.
+ *
+ * With `descriptor` (`13-descriptors.md`) the frame pool's rules are the
+ * ruleset a descriptor file names, loaded with the parents it finds beside
+ * it, and every refusal names the descriptor and the rule (DS-7). The surface
+ * is specified for the canonical mempool only, so a descriptor of ERC-8421's
+ * ruleset, whose trace and storage rules need a tracer the client does not
+ * offer (`14-erc-8421.md`, AM-8, AM-9, AM-15), is refused at start.
  */
-import { appendFileSync } from "node:fs";
+import { appendFileSync, readFileSync, readdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import {
   APPROVE_PAYMENT,
+  Descriptor,
+  Store,
+  compileConfig,
+  identifier,
+  parse as parseDescriptor,
   FOCIL_PROFILES,
   FramePool,
   FrameTx,
@@ -51,11 +64,41 @@ export interface FrameServiceOptions {
   logFile?: string; // one JSON object a line for every admission, head and hand-off
   pollMs?: number;
   name?: string; // how this node names itself in its log
+  descriptor?: string; // a descriptor file (13-descriptors.md), whose ruleset replaces the profile's frame pool rules
 }
 
 export interface SendResult {
   result?: string; // a hash on ok
-  error?: { code: number; message: string };
+  error?: {
+    code: number;
+    message: string;
+    data?: { rule: string | null; descriptor: string }; // DS-7, under a descriptor
+  };
+}
+
+/**
+ * DS-5: the descriptor at `path`, after the parents a node holds, which are
+ * the descriptor files beside it, each found by its identifier.
+ */
+export function loadDescriptor(path: string): Descriptor {
+  const dir = dirname(resolve(path));
+  const beside = new Map<string, string>(); // identifier to text
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
+    const text = readFileSync(join(dir, file), "utf8");
+    try {
+      beside.set(identifier(parseDescriptor(text)), text);
+    } catch {
+      // not a descriptor; DS-1 answers for the one asked for below
+    }
+  }
+  const store = new Store();
+  const load = (text: string): Descriptor => {
+    const parent = JSON.parse(text).parent;
+    if (parent !== null && !store.held.has(parent) && beside.has(parent))
+      load(beside.get(parent) as string);
+    return store.load(text);
+  };
+  return load(readFileSync(path, "utf8"));
 }
 
 /** IL-2: the list an includer at this node's head would publish, and what it costs. */
@@ -83,6 +126,7 @@ function payerOf(tx: FrameTx): string {
 export class FrameService {
   readonly client: FrameClient;
   readonly surfaceConfig: SurfaceConfig;
+  readonly ruleset: Descriptor | null; // DS-6, when a descriptor names the rules
   pool!: FramePool;
   surface!: Surface;
   head!: ClientHead;
@@ -103,6 +147,24 @@ export class FrameService {
     if (base === undefined || !PROFILES.has(opts.profile))
       throw new Error(`no surface profile ${opts.profile}`);
     this.surfaceConfig = { ...base, relay: "gossipsub", handoff: opts.handoff };
+    this.ruleset =
+      opts.descriptor !== undefined ? loadDescriptor(opts.descriptor) : null;
+    if (
+      this.ruleset !== null &&
+      compileConfig(this.ruleset).ruleset === "erc-8421"
+    )
+      throw new Error(
+        `${opts.descriptor} is ERC-8421's ruleset, whose trace and storage rules need a tracer; the surface runs the canonical mempool's (14-erc-8421.md, AM-15)`
+      );
+  }
+
+  /** DS-7: what a refusal names under a descriptor, for the log and the JSON-RPC error's `data`. */
+  private named(
+    result: string
+  ): { rule: string | null; descriptor: string } | undefined {
+    if (this.ruleset === null || result === OK) return undefined;
+    const { rule, descriptor } = this.ruleset.refusal(result);
+    return { rule, descriptor };
   }
 
   get topic(): string {
@@ -137,7 +199,10 @@ export class FrameService {
 
   async start(): Promise<void> {
     this.head = await this.client.head();
-    const profile = PROFILES.get(this.opts.profile);
+    const profile =
+      this.ruleset !== null
+        ? compileConfig(this.ruleset)
+        : PROFILES.get(this.opts.profile);
     if (profile === undefined)
       throw new Error(`no frame pool profile ${this.opts.profile}`);
     const cfg = addressForm(
@@ -153,6 +218,8 @@ export class FrameService {
     this.log({
       event: "start",
       profile: this.opts.profile,
+      descriptor: this.ruleset?.id,
+      ruleset: this.ruleset !== null ? profile.name : undefined,
       head: this.head.number,
       handoff: this.opts.handoff,
       claims: cfg.claims,
@@ -283,6 +350,7 @@ export class FrameService {
       event: "rpc",
       hash: out.hash,
       result: out.result,
+      ...this.named(out.result),
       client: out.text, // absent when the client was not asked (SF-4)
       claim: out.claim,
       head: this.head.number,
@@ -292,6 +360,7 @@ export class FrameService {
         error: {
           code: -32000,
           message: `${out.result}${out.text ? ": " + out.text : ""}`,
+          data: this.named(out.result),
         },
       };
     const hash = out.hash as string;
@@ -375,6 +444,7 @@ export class FrameService {
       from: peer,
       hash: out.hash,
       result: out.result,
+      ...this.named(out.result),
       client: out.text, // absent when the client was not asked (SF-4)
       claim: out.claim,
       outcome,

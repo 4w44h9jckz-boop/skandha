@@ -104,6 +104,7 @@ export async function nodeHandler(args: IGlobalArgs): Promise<void> {
           claims: args["frames.claims"],
           logFile: args["frames.log"],
           name: args["frames.name"],
+          descriptor: args["frames.descriptor"],
         }
       : undefined,
   });

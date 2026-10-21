@@ -22,7 +22,6 @@ import {
   APPROVE_SCOPE_MASK,
   ATOMIC_BATCH_FLAG,
   DEFAULT_MODE,
-  DEP_VERIFY_MODE,
   Frame,
   FrameTx,
   MAX_FRAMES,
@@ -41,7 +40,7 @@ export const PAY = "pay";
 export const OTHER = "other";
 export const ROOT = "recent_root_verify"; // RR-4
 
-const RECOGNIZED = new Set(
+export const RECOGNIZED: ReadonlySet<string> = new Set(
   [
     [SELF_VERIFY],
     [DEPLOY, SELF_VERIFY],
@@ -131,7 +130,7 @@ export function classify(
 /** AG-3: the frames FP-4 to FP-6 see, which are all of them unless the profile admits dependency frames. */
 export function executed(tx: FrameTx, cfg: FramePoolConfig): readonly Frame[] {
   if (!cfg.dependencyFrames) return tx.frames;
-  return tx.frames.filter((f) => f.mode !== DEP_VERIFY_MODE);
+  return tx.frames.filter((f) => f.mode !== cfg.depFrameMode);
 }
 
 /** FP-4: the frames up to and including the first that carries APPROVE_PAYMENT. */
@@ -148,16 +147,14 @@ export function analyse(tx: FrameTx, cfg: FramePoolConfig): Prefix | null {
   };
 }
 
-/** FP-3, FP-5 and FP-6: everything decidable without state. */
-export function checkStatic(
+/** FP-3: the EIP's static constraints, with EN-3's and AG-2's under a profile that admits them. */
+export function checkFp3(
   tx: FrameTx,
-  head: Head,
+  gasLimit: bigint,
   cfg: FramePoolConfig
-): Prefix {
+): void {
   const frames = tx.frames;
   const sender = tx.sender;
-
-  // FP-3: the EIP's static constraints
   if (frames.length < 1 || frames.length > MAX_FRAMES)
     fail(E.ErrFrameMalformed);
   const keys = tx.nonceKeys;
@@ -178,8 +175,14 @@ export function checkStatic(
   }
   let expiryFrames = 0;
   frames.forEach((f, i) => {
-    if (f.mode === DEP_VERIFY_MODE && cfg.dependencyFrames) {
-      checkFrame(f, cfg.maxDependenciesPerFrame); // AG-2 in place of the rules below
+    if (f.mode === cfg.depFrameMode && cfg.dependencyFrames) {
+      checkFrame(f, cfg); // AG-2 in place of the rules below
+      if (
+        !cfg.depInBatch &&
+        i > 0 &&
+        (frames[i - 1].flags & ATOMIC_BATCH_FLAG) !== 0
+      )
+        fail(E.ErrDepFrameMalformed);
       return;
     }
     if (
@@ -238,11 +241,20 @@ export function checkStatic(
   if (tx.signatures.some((s) => !s.valid)) fail(E.ErrInvalidSender);
   if (tx.tip > tx.maxFee) fail(E.ErrTipAboveFeeCap);
   if (tx.tip < cfg.priceLimit) fail(E.ErrTxGasPriceTooLow);
-  if (gas.maxGas > head.gasLimit) fail(E.ErrGasLimit);
+  if (gas.maxGas > gasLimit) fail(E.ErrGasLimit);
+}
+
+/** FP-3, FP-5 and FP-6: everything decidable without state. */
+export function checkStatic(
+  tx: FrameTx,
+  head: Head,
+  cfg: FramePoolConfig
+): Prefix {
+  const sender = tx.sender;
+  checkFp3(tx, head.gasLimit, cfg);
 
   // AG-4: limits per transaction
-  if (cfg.dependencyFrames)
-    checkLimits(tx, cfg.maxSigsPerTx, cfg.maxStarksPerTx);
+  if (cfg.dependencyFrames) checkLimits(tx, cfg);
 
   // FP-5: structure, over the frames AG-3 leaves
   const kinds = executed(tx, cfg).map((f) => classify(f, sender, cfg));

@@ -1,7 +1,7 @@
 {
   "clause": "FEE-4",
   "document": "00-model.md",
-  "version": 9,
+  "version": 11,
   "operation": "frame_gas",
   "distinguishes": "The frame transaction gas formulas: per-frame cost, signature bytes and verification cost in both the intrinsic and the floor, the value-transfer charge, state limits added on both sides of the max, and the length of the RLP-encoded nonce fields at each of its boundaries.",
   "cases": [

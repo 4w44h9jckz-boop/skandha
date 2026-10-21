@@ -2,7 +2,7 @@
   "clause": "FEE-4",
   "also": ["MD-6"],
   "document": "00-model.md",
-  "version": 9,
+  "version": 11,
   "operation": "frame_gas",
   "distinguishes": "Zero calldata bytes cost one token rather than four in the intrinsic gas and four in the floor: an implementation that prices every byte as non-zero, or that discounts zero bytes in the floor too, gets the max gas and max cost of a real transaction wrong.",
   "cases": [

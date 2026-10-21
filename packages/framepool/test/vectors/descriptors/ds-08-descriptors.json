@@ -1,0 +1,53 @@
+{
+ "clause": "DS-8",
+ "also": [],
+ "document": "13-descriptors.md",
+ "version": 1,
+ "operation": "descriptor",
+ "distinguishes": "The three descriptors of docs/spec/descriptors/ load with their stated identifiers and module counts.",
+ "cases": [
+  {
+   "name": "the three descriptors load from their files",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/claim-gated.json"
+    }
+   ],
+   "file": "docs/spec/descriptors/erc-8421.json",
+   "expect": {
+    "result": "ok",
+    "id": "bafkreieanbgdpq22vtfsa4rz4zll2lhf4qofoi75hbubqqhlqzepvyvjsy",
+    "modules": 59
+   },
+   "derivation": "erc-8421.json's effective modules: eip-8141.json's 15 less the 6 it removes, plus the 50 AM-2 lists."
+  },
+  {
+   "name": "claim-gated.json's effective modules",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "file": "docs/spec/descriptors/claim-gated.json",
+   "expect": {
+    "result": "ok",
+    "id": "bafkreid2yhoz2it5mzjhejpm2f3tthv5npcvxaahxujjhds63mwfpx4ahm",
+    "modules": 31
+   },
+   "derivation": "15 frame pool modules, 7 AG (AG-2 to AG-8) and 9 CG (CG-2 to CG-10)."
+  },
+  {
+   "name": "eip-8141.json's effective modules",
+   "file": "docs/spec/descriptors/eip-8141.json",
+   "expect": {
+    "result": "ok",
+    "id": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "modules": 15
+   },
+   "derivation": "FP-2 to FP-16."
+  }
+ ]
+}

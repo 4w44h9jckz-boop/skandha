@@ -1,0 +1,291 @@
+{
+ "clause": "AG-9",
+ "also": [
+  "AG-7"
+ ],
+ "document": "05-aggregation.md",
+ "version": 4,
+ "operation": "pool",
+ "distinguishes": "Under eip-8288-master an aggregate's proving time counts prove_sig for each leanSPHINCS triple it verifies directly, and a budget stops the fold where the next would not fit; an implementation that counts otherwise fails here.",
+ "cases": [
+  {
+   "name": "three signatures under a budget for two",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-A-0",
+            "pk-alice"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 30
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-B-0",
+            "pk-bob"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 20
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-C-0",
+            "pk-carol"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 10
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "A",
+      "B"
+     ],
+     "expect_time": 120
+    }
+   ],
+   "derivation": "100 to begin, 10 a signature: A and B make 120, C would make 130.",
+   "config": {
+    "frame": {
+     "prove_base": 100,
+     "prove_sig": 10,
+     "proving_budget": 125
+    }
+   }
+  },
+  {
+   "name": "the previous fold is taken as one input",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-A-0",
+            "pk-alice"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 30
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-B-0",
+            "pk-bob"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 20
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "A",
+      "B"
+     ],
+     "expect_time": 120
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-C-0",
+            "pk-carol"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 10
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect_hashed": [
+      "A",
+      "B"
+     ],
+     "expect_time": 160
+    }
+   ],
+   "derivation": "The second fold takes the first as a recursive input, 100 + 50, and verifies C directly, 10: 160.",
+   "config": {
+    "frame": {
+     "prove_base": 100,
+     "prove_recursive": 50,
+     "prove_sig": 10,
+     "proving_budget": 200
+    }
+   }
+  }
+ ]
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copy exp-mempool-l2s's conformance vectors, byte for byte, at a commit, and list their SHA-256.
+# Copy exp-mempool-l2s's conformance vectors and descriptors, byte for byte, at a commit, and list their SHA-256.
 #
 # Usage: tools/sync-vectors.sh <exp-mempool-l2s checkout> <commit>
 #
@@ -14,5 +14,10 @@ rm -rf "$here/test/vectors"
 mkdir -p "$here/test/vectors"
 git -C "$spec" archive "$commit" conformance/vectors | tar -x -C "$here/test/vectors" --strip-components=2
 (cd "$here/test/vectors" && find . -name '*.json' | LC_ALL=C sort | sed 's|^\./||' | xargs sha256sum) > "$here/test/vectors.sha256"
+# The descriptors the descriptor vectors load by path (`13-descriptors.md`, DS-8), copied the same way.
+rm -rf "$here/test/descriptors"
+mkdir -p "$here/test/descriptors"
+git -C "$spec" archive "$commit" docs/spec/descriptors | tar -x -C "$here/test/descriptors" --strip-components=3 --wildcards '*.json'
+(cd "$here/test/descriptors" && find . -name '*.json' | LC_ALL=C sort | sed 's|^\./||' | xargs sha256sum) > "$here/test/descriptors.sha256"
 echo "$commit" > "$here/test/vectors.commit"
 echo "copied $(wc -l < "$here/test/vectors.sha256") vector files from exp-mempool-l2s at $commit"

@@ -1,7 +1,7 @@
 {
   "clause": "AG-8",
   "document": "05-aggregation.md",
-  "version": 3,
+  "version": 4,
   "also": ["BB-3"],
   "operation": "pool",
   "distinguishes": "A block counts 30000 gas for every dependency triple its transactions declare, duplicates included and leanSPHINCS triples too, on top of their gas, and a builder leaves out a transaction that fits only without it. Counting declarations and charging nobody is an Interpretation (decision record 0012).",

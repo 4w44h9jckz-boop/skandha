@@ -1,0 +1,50 @@
+{
+  "format": 1,
+  "name": "Claim-gated admission",
+  "source": "05-aggregation.md version 3, AG-1's eip-8288 column; 10-claim-gated-admission.md version 4, CG-1",
+  "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+  "remove": [],
+  "rules": {
+    "AG-2": {
+      "max_dependencies_per_frame": 256
+    },
+    "AG-3": {},
+    "AG-4": {
+      "max_sigs_per_tx": 16,
+      "max_starks_per_tx": 1
+    },
+    "AG-5": {
+      "max_sig_deps_per_wrapper": 16,
+      "max_stark_deps_per_wrapper": 1
+    },
+    "AG-6": {},
+    "AG-7": {
+      "aggregation_interval_ms": 1000,
+      "cap_aggregates": true,
+      "forward_wrappers": false
+    },
+    "AG-8": {},
+    "CG-2": {
+      "claim_epoch": 384
+    },
+    "CG-3": {
+      "signed_proofs": false
+    },
+    "CG-4": {
+      "claim_memory": "slot"
+    },
+    "CG-5": {},
+    "CG-6": {},
+    "CG-7": {
+      "verifies": true
+    },
+    "CG-8": {
+      "namespace": "FRAME_TICKET_V1"
+    },
+    "CG-9": {},
+    "CG-10": {
+      "template_length": 1105,
+      "template_keccak": "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0"
+    }
+  }
+}

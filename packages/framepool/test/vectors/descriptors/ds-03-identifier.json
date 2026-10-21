@@ -1,0 +1,86 @@
+{
+ "clause": "DS-3",
+ "also": [],
+ "document": "13-descriptors.md",
+ "version": 1,
+ "operation": "descriptor",
+ "distinguishes": "A descriptor's identifier is the base32 CIDv1 of its canonical encoding as a raw block hashed with SHA-256: an implementation that hashes the file's own bytes, uses another codec or hash, pads, or upper-cases fails here.",
+ "cases": [
+  {
+   "name": "eip-8141.json",
+   "file": "docs/spec/descriptors/eip-8141.json",
+   "expect": {
+    "result": "ok",
+    "id": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4"
+   },
+   "derivation": "CIDv1, raw, sha2-256 of the canonical encoding, base32 with b."
+  },
+  {
+   "name": "claim-gated.json",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "file": "docs/spec/descriptors/claim-gated.json",
+   "expect": {
+    "result": "ok",
+    "id": "bafkreid2yhoz2it5mzjhejpm2f3tthv5npcvxaahxujjhds63mwfpx4ahm"
+   },
+   "derivation": "As above; its parent is eip-8141.json's identifier."
+  },
+  {
+   "name": "erc-8421.json",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "file": "docs/spec/descriptors/erc-8421.json",
+   "expect": {
+    "result": "ok",
+    "id": "bafkreieanbgdpq22vtfsa4rz4zll2lhf4qofoi75hbubqqhlqzepvyvjsy"
+   },
+   "derivation": "As above."
+  },
+  {
+   "name": "a small child, written with indentation",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "text": "{\n    \"format\": 1,\n    \"name\": \"tip floor 2\",\n    \"source\": \"a vector\",\n    \"parent\": \"bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4\",\n    \"remove\": [],\n    \"rules\": {\n        \"FP-3\": {\n            \"price_limit\": 2\n        }\n    }\n}",
+   "expect": {
+    "result": "ok",
+    "id": "bafkreih46ewzqsdwac7wayhplyp4puge7smfmf3u7rrw6c7jcwfu6mp5fa"
+   },
+   "derivation": "The identifier is the value's."
+  },
+  {
+   "name": "the same child with one parameter changed",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "tip floor 2",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "FP-3": {
+      "price_limit": 3
+     }
+    }
+   },
+   "expect": {
+    "result": "ok",
+    "id": "bafkreidfi6lhbgybzxkc3uzn7iaxq72ra5zqihzka4eaq2viw6zfjfzawu"
+   },
+   "derivation": "Any value changes the canonical bytes and so the identifier."
+  }
+ ]
+}

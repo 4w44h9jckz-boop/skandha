@@ -1,7 +1,7 @@
 {
   "clause": "LU-5",
   "document": "06-lucid.md",
-  "version": 2,
+  "version": 3,
   "also": ["MD-11"],
   "operation": "pool",
   "distinguishes": "The checks against the head and the state and their order: the ToB segment, the reservation, the nonce with no queue, the balance against the full cost, and whether the ticket can pay at the pending base fee with its key fee.",

@@ -1,0 +1,64 @@
+{
+  "clause": "LU-16",
+  "document": "06-lucid.md",
+  "version": 3,
+  "operation": "key_round",
+  "distinguishes": "Which keys a key publisher may release: only for a scheduling block it has observed and that is attested, only its own commitments or, for a sender, its own, only within the ToB segment, and only where the commitment's index is within its max_preceding.",
+  "cases": [
+    {"name": "each publisher may release its own commitments, and a sender its own",
+     "block": {"commitments": [
+       {"label": "a", "sender": "alice", "key_publisher": "kp1"},
+       {"label": "b", "sender": "bob", "key_publisher": "kp2"},
+       {"label": "c", "sender": "carol", "key_publisher": "kp1"}]},
+     "steps": [
+       {"release": {"publisher": "kp1"}, "expect": ["a", "c"]},
+       {"release": {"publisher": "kp2"}, "expect": ["b"]},
+       {"release": {"publisher": "bob"}, "expect": ["b"]},
+       {"release": {"publisher": "kp3"}, "expect": []}
+     ]},
+    {"name": "nothing before the block is observed: no key comes before its commitment",
+     "block": {"commitments": [{"label": "a", "key_publisher": "kp1"}]},
+     "steps": [
+       {"release": {"publisher": "kp1", "observed": false}, "expect": []},
+       {"release": {"publisher": "alice", "observed": false}, "expect": []},
+       {"release": {"publisher": "kp1"}, "expect": ["a"]}
+     ]},
+    {"name": "nothing for a block that is not attested",
+     "block": {"attested": false, "commitments": [{"label": "a", "key_publisher": "kp1"}]},
+     "steps": [
+       {"release": {"publisher": "kp1"}, "expect": []},
+       {"release": {"publisher": "alice"}, "expect": []}
+     ]},
+    {"name": "a commitment placed after more commitments than its max_preceding is not released",
+     "block": {"commitments": [
+       {"label": "a", "sender": "alice", "key_publisher": "kp1"},
+       {"label": "b", "sender": "bob", "key_publisher": "kp1", "max_preceding": 1},
+       {"label": "c", "sender": "carol", "key_publisher": "kp1", "max_preceding": 1}]},
+     "steps": [
+       {"release": {"publisher": "kp1"}, "expect": ["a", "b"]},
+       {"release": {"publisher": "carol"}, "expect": []}
+     ]},
+    {"name": "obligations exactly at the ToB segment may be released",
+     "block": {"gas_limit": 1600000, "commitments": [
+       {"label": "a", "sender": "alice", "key_publisher": "kp1"},
+       {"label": "b", "sender": "bob", "key_publisher": "kp1"}]},
+     "steps": [
+       {"release": {"publisher": "kp1"}, "expect": ["a", "b"]}
+     ]},
+    {"name": "obligations one gas above the ToB segment release nothing, for anyone",
+     "block": {"gas_limit": 1599999, "commitments": [
+       {"label": "a", "sender": "alice", "key_publisher": "kp1"},
+       {"label": "b", "sender": "bob", "key_publisher": "kp2"}]},
+     "steps": [
+       {"release": {"publisher": "kp1"}, "expect": []},
+       {"release": {"publisher": "kp2"}, "expect": []},
+       {"release": {"publisher": "bob"}, "expect": []}
+     ]},
+    {"name": "a released key message is valid",
+     "block": {"commitments": [{"label": "a", "key_publisher": "kp1", "k_dem": "0x1111111111111111111111111111111111111111111111111111111111111111"}]},
+     "steps": [
+       {"release": {"publisher": "kp1"}, "expect": ["a"]},
+       {"message": "a", "expect": "valid", "expect_read": true}
+     ]}
+  ]
+}

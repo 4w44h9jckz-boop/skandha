@@ -45,6 +45,11 @@ export interface FramePoolConfig {
   readonly contention: "sender" | "storage" | "slot"; // MA-14
   // AG-1, read only when dependencyFrames is true
   readonly dependencyFrames: boolean;
+  readonly depFrameMode: number; // DEP_VERIFY_FRAME_MODE: 3 at the pinned commit, 4 on master
+  readonly leanstark: "defined" | "reserved"; // AG-2
+  readonly depInBatch: boolean; // whether a dependency frame may follow a frame with ATOMIC_BATCH_FLAG (AG-2)
+  readonly zeroDataHash: "literal" | "sig_hash"; // AG-4: whether a zero data_hash stands for the signature hash
+  readonly mode1Union: boolean; // whether AG-5 checks a mode 1 wrapper's deps against its transactions
   readonly maxDependenciesPerFrame: number;
   readonly maxSigsPerTx: number;
   readonly maxStarksPerTx: number;
@@ -53,12 +58,18 @@ export interface FramePoolConfig {
   readonly aggregationInterval: number;
   readonly capAggregates: boolean;
   readonly forwardWrappers: boolean;
-  // AG-9: ms; null bounds nothing. Read by an aggregator, which this package does not have.
+  // AG-9: ms; null bounds nothing. Read by the aggregator (`Aggregator`).
   readonly provingBudget: number | null;
   readonly proveBase: number;
   readonly proveRecursive: number;
   readonly proveSig: number;
   readonly proveStark: number;
+  // AG-10: MiB; null bounds nothing
+  readonly memoryBudget: number | null;
+  readonly memoryBase: number;
+  readonly memoryRecursive: number;
+  readonly memorySig: number;
+  readonly memoryStark: number;
   // RR-1, read only when recentRoots is true
   readonly recentRoots: boolean;
   readonly recentRootAddress: string;
@@ -79,6 +90,23 @@ export interface FramePoolConfig {
   readonly claimMemory: "slot" | "claim" | "none"; // CG-4
   readonly signedProofs: boolean; // CG-3: whether a sender's signature covers its wrapper's proofs
   readonly verifies: boolean; // CG-7: false makes the node a relay, which verifies no proof
+  // 14-erc-8421.md, AM-1, read only when ruleset is "erc-8421"; a descriptor sets them (13-descriptors.md, DS-6)
+  readonly ruleset: "eip-8141" | "erc-8421";
+  readonly maxVerifyGasPerEntity: bigint;
+  readonly maxVerifyGasStakedEntity: bigint;
+  readonly minStakeValue: bigint;
+  readonly minUnstakeDelay: bigint;
+  readonly minInclusionRateDenominator: number;
+  readonly throttlingSlack: number;
+  readonly banSlack: number;
+  readonly refreshSeconds: number;
+  readonly throttledEntityMempoolCount: number;
+  readonly throttledEntityLiveBlocks: number; // not modelled
+  readonly throttledEntityBlockCount: number; // not modelled
+  readonly sameUnstakedEntityMempoolCount: number;
+  readonly maxTxsAllowedUnstakedEntity: number;
+  readonly sameNonceKeyMempoolCount: number;
+  readonly sameSenderMempoolCount: number;
 }
 
 export const EIP_8141: FramePoolConfig = Object.freeze({
@@ -105,6 +133,11 @@ export const EIP_8141: FramePoolConfig = Object.freeze({
   loadPrice: 0n,
   contention: "sender",
   dependencyFrames: false,
+  depFrameMode: 3,
+  leanstark: "defined",
+  depInBatch: true,
+  zeroDataHash: "literal",
+  mode1Union: false,
   maxDependenciesPerFrame: 256,
   maxSigsPerTx: 16,
   maxStarksPerTx: 1,
@@ -118,6 +151,11 @@ export const EIP_8141: FramePoolConfig = Object.freeze({
   proveRecursive: 0,
   proveSig: 0,
   proveStark: 0,
+  memoryBudget: null,
+  memoryBase: 0,
+  memoryRecursive: 0,
+  memorySig: 0,
+  memoryStark: 0,
   recentRoots: false,
   recentRootAddress: RECENT_ROOT_ADDRESS,
   recentRootCode: "recent-root",
@@ -135,6 +173,22 @@ export const EIP_8141: FramePoolConfig = Object.freeze({
   claimMemory: "slot",
   signedProofs: false,
   verifies: true,
+  ruleset: "eip-8141",
+  maxVerifyGasPerEntity: 100_000n,
+  maxVerifyGasStakedEntity: 1_000_000n,
+  minStakeValue: 10n ** 18n,
+  minUnstakeDelay: 86400n,
+  minInclusionRateDenominator: 10,
+  throttlingSlack: 10,
+  banSlack: 50,
+  refreshSeconds: 3600,
+  throttledEntityMempoolCount: 4,
+  throttledEntityLiveBlocks: 10,
+  throttledEntityBlockCount: 4,
+  sameUnstakedEntityMempoolCount: 10,
+  maxTxsAllowedUnstakedEntity: 10000,
+  sameNonceKeyMempoolCount: 4,
+  sameSenderMempoolCount: 64,
 });
 
 export function withChanges(
@@ -165,6 +219,16 @@ export const EIP_8288 = withChanges(EIP_8141, {
   dependencyFrames: true,
 });
 
+/** AG-1: EIP-8288 at master `899bef0a`, with leanSTARK reserved (exp-mempool-l2s decision record 0063). */
+export const EIP_8288_MASTER = withChanges(EIP_8288, {
+  name: "eip-8288-master",
+  depFrameMode: 4,
+  leanstark: "reserved",
+  depInBatch: false,
+  zeroDataHash: "sig_hash",
+  mode1Union: true,
+});
+
 export const EIP_8272 = withChanges(EIP_8141, {
   name: "eip-8272",
   recentRoots: true,
@@ -186,6 +250,7 @@ export const PROFILES: ReadonlyMap<string, FramePoolConfig> = new Map(
     HEGOTA_TESTNET,
     MATCHA,
     EIP_8288,
+    EIP_8288_MASTER,
     EIP_8272,
     EIP_8266,
     CLAIM_GATED,

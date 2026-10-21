@@ -24,8 +24,15 @@ import {
   Read,
   Reserver,
   RootReference,
+  Aggregator,
   Claim,
+  Descriptor,
+  DescriptorError,
   Signature,
+  StandardPool,
+  Store,
+  canonical as canonicalDescriptor,
+  compileConfig,
   State,
   TicketClaim,
   TicketFrame,
@@ -48,13 +55,19 @@ import {
   frame,
   intrinsicGas,
   nextBaseFee,
-  receive,
   recentroots,
   signature,
   ticketMessage,
   ticketValid,
   union,
   withChanges,
+  SEALED_PROFILES,
+  headNextBaseFee,
+  SealedPool,
+  SealedPoolConfig,
+  SealedTx,
+  fees,
+  lucidkeys,
 } from "../src/index.js";
 
 export class Mismatch extends Error {}
@@ -183,6 +196,62 @@ export function vectorFiles(): string[] {
   return files;
 }
 
+// --- the descriptors on disk (exp-mempool-l2s `docs/spec/descriptors/`) ------------------
+
+const DESCRIPTORS = new URL("./descriptors/", import.meta.url).pathname;
+const DESCRIPTOR_MANIFEST = new URL("./descriptors.sha256", import.meta.url)
+  .pathname;
+const SPEC_DESCRIPTORS = "docs/spec/descriptors/";
+
+/** A descriptor file as copied with the vectors, by its path in exp-mempool-l2s; throws if it was changed since. */
+export function descriptorText(path: string): string {
+  if (!path.startsWith(SPEC_DESCRIPTORS))
+    throw new Error(`not a descriptor of exp-mempool-l2s: ${path}`);
+  const name = path.slice(SPEC_DESCRIPTORS.length);
+  const sums = new Map(
+    readFileSync(DESCRIPTOR_MANIFEST, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => line.split(/\s+/).reverse() as [string, string])
+  );
+  const text = readFileSync(join(DESCRIPTORS, name));
+  if (createHash("sha256").update(text).digest("hex") !== sums.get(name))
+    throw new Error(
+      `${path} differs from exp-mempool-l2s ${VECTORS_COMMIT}; descriptors are never edited here`
+    );
+  return text.toString("utf8");
+}
+
+/** DS-8: `docs/spec/descriptors/<name>.json`, loaded after the descriptors it inherits from. */
+const loadedDescriptors = new Map<string, Descriptor>();
+export function descriptor(name: string): Descriptor {
+  if (loadedDescriptors.size === 0) {
+    const store = new Store();
+    const pending = readFileSync(DESCRIPTOR_MANIFEST, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => line.split(/\s+/)[1])
+      .sort();
+    while (pending.length > 0) {
+      const i = pending.findIndex((file) => {
+        const parent = JSON.parse(
+          descriptorText(SPEC_DESCRIPTORS + file)
+        ).parent;
+        return parent === null || store.held.has(parent);
+      });
+      if (i < 0) throw new Error(`no parent held for ${pending}`);
+      const [file] = pending.splice(i, 1);
+      loadedDescriptors.set(
+        file.replace(/\.json$/, ""),
+        store.load(descriptorText(SPEC_DESCRIPTORS + file))
+      );
+    }
+  }
+  const d = loadedDescriptors.get(name);
+  if (d === undefined) throw new Error(`no descriptor ${name}`);
+  return d;
+}
+
 export interface Vector {
   clause: string;
   operation: string;
@@ -216,6 +285,76 @@ function makeHead(d: Record<string, Json>): Head {
   };
 }
 
+const SEALED_FIELDS: Readonly<Record<string, string>> = {
+  sender: "sender",
+  nonce: "nonce",
+  max_fee: "maxFee",
+  tip: "tip",
+  gas_limit: "gasLimit",
+  max_tob_fee: "maxTobFee",
+  max_preceding: "maxPreceding",
+  key_publisher: "keyPublisher",
+  fee_recipient: "feeRecipient",
+  key_fee: "keyFee",
+  size: "size",
+  signature_id: "signatureId",
+  valid_signature: "validSignature",
+  ciphertext_ok: "ciphertextOk",
+  revealed: "revealed",
+  used: "used",
+  label: "label",
+  k_dem: "kDem",
+  key_commitment: "keyCommitment",
+  decrypts: "decrypts",
+};
+const SEALED_BIG = [
+  "nonce",
+  "maxFee",
+  "tip",
+  "gasLimit",
+  "maxTobFee",
+  "keyFee",
+  "used",
+];
+const SEALED_NUM = ["maxPreceding", "size", "signatureId"];
+
+/** LU-2: a sealed transaction (`type` `st`), with the defaults of exp-mempool-l2s's `conformance/README.md`. */
+function makeSealed(d: Record<string, Json>): SealedTx {
+  const { type: _type, ...rest } = d;
+  only(rest, Object.keys(SEALED_FIELDS), "sealed transaction");
+  const init: Record<string, Json> = { sender: "alice" };
+  for (const [snake, value] of Object.entries(rest)) {
+    const key = SEALED_FIELDS[snake];
+    init[key] = SEALED_BIG.includes(key)
+      ? big(value)
+      : SEALED_NUM.includes(key)
+      ? num(value)
+      : key === "kDem" || key === "keyCommitment"
+      ? Buffer.from((value as string).slice(2), "hex")
+      : value;
+  }
+  return new SealedTx(init as never);
+}
+
+function sealedConfig(c: Json): SealedPoolConfig {
+  const profile = SEALED_PROFILES.get(c.sealed ?? "off");
+  if (profile === undefined)
+    throw new Error(`unknown sealed profile ${c.sealed}`);
+  const changes: Record<string, Json> = {};
+  for (const [snake, value] of Object.entries(c.config?.sealed ?? {})) {
+    const key = snake.replace(/_([a-z])/g, (_, ch: string) => ch.toUpperCase());
+    if (!(key in profile)) throw new Error(`unknown sealed parameter ${snake}`);
+    const was = (profile as unknown as Record<string, unknown>)[key];
+    changes[key] =
+      typeof was === "bigint"
+        ? big(value)
+        : typeof was === "number"
+        ? num(value)
+        : value;
+  }
+  return { ...profile, ...changes } as SealedPoolConfig;
+}
+
 const ACCOUNT_FIELDS = [
   "nonce",
   "balance",
@@ -223,6 +362,9 @@ const ACCOUNT_FIELDS = [
   "storage",
   "nonce_seqs",
   "withdrawal",
+  "stake",
+  "unstake_delay",
+  "withdrawing",
 ];
 
 /** Field-wise merge of an account map over a state (exp-mempool-l2s `conformance/README.md`). */
@@ -242,6 +384,9 @@ function mergeState(
       } else if (key === "code") acc.code = value;
       else if (key === "nonce") acc.nonce = big(value);
       else if (key === "balance") acc.balance = big(value);
+      else if (key === "stake") acc.stake = big(value);
+      else if (key === "unstake_delay") acc.unstakeDelay = big(value);
+      else if (key === "withdrawing") acc.withdrawing = value;
       else acc.withdrawal = big(value);
     }
   }
@@ -328,10 +473,18 @@ function makeFrame(d: Record<string, Json>): Frame {
     reverts: d.reverts,
     opcodes: opt("opcodes", (x) => new Set<string>(x)),
     reads: opt("reads", (x: Json[]) =>
-      x.map(([a, s, v]): Read => [a, big(s), bigOrNull(v)])
+      x.map(
+        ([a, s, v, assoc]): Read =>
+          assoc === undefined
+            ? [a, big(s), bigOrNull(v)]
+            : [a, big(s), bigOrNull(v), assoc]
+      )
     ),
     writes: opt("writes", (x: Json[]) =>
-      x.map(([a, s, v]): Write => [a, big(s), big(v)])
+      x.map(
+        ([a, s, v, assoc]): Write =>
+          assoc === undefined ? [a, big(s), big(v)] : [a, big(s), big(v), assoc]
+      )
     ),
     calls: d.calls,
     installsCode: d.installs_code,
@@ -409,7 +562,7 @@ function makeFrameTx(d: Record<string, Json>): FrameTx {
 }
 
 /** AG-5; `deps`, `proofs` and `stark` default to an honest wrapper's (`conformance/README.md`). */
-function makeWrapper(d: Json): Wrapper {
+function makeWrapper(d: Json, cfg: FramePoolConfig | null = null): Wrapper {
   const entries: (FrameTx | string)[] = [];
   const txs: FrameTx[] = [];
   for (const t of d.txs) {
@@ -417,7 +570,7 @@ function makeWrapper(d: Json): Wrapper {
     entries.push("hash" in t ? tx.hash : tx);
     txs.push(tx);
   }
-  const deps = d.deps !== undefined ? makeDeps(d.deps) : union(txs);
+  const deps = d.deps !== undefined ? makeDeps(d.deps) : union(txs, cfg); // honest under the case's profile
   const stark =
     d.mode === 0
       ? null
@@ -534,10 +687,8 @@ function focilConfig(c: Json): FocilConfig {
 // --- what a case needs --------------------------------------------------------------
 
 const STEP_NEEDS: Readonly<Record<string, string>> = {
-  aggregate: "an aggregator (AG-7 to AG-9)",
   build: "block building (03-block-building.md)",
   expect_state: "block building (03-block-building.md)",
-  expect_selection: "the sealed pool (06-lucid.md)",
 };
 
 /** Profiles of exp-mempool-l2s's specification this package does not have, with where each is specified. */
@@ -546,22 +697,17 @@ const PROFILE_NEEDS: Readonly<Record<string, string>> = {};
 /** What this package lacks to play `c`, as a sorted list; empty when it can play it. */
 export function needs(operation: string, c: Json): string[] {
   const out = new Set<string>();
-  if (operation === "ticket_fee") out.add("the sealed pool (06-lucid.md)");
+  if (!(operation in OPERATIONS)) return [`the ${operation} operation`];
   if (operation !== "pool" && operation !== "surface" && operation !== "replay")
     return [...out];
   if (c.profile !== undefined && !PROFILES.has(c.profile))
     out.add(PROFILE_NEEDS[c.profile] ?? `the ${c.profile} profile`);
   if (operation !== "pool") return [...out].sort();
-  if (c.sealed !== undefined && c.sealed !== "off")
-    out.add("the sealed pool (06-lucid.md)");
-  if (Object.keys(c.config?.sealed ?? {}).length > 0)
-    out.add("a sealed configuration");
   for (const step of c.steps) {
     for (const key of Object.keys(step))
       if (key in STEP_NEEDS) out.add(STEP_NEEDS[key]);
     for (const tx of step.add ?? []) {
-      if (tx.type === "st") out.add("the sealed pool (06-lucid.md)");
-      else if (tx.type !== 6)
+      if (tx.type !== 6 && tx.type !== "st")
         out.add("the account-nonce pool (01-nonce-pool.md)");
     }
   }
@@ -633,25 +779,111 @@ function runFrameGas(c: Json): void {
 }
 
 function runPool(c: Json): void {
-  const profile = PROFILES.get(c.profile ?? EIP_8141.name);
+  const loaded = c.descriptor !== undefined ? descriptor(c.descriptor) : null;
+  const profile =
+    loaded !== null
+      ? compileConfig(loaded)
+      : PROFILES.get(c.profile ?? EIP_8141.name);
   if (profile === undefined) throw new Error(`unknown profile ${c.profile}`);
   const cfg = frameConfig(profile, c.config?.frame ?? {});
   const headD = { ...DEFAULT_HEAD, ...(c.head ?? {}) };
   let head = makeHead(headD);
   let state = mergeState(null, c.state);
   writeRoots(state, cfg, c.roots);
-  const pool = new FramePool(head, state, cfg, new Reserver());
+  const reserver = new Reserver();
+  const pool =
+    cfg.ruleset === "erc-8421"
+      ? new StandardPool(head, state, cfg, reserver)
+      : new FramePool(head, state, cfg, reserver);
+  const sealed = new SealedPool(head, state, sealedConfig(c), reserver); // LU-4 to LU-11, behind one tracker
+  const aggregator = new Aggregator(pool); // AG-5 to AG-7, AG-9 and AG-10
+  for (const [addr, r] of Object.entries(c.reputation ?? {}))
+    (pool as StandardPool).give(
+      addr,
+      num((r as Json).seen),
+      num((r as Json).included)
+    ); // AM-13
   let now = 0;
   c.steps.forEach((step: Json, n: number) => {
     const where = `step ${n}:`;
     if ("add" in step) {
       now = step.now ?? now;
-      const got = pool.add(step.add.map(makeFrameTx), now);
+      // each subpool its share, in order: the frame pool's first, the sealed pool's last
+      const isSt = step.add.map((d: Json) => d.type === "st");
+      const frames = pool.add(
+        step.add.filter((_: Json, i: number) => !isSt[i]).map(makeFrameTx),
+        now
+      );
+      const sts = sealed.add(
+        step.add.filter((_: Json, i: number) => isSt[i]).map(makeSealed)
+      );
+      const got = isSt.map((st: boolean) =>
+        st ? (sts.shift() as string) : (frames.shift() as string)
+      );
       if ("expect" in step) same(step.expect, got, `${where} add`);
+      if (loaded !== null) {
+        // DS-7: every refusal names a rule of the loaded descriptor
+        const rules = got.map((code: string) =>
+          code === "ok" ? null : loaded.ruleOf(code)
+        );
+        if (
+          got.some(
+            (code: string, i: number) => code !== "ok" && rules[i] === null
+          )
+        )
+          throw new Mismatch(
+            `${where} a refusal names no rule of ${loaded.id}: ${got}`
+          );
+        if ("expect_rules" in step)
+          same(step.expect_rules, rules, `${where} rules`);
+      }
+    } else if ("reputation" in step) {
+      // AM-13
+      same(
+        step.expect,
+        (pool as StandardPool).reputation(step.reputation),
+        `${where} reputation of ${step.reputation}`
+      );
     } else if ("wrapper" in step) {
       now = step.now ?? now;
-      const got = receive(pool, makeWrapper(step.wrapper), now);
+      const got = aggregator.receive(makeWrapper(step.wrapper, cfg), now);
       if ("expect" in step) same(step.expect, got, `${where} wrapper`);
+    } else if ("aggregate" in step) {
+      const w = aggregator.aggregate();
+      if (w === null) {
+        if (step.expect !== undefined && step.expect !== null)
+          throw new Mismatch(
+            `${where} aggregate expected ${step.expect}, got none`
+          );
+        return;
+      }
+      if ("expect" in step && step.expect === null)
+        throw new Mismatch(`${where} aggregate expected none, got one`);
+      const names = w.txs.map((e) =>
+        typeof e === "string" ? label(pool.get(e) as FrameTx) : label(e)
+      );
+      const hashed = names.filter((_, i) => typeof w.txs[i] === "string");
+      if ("expect" in step) same(step.expect, names, `${where} aggregate`);
+      if ("expect_hashed" in step)
+        same(step.expect_hashed, hashed, `${where} aggregate hashes`);
+      if ("expect_deps" in step)
+        same(
+          step.expect_deps,
+          w.deps.map((d) => [d.scheme, d.dataHash, d.vkHash]),
+          `${where} aggregate deps`
+        );
+      if ("expect_time" in step)
+        same(
+          step.expect_time,
+          aggregator.provingTime,
+          `${where} aggregate proving time`
+        );
+      if ("expect_memory" in step)
+        same(
+          step.expect_memory,
+          aggregator.memory,
+          `${where} aggregate memory`
+        );
     } else if ("reset" in step) {
       now = step.now ?? now;
       Object.assign(headD, step.reset.head ?? {});
@@ -668,6 +900,16 @@ function runPool(c: Json): void {
         ])
       ); // MD-8
       pool.reset(head, state, now, verdicts);
+      sealed.reset(head, state);
+    } else if ("expect_selection" in step) {
+      const sel = step.expect_selection; // LU-7
+      const baseFee =
+        sel.base_fee !== undefined ? big(sel.base_fee) : headNextBaseFee(head);
+      same(
+        step.expect,
+        sealed.selection(baseFee, big(sel.min_tip ?? 0)).map((t) => t.name()),
+        `${where} selection`
+      );
     } else if ("il" in step) {
       const focil = focilConfig(c);
       const baseFee =
@@ -716,9 +958,13 @@ function runPool(c: Json): void {
       );
       same(step.expect_baselines, got, `${where} baselines`);
     } else if ("expect_pool" in step) {
-      const pending = Object.fromEntries(
-        [...pool.content()].map(([s, txs]) => [s, txs.map(label)])
-      );
+      const pending = Object.fromEntries([
+        ...[...pool.content()].map(([s, txs]) => [s, txs.map(label)]),
+        ...[...sealed.content()].map(([s, txs]) => [
+          s,
+          txs.map((t) => t.name()),
+        ]),
+      ]);
       const want = {
         pending: step.expect_pool.pending ?? {},
         queued: step.expect_pool.queued ?? {},
@@ -1052,7 +1298,212 @@ function runClaimTicket(c: Json): void {
   same(c.expect, got, "claim_ticket");
 }
 
+/** A descriptor of a case's `store`, or the one it loads: a file of exp-mempool-l2s, or a value. */
+function loadItem(store: Store, item: Json): Descriptor {
+  if (Object.keys(item).length === 1 && "file" in item)
+    return store.load(descriptorText(item.file));
+  return store.load(JSON.stringify(item));
+}
+
+/** FP-1, AG-1, CG-1 and AM-1's parameters of a profile, in their names. */
+function configJson(cfg: Json): Json {
+  return Object.fromEntries(
+    Object.entries(cfg).map(([k, v]) => [
+      k.replace(/[A-Z]/g, (ch) => "_" + ch.toLowerCase()),
+      v instanceof Set ? [...v] : v,
+    ])
+  );
+}
+
+/** exp-mempool-l2s `docs/spec/13-descriptors.md`: load a descriptor after the case's `store`, and what it compiles to. */
+function runDescriptor(c: Json): void {
+  const store = new Store();
+  for (const item of c.store ?? []) loadItem(store, item);
+  let got: Json;
+  try {
+    const d =
+      c.text !== undefined
+        ? store.load(c.text)
+        : c.descriptor !== undefined
+        ? loadItem(store, c.descriptor)
+        : loadItem(store, { file: c.file });
+    const cfg = compileConfig(d);
+    got = {
+      result: "ok",
+      canonical: canonicalDescriptor(d.value),
+      id: d.id,
+      modules: d.effective.size,
+      set_by: Object.fromEntries(
+        [...d.effective].map(([name, [, by]]) => [name, by])
+      ),
+      profile: cfg.name,
+      config: configJson(cfg),
+    };
+  } catch (err) {
+    if (!(err instanceof DescriptorError)) throw err;
+    got = { result: err.code, rule: err.rule };
+  }
+  partial(c.expect, got, "descriptor");
+}
+
+function runTicketFee(c: Json): void {
+  const st = makeSealed(c.st);
+  const f = fees(st, big(c.base_fee)); // LU-3
+  const got: Record<string, Json> = { can_pay: f !== null, cost: st.cost };
+  if (f !== null)
+    Object.assign(got, {
+      priority: f.priority,
+      tob: f.tob,
+      ticket_fee: f.ticketFee,
+    });
+  same(c.expect, got, "ticket_fee");
+}
+
+/** exp-mempool-l2s `docs/spec/06-lucid.md`, LU-14 to LU-19: the key round over one scheduling block. */
+function runKeyRound(c: Json): void {
+  const hexb = (s: string): Uint8Array => Buffer.from(s.slice(2), "hex");
+  const chainId = big(c.chain_id ?? 1);
+  const b = c.block;
+  const sts = (b.commitments as Json[]).map(makeSealed);
+  const block = new lucidkeys.SchedulingBlock(
+    b.root ?? "B",
+    num(b.slot ?? 1),
+    sts,
+    big(b.gas_limit ?? 30_000_000),
+    b.attested ?? true
+  );
+  const blocks = new lucidkeys.Blocks([block], chainId);
+  const cfg = sealedConfig({ ...c, sealed: "eip-8184" });
+  const labels = sts.map((st) => st.label);
+  const names = new Map<string, lucidkeys.KeyMessage>();
+  const read: number[] = [];
+  const decrypt: lucidkeys.Decrypt = (blk, j, k) => {
+    read.push(j);
+    return lucidkeys.readDecrypts(blk, j, k);
+  };
+  const message = (m: Json): lucidkeys.KeyMessage => {
+    if (typeof m === "string") {
+      const named = names.get(m);
+      if (named === undefined) throw new Error(`no key message ${m}`);
+      return named;
+    }
+    const j = num(m.commit_index ?? 0);
+    const fallback =
+      j >= 0 && j < sts.length ? sts[j].demKey : new Uint8Array(32);
+    return {
+      chainId: m.chain_id !== undefined ? big(m.chain_id) : chainId,
+      root: m.root ?? block.root,
+      slot: m.slot !== undefined ? num(m.slot) : block.slot,
+      commitIndex: j,
+      kDems:
+        m.k_dems !== undefined ? (m.k_dems as string[]).map(hexb) : [fallback],
+    };
+  };
+  const received = (entries: Json[]): [lucidkeys.KeyMessage, number][] =>
+    entries.map(([n, at]: Json) => [message(n as string), num(at)]);
+  const readLabels = (): string[] =>
+    [...new Set(read)].sort((x, y) => x - y).map((j) => labels[j]);
+  let counts: lucidkeys.Counts[] | null = null;
+  (c.steps as Json[]).forEach((step, i) => {
+    const where = `step ${i}:`;
+    read.length = 0;
+    if ("commitments" in step) {
+      const got = block.commitments().map((cm, j) => ({
+        root: labels[j],
+        key: "0x" + Buffer.from(cm.key).toString("hex"),
+        gas_obligation: cm.gasObligation,
+        executable: [...cm.executable],
+      }));
+      same(step.expect, got, `${where} commitments`);
+    } else if ("release" in step) {
+      const r = step.release;
+      const msgs = lucidkeys.release(
+        block,
+        r.publisher,
+        cfg,
+        chainId,
+        r.observed ?? true
+      );
+      for (const m of msgs) names.set(labels[m.commitIndex], m);
+      same(
+        step.expect,
+        msgs.map((m) => labels[m.commitIndex]),
+        `${where} release`
+      );
+    } else if ("message" in step) {
+      const m = message(step.message);
+      if (step.as !== undefined) names.set(step.as, m);
+      same(
+        step.expect,
+        lucidkeys.checkKeyMessage(m, blocks, decrypt),
+        `${where} message`
+      );
+      if ("expect_read" in step)
+        same(step.expect_read, read.length > 0, `${where} message read`);
+    } else if ("vote" in step) {
+      const v = step.vote;
+      const got = lucidkeys.vote(
+        block,
+        blocks,
+        received(v.received),
+        num(v.deadline),
+        decrypt
+      );
+      same(step.expect, got, `${where} vote`);
+      if ("expect_read" in step)
+        same(step.expect_read, readLabels(), `${where} vote read`);
+    } else if ("tally" in step) {
+      const t = step.tally;
+      counts = lucidkeys.tally(
+        sts.length,
+        t.ptc,
+        num(t.vote_deadline),
+        num(t.attestation),
+        (t.votes as Json[]).map(([m, bits, at]: Json) => [
+          m,
+          (bits as Json[]).map(num),
+          num(at),
+        ])
+      );
+      same(
+        step.expect,
+        counts.map((k) => k.allowed()),
+        `${where} tally`
+      );
+      if ("expect_counts" in step)
+        same(
+          step.expect_counts,
+          counts.map(({ t1, t0, l1, l0, e }) => ({ t1, t0, l1, l0, e })),
+          `${where} counts`
+        );
+    } else if ("blame" in step) {
+      if (counts === null) throw new Mismatch(`${where} blame before a tally`);
+      const bl = step.blame;
+      const { revealed, missing } = lucidkeys.blame(
+        block,
+        blocks,
+        counts,
+        received(bl.received),
+        num(bl.deadline),
+        decrypt
+      );
+      same(
+        step.expect,
+        {
+          revealed: revealed.map((j) => labels[j]),
+          missing: Object.fromEntries(
+            [...missing].map(([j, o]) => [labels[j], o])
+          ),
+        },
+        `${where} blame`
+      );
+    } else throw new Error(`${where} unknown step ${Object.keys(step).sort()}`);
+  });
+}
+
 export const OPERATIONS: Readonly<Record<string, (c: Json) => void>> = {
+  key_round: runKeyRound,
+  ticket_fee: runTicketFee,
   next_base_fee: runNextBaseFee,
   intrinsic_gas: runIntrinsicGas,
   frame_gas: runFrameGas,
@@ -1060,6 +1511,7 @@ export const OPERATIONS: Readonly<Record<string, (c: Json) => void>> = {
   surface: runSurface,
   replay: runReplay,
   claim_ticket: runClaimTicket,
+  descriptor: runDescriptor,
 };
 
 export interface Outcome {

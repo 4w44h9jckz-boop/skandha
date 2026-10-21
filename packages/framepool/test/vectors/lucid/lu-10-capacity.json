@@ -1,7 +1,7 @@
 {
   "clause": "LU-10",
   "document": "06-lucid.md",
-  "version": 2,
+  "version": 3,
   "also": ["MD-11"],
   "operation": "pool",
   "distinguishes": "A full sealed pool under last drops the last in commitment order for a newcomer that comes before it, refuses one that does not, releases the dropped sender, and applies the policy first (an Interpretation, decision record 0014); under unplaced it drops the last that the selection with the newcomer passes over, for a newcomer that comes before it or that the selection takes (a variant, decision record 0015).",

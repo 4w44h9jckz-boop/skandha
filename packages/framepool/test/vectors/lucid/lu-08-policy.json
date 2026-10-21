@@ -1,7 +1,7 @@
 {
   "clause": "LU-8",
   "document": "06-lucid.md",
-  "version": 2,
+  "version": 3,
   "also": ["LU-11"],
   "operation": "pool",
   "distinguishes": "The three readings of 'no chance of getting included' kept as policy (an Interpretation, decision record 0014): any refuses nothing more; next-block refuses what the next block's selection over the pool would pass over, at the pending base fee, less what it replaces; every-head also drops it at a head.",
