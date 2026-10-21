@@ -9,7 +9,7 @@
   "CG-10"
  ],
  "document": "11-surface.md",
- "version": 3,
+ "version": 4,
  "operation": "surface",
  "distinguishes": "A transaction a chain mined decodes to the model transaction its fields give, its hash is the chain's, and its max gas and max cost are the client's: a decoder that reads a field wrongly, hashes anything but the bytes, miscounts zero bytes or prices them as non-zero fails here. Under claims, a decoder that reads a ticket without its paymaster's code, or under a profile without claims, or calls a ticket that does not verify valid, fails here too.",
  "provenance": "Each raw transaction is exp-frames' encoding of a mined fixture at exp-frames 85ee60d, kept only because its keccak256 is the hash the chain gives it, so the bytes are the chain's. The expected fields are those of the transaction so encoded, written in the model's names; zero_bytes counts the zero bytes among them; max_cost is the client's. Nothing here was produced by this repository's reference (decision record 0051). The claim cases are a ticket spend the Hegota testnet mined and a transaction it refused, from kohaku-rs eea02a3's record of experiment 36's re-run, with the paymaster's code as eth_getCode returned it; each claim's epoch and salt were read from the bytes by a parser outside this repository, and its valid is the testnet's EIP-2537 pairing precompile on the message CG-8 builds.",
@@ -1189,6 +1189,74 @@
    ],
    "derivation": "The frame is read as for 0x0bba93ca; the signature does not verify against the message CG-8 builds (CG-9), so valid is false.",
    "source": "kohaku-rs eea02a3, crates/frame-ticket/tests/fixtures/record.json, experiment 36's re-run under FRAME_TICKET_V1 on the Hegota testnet; the paymaster's code is eth_getCode of 0x273795f6eb2730d50c3544cbef1e0c1adba4f541, and each ticket's verdict the testnet's EIP-2537 pairing precompile on the message CG-8 builds from the bytes, 2026-10-20"
+  },
+  {
+   "name": "a bound ticket: the claim names its binder, who signed the transaction",
+   "profile": "hegota-testnet",
+   "config": {
+    "frame": {
+     "claims": true,
+     "binding": true,
+     "bound_template_length": 32,
+     "bound_template_keccak": "0x59c3290d81fbdfe9ce1ffd3df2b61185e3089df0e3c49e0918e82a60acbed75a"
+    }
+   },
+   "codes": {
+    "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2": "0xfefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefe000000000000000000000000000000000c652bb2efc8812710ed75f3d23aaefd9383af5e4def279f2073ee0f0f5996f2380c5ffda18f99e617bdc973e00b441f000000000000000000000000000000000b90269b8c637ff87305bbd3d266e8e3ca0dd32a1cb5ba8d07e79d8ed3482cf778a46e9f6d289cdd6c5ca5c38abcf3c300000000000000000000000000000000008f7af2a279475f18fbd379770d5c1182d02da2014ee2be509534e03613ab35f8125bdaea35ddf22c3a8f77532ba2180000000000000000000000000000000012203133dd6979ff12b83695b16718ffa23217b5998f585e2fd129213d6807ddc7f42d0f417296c6ca9f76a2a8f6fbd400000000000000000000000000000000000000000000000000038d7ea4c68000"
+   },
+   "steps": [
+    {
+     "decode": "0x06f901f7821fcde1a0253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9809473e47a8da2c83beb802708fc473b5b7d094f3ee6f9014eca010280c482c350808080f8dc010194a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2c58301fbd08080b8bc0000000000472eaa11111111111111111111111111111111111111111111111111111111111111114960d61e699ab1daf195b1a3ee8bdcede2b6a80c0000000000000000000000000000000007c90183d6ae0145e908daabdf5435914973d86cb50538188547c1337331b2a7a8eb97c94f52cf8825f8832bf58faa4300000000000000000000000000000000086454d29024fc6ad1353a0e2090b446b28c00b5c9807a3bb0aade3351e9b3fa33ecdfb01dbfb20e751cac00c9375aaaf8630280945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ec482ea608080b844a9059cbb0000000000000000000000005e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e00000000000000000000000000000000000000000000000000000000000003e8f85cf85a01944960d61e699ab1daf195b1a3ee8bdcede2b6a80c80b84101cbb8de9b503adb711dc921de30e7e1d176872fc99fd938a550bf2f23439354c169ccd1692b90ab4dac27ad23fcde80fa73f6e1d3e061459c0104c948c6af9152cb843b9aca00847735940080c0",
+     "expect": {
+      "result": "ok",
+      "tx": {
+       "claim": {
+        "epoch": 4665002,
+        "salt": "0x1111111111111111111111111111111111111111111111111111111111111111",
+        "binder": "0x4960d61e699ab1daf195b1a3ee8bdcede2b6a80c",
+        "valid": true,
+        "bound": true
+       }
+      }
+     }
+    }
+   ],
+   "derivation": "The second frame's target has the bound template's code, so CG-10 reads 188 bytes: the epoch, the salt, the binder and the signature; the binder signed the signature hash of the bytes received (CG-12, SF-3 version 4).",
+   "source": "Not mined: made by exp-frames' encoder and signer (src/frametx/ at 85ee60d), the ticket signed by Commonware at c18a6b9 over the 152-byte message, the paymaster's code the stand-in bound template, a key and 32 bytes (decision record 0067); the same transactions are cases of cg-12-bound-copies.json."
+  },
+  {
+   "name": "a copy of it with a higher priority fee: the claim is not bound",
+   "profile": "hegota-testnet",
+   "config": {
+    "frame": {
+     "claims": true,
+     "binding": true,
+     "bound_template_length": 32,
+     "bound_template_keccak": "0x59c3290d81fbdfe9ce1ffd3df2b61185e3089df0e3c49e0918e82a60acbed75a"
+    }
+   },
+   "codes": {
+    "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2": "0xfefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefe000000000000000000000000000000000c652bb2efc8812710ed75f3d23aaefd9383af5e4def279f2073ee0f0f5996f2380c5ffda18f99e617bdc973e00b441f000000000000000000000000000000000b90269b8c637ff87305bbd3d266e8e3ca0dd32a1cb5ba8d07e79d8ed3482cf778a46e9f6d289cdd6c5ca5c38abcf3c300000000000000000000000000000000008f7af2a279475f18fbd379770d5c1182d02da2014ee2be509534e03613ab35f8125bdaea35ddf22c3a8f77532ba2180000000000000000000000000000000012203133dd6979ff12b83695b16718ffa23217b5998f585e2fd129213d6807ddc7f42d0f417296c6ca9f76a2a8f6fbd400000000000000000000000000000000000000000000000000038d7ea4c68000"
+   },
+   "steps": [
+    {
+     "decode": "0x06f901f7821fcde1a0253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9809473e47a8da2c83beb802708fc473b5b7d094f3ee6f9014eca010280c482c350808080f8dc010194a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2c58301fbd08080b8bc0000000000472eaa11111111111111111111111111111111111111111111111111111111111111114960d61e699ab1daf195b1a3ee8bdcede2b6a80c0000000000000000000000000000000007c90183d6ae0145e908daabdf5435914973d86cb50538188547c1337331b2a7a8eb97c94f52cf8825f8832bf58faa4300000000000000000000000000000000086454d29024fc6ad1353a0e2090b446b28c00b5c9807a3bb0aade3351e9b3fa33ecdfb01dbfb20e751cac00c9375aaaf8630280945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ec482ea608080b844a9059cbb0000000000000000000000005e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e00000000000000000000000000000000000000000000000000000000000003e8f85cf85a01944960d61e699ab1daf195b1a3ee8bdcede2b6a80c80b84101cbb8de9b503adb711dc921de30e7e1d176872fc99fd938a550bf2f23439354c169ccd1692b90ab4dac27ad23fcde80fa73f6e1d3e061459c0104c948c6af9152cb8477359400847735940080c0",
+     "expect": {
+      "result": "ok",
+      "tx": {
+       "claim": {
+        "epoch": 4665002,
+        "salt": "0x1111111111111111111111111111111111111111111111111111111111111111",
+        "binder": "0x4960d61e699ab1daf195b1a3ee8bdcede2b6a80c",
+        "valid": true,
+        "bound": false
+       }
+      }
+     }
+    }
+   ],
+   "derivation": "The fee is inside the signature hash, so the binder's signature, kept from the original, does not verify over the copy's; the ticket still does (CG-9).",
+   "source": "Not mined: made by exp-frames' encoder and signer (src/frametx/ at 85ee60d), the ticket signed by Commonware at c18a6b9 over the 152-byte message, the paymaster's code the stand-in bound template, a key and 32 bytes (decision record 0067); the same transactions are cases of cg-12-bound-copies.json."
   }
  ]
 }

@@ -2,7 +2,7 @@
  "clause": "DS-6",
  "also": [],
  "document": "13-descriptors.md",
- "version": 2,
+ "version": 3,
  "operation": "descriptor",
  "distinguishes": "A ruleset holds every core module, all of the ERC's modules or none, each replaceable frame pool module or its replacement but not both, no AG or CG module with the ERC's, and whole AG and CG families, checked in DS-6's order; a complete one behaves as the profile its modules carry. A loader that accepts a partial ruleset, names another module, or compiles to another profile fails here.",
  "cases": [
@@ -314,7 +314,9 @@
      "CG-9": {},
      "CG-10": {
       "template_length": 1105,
-      "template_keccak": "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0"
+      "template_keccak": "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0",
+      "bound_template_length": null,
+      "bound_template_keccak": null
      }
     }
    },
@@ -376,7 +378,9 @@
      "CG-9": {},
      "CG-10": {
       "template_length": 1105,
-      "template_keccak": "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0"
+      "template_keccak": "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0",
+      "bound_template_length": null,
+      "bound_template_keccak": null
      }
     }
    },
@@ -420,7 +424,9 @@
      "CG-9": {},
      "CG-10": {
       "template_length": 1105,
-      "template_keccak": "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0"
+      "template_keccak": "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0",
+      "bound_template_length": null,
+      "bound_template_keccak": null
      }
     }
    },

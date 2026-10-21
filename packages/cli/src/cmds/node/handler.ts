@@ -102,6 +102,8 @@ export async function nodeHandler(args: IGlobalArgs): Promise<void> {
           profile: args["frames.profile"],
           handoff: args["frames.handoff"],
           claims: args["frames.claims"],
+          binding: args["frames.binding"],
+          boundTemplate: args["frames.boundTemplate"],
           logFile: args["frames.log"],
           name: args["frames.name"],
           descriptor: args["frames.descriptor"],

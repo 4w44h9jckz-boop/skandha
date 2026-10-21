@@ -384,7 +384,11 @@ export interface FrameGas {
   readonly maxGas: bigint;
 }
 
-/** MD-6, CG-2: an admission claim for one slot in one epoch; `valid` is CG-9's verdict on its ticket. */
+/**
+ * MD-6, CG-2: an admission claim for one slot in one epoch; `valid` is CG-9's
+ * verdict on its ticket, and `bound` CG-12's on its binder (default true; a
+ * claim with no binder from a real ticket is not bound).
+ */
 export interface Claim {
   readonly sender: string;
   readonly nonceKeys: readonly bigint[];
@@ -392,6 +396,8 @@ export interface Claim {
   readonly epoch: number;
   readonly valid: boolean;
   readonly salt: string;
+  readonly binder?: string;
+  readonly bound?: boolean;
 }
 
 /** CG-2: a transaction's or a claim's slot, as one string. */
@@ -405,9 +411,11 @@ export function slotId(
 
 /** CG-2: two claims with equal fields are one claim. */
 export function claimId(c: Claim): string {
+  const binder = c.binder ? `/${c.binder}` : "";
+  const bound = c.bound === false ? "/unbound" : "";
   return `${slotId(c.sender, c.nonceKeys, c.nonceSeq)}/${c.epoch}/${c.valid}/${
     c.salt
-  }`;
+  }${binder}${bound}`;
 }
 
 export interface FrameTxInit {

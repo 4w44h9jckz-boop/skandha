@@ -471,7 +471,7 @@ export class FramePool {
       this.refusedClaims.set(id, claim.epoch);
   }
 
-  /** CG-11 under `bond`, then CG-2, then CG-4, then CG-6, as the pool runs them after FP-6. */
+  /** CG-11 under `bond`, then CG-2 with CG-12 under `binding` after its step 1, then CG-4, then CG-6, as the pool runs them after FP-6. */
   private checkClaim(tx: FrameTx): void {
     const claim = tx.claim;
     if (claim === null) {
@@ -480,6 +480,8 @@ export class FramePool {
       return;
     }
     this.checkBond(tx);
+    if (this.config.binding && claim.bound === false)
+      throw new TxError(E.ErrClaimUnbound);
     if (!claim.valid) throw new TxError(E.ErrClaimInvalid);
     if (slotId(claim.sender, claim.nonceKeys, claim.nonceSeq) !== tx.slot)
       throw new TxError(E.ErrClaimWrongSlot);

@@ -2,7 +2,7 @@
  "clause": "DS-4",
  "also": [],
  "document": "13-descriptors.md",
- "version": 2,
+ "version": 3,
  "operation": "descriptor",
  "distinguishes": "Every module is one a node implements, with exactly its parameters, each of its type, checked in the byte order of the names: a loader that ignores an unknown module, fills a default, accepts an extra parameter or a value of another type, or checks in another order, fails here.",
  "cases": [
@@ -239,6 +239,95 @@
     "rule": "AAA-1"
    },
    "derivation": "AAA-1 sorts first."
+  },
+  {
+   "name": "a bound template half named",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/claim-gated.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreiajtflwbqbw5jzsyg4zqykpt327xmwtp7zm673bs4lf7rigybvtfq",
+    "remove": [],
+    "rules": {
+     "CG-10": {
+      "template_length": 1105,
+      "template_keccak": "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0",
+      "bound_template_length": 32,
+      "bound_template_keccak": null
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorParams",
+    "rule": "CG-10"
+   },
+   "derivation": "CG-10's bound template is named by its length and keccak256 together, or not at all (version 3)."
+  },
+  {
+   "name": "a bound template named",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/claim-gated.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreiajtflwbqbw5jzsyg4zqykpt327xmwtp7zm673bs4lf7rigybvtfq",
+    "remove": [],
+    "rules": {
+     "CG-10": {
+      "template_length": 1105,
+      "template_keccak": "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0",
+      "bound_template_length": 32,
+      "bound_template_keccak": "0xabababababababababababababababababababababababababababababababab"
+     }
+    }
+   },
+   "expect": {
+    "result": "ok"
+   },
+   "derivation": "Both parameters set: a child of claim-gated.json that names a bound template."
+  },
+  {
+   "name": "CG-12 with a parameter",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/claim-gated.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreiajtflwbqbw5jzsyg4zqykpt327xmwtp7zm673bs4lf7rigybvtfq",
+    "remove": [],
+    "rules": {
+     "CG-12": {
+      "bound_template_length": 32
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorParams",
+    "rule": "CG-12"
+   },
+   "derivation": "CG-12 takes no parameters; the bound template is CG-10's."
   }
  ]
 }

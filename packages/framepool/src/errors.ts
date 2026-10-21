@@ -96,6 +96,7 @@ export const ErrClaimUsed = "ErrClaimUsed";
 export const ErrClaimExpired = "ErrClaimExpired";
 export const ErrRelayAggregate = "ErrRelayAggregate";
 export const ErrIssuerUnbonded = "ErrIssuerUnbonded"; // CG-11
+export const ErrClaimUnbound = "ErrClaimUnbound"; // CG-12
 
 // This repository's, for ERC-8421's standard ruleset (`docs/spec/14-erc-8421.md`)
 export const ErrFramePreVerifyNoCode = "ErrFramePreVerifyNoCode";

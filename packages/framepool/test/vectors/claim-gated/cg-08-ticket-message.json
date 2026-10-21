@@ -1,9 +1,9 @@
 {
  "clause": "CG-8",
  "document": "10-claim-gated-admission.md",
- "version": 5,
+ "version": 6,
  "operation": "claim_ticket",
- "distinguishes": "The 132 bytes a ticket signs: chain ID, sender, EIP-8250's nonce_keys_hash, sequence number, epoch and salt at fixed widths, and no message for a field that does not fit its width. An encoder that hashes the keys without their count, writes integers little-endian, swaps the epoch and the sequence number, or truncates a field rather than refusing it, fails here.",
+ "distinguishes": "The 132 bytes a ticket signs: chain ID, sender, EIP-8250's nonce_keys_hash, sequence number, epoch and salt at fixed widths, and no message for a field that does not fit its width. An encoder that hashes the keys without their count, writes integers little-endian, swaps the epoch and the sequence number, or truncates a field rather than refusing it, fails here. Version 6: a binder's 20 bytes follow the salt, and a binder of any other length leaves the claim with no message.",
  "provenance": "Written from CG-8: each message is the concatenation the clause gives, with nonce_keys_hash computed by @noble/hashes' keccak_256, not by this repository's keccak. Two cases are tickets the Hegota testnet mined, whose message their paymaster rebuilt from the transaction: one from the first run of exp-frames experiment 36 (f0749cb), whose signature verifies over this message under that run's namespace, and one from its re-run under FRAME_TICKET_V1 (kohaku-rs eea02a3, tests/fixtures/record.json), whose signature verifies under this one. Integers are 0x-prefixed hexadecimal strings.",
  "cases": [
   {
@@ -261,6 +261,78 @@
    "expect": {
     "message": "0x0000000000000000000000000000000000000000000000000000000000001fcdb0006caa2627a718cd831a50fda5152f14b0df1bada5013122d395ba3c54772283fb069b10426056ef8ca54750cb9bb552a59e7d00000000000000000000000000473a1841d2f247f2e8185c1ca7f82dab65e5f4fda2ebbf96eb8ad8328e566316c32b73"
    }
+  },
+  {
+   "name": "one key, with a binder",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "binder": "0x4960d61e699ab1daf195b1a3ee8bdcede2b6a80c"
+   },
+   "expect": {
+    "message": "0x0000000000000000000000000000000000000000000000000000000000001fcd73e47a8da2c83beb802708fc473b5b7d094f3ee633fff8dbf08d5a299322746ab5499d108e5e1cb3b4a7d374131b6f34d774240700000000000000000000000000472eaa11111111111111111111111111111111111111111111111111111111111111114960d61e699ab1daf195b1a3ee8bdcede2b6a80c"
+   },
+   "derivation": "Version 6: the binder's 20 bytes follow the salt, 152 bytes in all; without one the message is version 5's 132 bytes, byte for byte."
+  },
+  {
+   "name": "a binder of 19 bytes",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "binder": "0x4960d61e699ab1daf195b1a3ee8bdcede2b6a8"
+   },
+   "expect": {
+    "message": null
+   },
+   "derivation": "A binder is an address, 20 bytes; a claim with another length has no message (CG-8)."
+  },
+  {
+   "name": "a binder of 21 bytes",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "binder": "0x4960d61e699ab1daf195b1a3ee8bdcede2b6a80c00"
+   },
+   "expect": {
+    "message": null
+   },
+   "derivation": "As above: an encoder that truncates or pads the binder fails here."
+  },
+  {
+   "name": "the zero address as binder",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "binder": "0x0000000000000000000000000000000000000000"
+   },
+   "expect": {
+    "message": "0x0000000000000000000000000000000000000000000000000000000000001fcd73e47a8da2c83beb802708fc473b5b7d094f3ee633fff8dbf08d5a299322746ab5499d108e5e1cb3b4a7d374131b6f34d774240700000000000000000000000000472eaa11111111111111111111111111111111111111111111111111111111111111110000000000000000000000000000000000000000"
+   },
+   "derivation": "Twenty zero bytes are a binder like any other, and nobody holds its key, so no transaction is bound to it (CG-12); its message still exists."
   }
  ]
 }
