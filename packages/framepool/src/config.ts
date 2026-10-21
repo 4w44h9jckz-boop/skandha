@@ -92,7 +92,7 @@ export interface FramePoolConfig {
   readonly verifies: boolean; // CG-7: false makes the node a relay, which verifies no proof
   readonly bond: boolean; // CG-11: a bond on the ticket paymaster, with AM-1's stake and reputation parameters below
   readonly binding: boolean; // CG-12: a claim must be bound to its transaction by its binder's signature
-  readonly boundTemplateLength: number | null; // CG-10: the bound template's length and keccak256, none until fixed
+  readonly boundTemplateLength: number | null; // CG-10: the bound template's length and keccak256, or none
   readonly boundTemplateKeccak: string | null;
   // 14-erc-8421.md, AM-1, read when ruleset is "erc-8421", and the stake and reputation ones under `bond` (CG-11);
   // a descriptor sets them (13-descriptors.md, DS-6)
@@ -248,11 +248,15 @@ export const EIP_8266 = withChanges(EIP_8141, {
   expiring: true,
 });
 
+// CG-1: the bound template is exp-frames experiment 48's (version 7).
 export const CLAIM_GATED = withChanges(EIP_8288, {
   name: "claim-gated",
   claims: true,
   bond: true,
   binding: true,
+  boundTemplateLength: 1185,
+  boundTemplateKeccak:
+    "0x52c656815e560bb189c3fb362c9628432ca1ed6b720e239857775236c18bc1d3",
 });
 
 export const PROFILES: ReadonlyMap<string, FramePoolConfig> = new Map(

@@ -2,7 +2,7 @@
  "clause": "DS-1",
  "also": [],
  "document": "13-descriptors.md",
- "version": 3,
+ "version": 4,
  "operation": "descriptor",
  "distinguishes": "A descriptor is a JSON object with exactly six members whose values are objects, arrays, ASCII strings, booleans, null and integers from 0 to 2^53 - 1: a loader that accepts a float, an exponent, a negative or too large integer, a non-ASCII or control character, a repeated member name, a missing or extra member, another format, or text that is not an object, fails here.",
  "cases": [

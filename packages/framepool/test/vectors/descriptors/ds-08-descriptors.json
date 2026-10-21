@@ -2,7 +2,7 @@
  "clause": "DS-8",
  "also": [],
  "document": "13-descriptors.md",
- "version": 3,
+ "version": 4,
  "operation": "descriptor",
  "distinguishes": "The three descriptors of docs/spec/descriptors/ load with their stated identifiers and module counts.",
  "cases": [
@@ -34,7 +34,7 @@
    "file": "docs/spec/descriptors/claim-gated.json",
    "expect": {
     "result": "ok",
-    "id": "bafkreiajtflwbqbw5jzsyg4zqykpt327xmwtp7zm673bs4lf7rigybvtfq",
+    "id": "bafkreigdwjfslxd6hbroctviyyikp2kudifirzznwlbfxouqx56yinjqui",
     "modules": 33
    },
    "derivation": "15 frame pool modules, 7 AG (AG-2 to AG-8) and 11 CG (CG-2 to CG-12)."
