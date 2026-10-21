@@ -624,7 +624,7 @@
      ]
     }
    ],
-   "derivation": "per_sender one, the EIP's mempool rule, admits one pending transaction per sender whatever its keys (FP-12), as decision record 0054 set it on the testnet's profile."
+   "derivation": "per_sender one, eip-8141's value, set on the testnet's profile as decision record 0054 sets it, admits one pending transaction per sender whatever its keys (FP-12)."
   },
   {
    "name": "the EIP's budget: five fresh nullifiers fit, six do not",

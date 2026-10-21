@@ -68,8 +68,9 @@ dfe41218a97d154f35b969cea4648e02529b37019d868f9105a620947db7225b  focil/il-07-ap
 5308fba50f91dff1e3c900db0cfb89de7bf5c5d41edf722ee5dbc5093f65948e  frame-pool/fp-08-simulation.json
 187e4fda2ab7034ce70981ead12952d85862595bdd78e6bb3bed531fb0f3b4e7  frame-pool/fp-08-verdict.json
 47d045a3227c35800826bc16c2522e123c92293cb487ac8ba1868339ba72308a  frame-pool/fp-09-trace.json
+5e25050105da84dd7fe1c5b48c6828cd5d15bad6b81528f309521b0b6977e27b  frame-pool/fp-11-committee.json
 b66ec1a17b1eecf637e31d52259ab33acf48a76e80ba68a3ba7a0c5d420b9670  frame-pool/fp-11-payers.json
-03ad48a4ebfa261bf657182fd3720adce5a24ada6a98c6ec5ca581870e380d8c  frame-pool/fp-12-nullifier-keys.json
+5d56061fec7ee404c8466200eea6241c98ec1eba9e5dba78f3188b5edf1100da  frame-pool/fp-12-nullifier-keys.json
 16ced6aa2a2b6e32d297eebab3a47fa0eed9b25dc2100ff5c7b9ec6c77b42a83  frame-pool/fp-12-per-sender.json
 624a7be206a78d10143deeff9b4dbcba1ba06f76924020fdc5b75d0c29cd84c2  frame-pool/fp-12-shared-sender.json
 df2d885a082f8ca5231ec941e13af96057289acc3cebe936cb3c0ab5c1155288  frame-pool/fp-13-reservation.json
