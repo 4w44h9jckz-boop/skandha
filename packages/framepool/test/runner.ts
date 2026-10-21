@@ -47,6 +47,9 @@ import {
   buildIl,
   builderOrder,
   carriedTicket,
+  CarriedTicket,
+  boundTemplate,
+  readTicket,
   decode,
   replay,
   verdict,
@@ -522,6 +525,8 @@ const CLAIM_FIELDS = [
   "epoch",
   "valid",
   "salt",
+  "binder",
+  "bound",
 ];
 
 function makeClaim(d: Record<string, Json>): Claim {
@@ -533,6 +538,8 @@ function makeClaim(d: Record<string, Json>): Claim {
     epoch: num(d.epoch),
     valid: d.valid ?? true,
     salt: d.salt ?? "",
+    binder: d.binder ?? "",
+    bound: d.bound ?? true,
   };
 }
 
@@ -1034,7 +1041,13 @@ function modelJson(tx: FrameTx): Json {
     claim:
       tx.claim === null
         ? null
-        : { epoch: tx.claim.epoch, salt: tx.claim.salt, valid: tx.claim.valid },
+        : {
+            epoch: tx.claim.epoch,
+            salt: tx.claim.salt,
+            binder: tx.claim.binder ? tx.claim.binder : null,
+            valid: tx.claim.valid,
+            bound: tx.claim.bound ?? true,
+          },
   };
 }
 
@@ -1242,9 +1255,11 @@ function runReplay(c: Json): void {
   partial(c.expect, got, "replay");
 }
 
-/** exp-mempool-l2s `docs/spec/10-claim-gated-admission.md`, CG-8 to CG-10. */
+/** exp-mempool-l2s `docs/spec/10-claim-gated-admission.md`, CG-8 to CG-10 and CG-12. */
 function runClaimTicket(c: Json): void {
   const hex = (s: string): Uint8Array => Buffer.from(s.slice(2), "hex");
+  const hx = (b: Uint8Array | null): string | null =>
+    b === null ? null : "0x" + Buffer.from(b).toString("hex");
   const ticketClaim = (d: Json): TicketClaim => ({
     chainId: BigInt(d.chain_id),
     epoch: BigInt(d.epoch ?? "0x0"),
@@ -1252,46 +1267,59 @@ function runClaimTicket(c: Json): void {
     nonceSeq: BigInt(d.nonce_seq),
     nonceKeys: d.nonce_keys.map((k: string) => BigInt(k)),
     salt: hex(d.salt ?? "0x"),
+    binder: hex(d.binder ?? "0x"),
   });
+  const found = (t: CarriedTicket | null): Json =>
+    t === null
+      ? { claim: null }
+      : {
+          claim: {
+            epoch: t.epoch === null ? null : "0x" + t.epoch.toString(16),
+            salt: hx(t.salt),
+            binder: hx(t.binder),
+            issuer: hx(t.issuer),
+          },
+          valid: t.valid,
+        };
+  const profile = PROFILES.get("claim-gated");
+  if (profile === undefined) throw new Error("no claim-gated profile");
+  const cfg = frameConfig(profile, c.config?.frame ?? {});
+  const codes = new Map<string, Uint8Array>(
+    Object.entries(c.codes ?? {}).map(([a, code]) => [
+      a.toLowerCase(),
+      hex(code as string),
+    ])
+  );
+  if (c.raw !== undefined) {
+    // CG-12, from the bytes of a transaction
+    const r = readTicket(hex(c.raw), cfg, codes);
+    const got: Json = { sig_hash: hx(r.sigHash), ...found(r.found) };
+    if (r.found !== null) got.bound = r.bound;
+    partial(c.expect, got, "claim_ticket");
+    return;
+  }
   if (c.frames !== undefined) {
     // CG-10
-    const codes = new Map<string, Uint8Array>(
-      Object.entries(c.codes).map(([a, code]) => [
-        a.toLowerCase(),
-        hex(code as string),
-      ])
-    );
     const frames: TicketFrame[] = c.frames.map((f: Json) => ({
       mode: f.mode,
       target: f.target.toLowerCase(),
       data: hex(f.data),
     }));
-    const t = carriedTicket(ticketClaim(c.tx), frames, codes);
-    const got: Json =
-      t === null
-        ? { claim: null }
-        : {
-            claim: {
-              epoch: t.epoch === null ? null : "0x" + t.epoch.toString(16),
-              salt:
-                t.salt === null
-                  ? null
-                  : "0x" + Buffer.from(t.salt).toString("hex"),
-              issuer: "0x" + Buffer.from(t.issuer).toString("hex"),
-            },
-            valid: t.valid,
-          };
-    same(c.expect, got, "claim_ticket");
+    partial(
+      c.expect,
+      found(
+        carriedTicket(ticketClaim(c.tx), frames, codes, boundTemplate(cfg))
+      ),
+      "claim_ticket"
+    );
     return;
   }
   const claim = ticketClaim(c.claim);
   const m = ticketMessage(claim);
-  const got: Json = {
-    message: m === null ? null : "0x" + Buffer.from(m).toString("hex"),
-  };
+  const got: Json = { message: hx(m) };
   if (c.issuer !== undefined)
     got.valid = ticketValid(claim, hex(c.issuer), hex(c.signature));
-  same(c.expect, got, "claim_ticket");
+  partial(c.expect, got, "claim_ticket");
 }
 
 /** A descriptor of a case's `store`, or the one it loads: a file of exp-mempool-l2s, or a value. */

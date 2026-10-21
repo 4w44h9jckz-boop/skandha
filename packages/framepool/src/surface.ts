@@ -24,7 +24,12 @@ import {
   frame,
   signature,
 } from "./tx.js";
-import { carriedTicket } from "./claimticket.js";
+import {
+  CarriedTicket,
+  Template,
+  carriedTicket,
+  isBound,
+} from "./claimticket.js";
 
 export const FRAME_TX_TYPE = 0x06;
 const SCHEMES: Readonly<Record<number, string>> = {
@@ -296,8 +301,50 @@ export function txHash(raw: Uint8Array): string {
 export type Codes = ReadonlyMap<string, Uint8Array>;
 const NO_CODES: Codes = new Map();
 
-/** SF-3's `claim`: CG-10's, from the code of each frame's target. */
-function claimOf(t: Wire, keys: bigint[], codes: Codes): Claim | null {
+/** Canonical RLP of an item `rlpItem` parsed: a byte string or a list. */
+function encode(item: Item): Uint8Array {
+  if (Array.isArray(item)) return rlpList(item.map(encode));
+  const b = item as Uint8Array;
+  if (b.length === 1 && b[0] < 0x80) return b;
+  if (b.length <= 55) return Buffer.concat([Uint8Array.of(0x80 + b.length), b]);
+  const h = b.length.toString(16);
+  const n = Buffer.from(h.length % 2 ? "0" + h : h, "hex");
+  return Buffer.concat([Uint8Array.of(0xb7 + n.length), n, b]);
+}
+
+/**
+ * EIP-8141's `compute_sig_hash` of a transaction that SF-2 decoded: the
+ * `signature` bytes of every signature with an empty `msg` emptied, then the
+ * keccak256 of the type byte and the payload (CG-12).
+ */
+export function sigHash(raw: Uint8Array, envelope = "keyed"): Uint8Array {
+  const [top] = rlpItem(raw.subarray(1), 0);
+  const fields = (top as Item[]).slice();
+  const at = envelope === "keyed" ? 5 : 4;
+  fields[at] = (fields[at] as Item[]).map((s) => {
+    const entry = (s as Item[]).slice();
+    if ((entry[2] as Uint8Array).length === 0) entry[3] = new Uint8Array(0);
+    return entry;
+  });
+  return keccak256(Buffer.concat([raw.subarray(0, 1), encode(fields)]));
+}
+
+/** CG-1's `bound_template`, or null while the profile names none. */
+export function boundTemplate(cfg: FramePoolConfig): Template | null {
+  if (cfg.boundTemplateLength === null || cfg.boundTemplateKeccak === null)
+    return null;
+  return { length: cfg.boundTemplateLength, keccak: cfg.boundTemplateKeccak };
+}
+
+/** CG-10's claim of a decoded transaction with CG-12's verdict, or null if no frame carries a ticket. */
+function ticketOf(
+  t: Wire,
+  keys: bigint[],
+  codes: Codes,
+  frameCfg: FramePoolConfig,
+  raw: Uint8Array,
+  envelope: string
+): { found: CarriedTicket; bound: boolean } | null {
   const sender = hex(t.sender);
   const found = carriedTicket(
     {
@@ -313,9 +360,49 @@ function claimOf(t: Wire, keys: bigint[], codes: Codes): Claim | null {
       target: f.target.length > 0 ? hex(f.target) : sender,
       data: f.data,
     })),
-    codes
+    codes,
+    boundTemplate(frameCfg)
   );
   if (found === null) return null;
+  const bound =
+    found.binder !== null &&
+    isBound(
+      found.binder,
+      t.sender,
+      t.signatures.map((s) => ({ ...s, scheme: Number(s.scheme) })),
+      sigHash(raw, envelope)
+    );
+  return { found, bound };
+}
+
+/** CG-10 and CG-12 on a transaction's bytes, decoded as the `keyed` envelope: what exp-mempool-l2s's ticket vectors read. */
+export function readTicket(
+  raw: Uint8Array,
+  frameCfg: FramePoolConfig,
+  codes: Codes
+): { sigHash: Uint8Array; found: CarriedTicket | null; bound: boolean } {
+  const t = parse(raw.subarray(1), "keyed");
+  const r = ticketOf(t, t.nonceKeys ?? [0n], codes, frameCfg, raw, "keyed");
+  return {
+    sigHash: sigHash(raw),
+    found: r === null ? null : r.found,
+    bound: r !== null && r.bound,
+  };
+}
+
+/** SF-3's `claim`: CG-10's, from the code of each frame's target, with CG-12's verdict over the bytes received. */
+function claimOf(
+  t: Wire,
+  keys: bigint[],
+  codes: Codes,
+  frameCfg: FramePoolConfig,
+  raw: Uint8Array,
+  envelope: string
+): Claim | null {
+  const sender = hex(t.sender);
+  const r = ticketOf(t, keys, codes, frameCfg, raw, envelope);
+  if (r === null) return null;
+  const found = r.found;
   return {
     sender,
     nonceKeys: keys,
@@ -323,6 +410,8 @@ function claimOf(t: Wire, keys: bigint[], codes: Codes): Claim | null {
     epoch: Number(found.epoch ?? 0n),
     valid: found.valid,
     salt: found.salt === null ? "" : hex(found.salt),
+    binder: found.binder === null ? "" : hex(found.binder),
+    bound: r.bound,
   };
 }
 
@@ -418,7 +507,9 @@ export function decode(
     size: raw.length,
     label: txHash(raw),
     zeroBytes: counted.reduce((n, b) => n + zeros(b), 0),
-    claim: frameCfg.claims ? claimOf(t, keys, codes) : null,
+    claim: frameCfg.claims
+      ? claimOf(t, keys, codes, frameCfg, raw, cfg.envelope)
+      : null,
   });
 }
 

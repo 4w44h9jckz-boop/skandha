@@ -9,7 +9,7 @@
     "SF-8"
   ],
   "document": "02-frame-pool.md",
-  "version": 7,
+  "version": 8,
   "operation": "surface",
   "distinguishes": "exp-frames experiment 06's concurrent pair, two withdrawals from one privacy pool whose nonce keys are their nullifiers, mined together in block 304240: admitted together under disjoint-keys and one after the other under one, and the same note spent again, to another recipient, refused as an underpriced replacement under both.",
   "cases": [

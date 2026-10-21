@@ -1,12 +1,12 @@
 {
  "clause": "CG-9",
  "document": "10-claim-gated-admission.md",
- "version": 5,
+ "version": 6,
  "also": [
   "CG-8"
  ],
  "operation": "claim_ticket",
- "distinguishes": "When a ticket makes its claim valid: a message, both points in EIP-2537's encoding (padding zero, coordinates below p, c0 before c1), on their curves, in their subgroups and not at infinity, and the pairing check over the namespaced message. A verifier that skips the subgroup check (a valid signature plus a point of order 3 passes the pairing check alone) or the padding check, reduces a coordinate, takes compressed points, reads c1 before c0, or hashes without the namespace or its length byte, fails here.",
+ "distinguishes": "When a ticket makes its claim valid: a message, both points in EIP-2537's encoding (padding zero, coordinates below p, c0 before c1), on their curves, in their subgroups and not at infinity, and the pairing check over the namespaced message. A verifier that skips the subgroup check (a valid signature plus a point of order 3 passes the pairing check alone) or the padding check, reduces a coordinate, takes compressed points, reads c1 before c0, or hashes without the namespace or its length byte, fails here. Version 6: the binder is part of the signed message.",
  "provenance": "Every signature comes from Commonware at c18a6b9 (cryptography's ops::sign_message, and ops::sign for the cases signed without a namespace, for MinSig), run as a program outside this repository, each valid one also issued blind there and found equal; its points are written here in EIP-2537's encoding. Every verdict on steps 3 and 4 is the Hegota testnet's EIP-2537 pairing precompile (eth_call to 0x0f, 2026-10-20) on the signature, the negated generator of G2, Commonware's H(u) and the issuer: true, false, or an error for an input it refuses. Step 1 is applied by hand. Issuer A's and B's secret keys are the SHA-256 of 'exp-mempool-l2s claim ticket issuer A' and '... issuer B' reduced modulo the group order. Two cases are tickets the testnet mined, with their issuers' keys: one from exp-frames f0749cb, signed under that run's namespace, and one from the re-run under FRAME_TICKET_V1 (kohaku-rs eea02a3), which verifies.",
  "cases": [
   {
@@ -636,6 +636,65 @@
     "message": "0x0000000000000000000000000000000000000000000000000000000000001fcdb0006caa2627a718cd831a50fda5152f14b0df1bada5013122d395ba3c54772283fb069b10426056ef8ca54750cb9bb552a59e7d00000000000000000000000000473a1841d2f247f2e8185c1ca7f82dab65e5f4fda2ebbf96eb8ad8328e566316c32b73",
     "valid": true
    }
+  },
+  {
+   "name": "a ticket whose message names a binder",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "binder": "0x4960d61e699ab1daf195b1a3ee8bdcede2b6a80c"
+   },
+   "issuer": "0x000000000000000000000000000000000c652bb2efc8812710ed75f3d23aaefd9383af5e4def279f2073ee0f0f5996f2380c5ffda18f99e617bdc973e00b441f000000000000000000000000000000000b90269b8c637ff87305bbd3d266e8e3ca0dd32a1cb5ba8d07e79d8ed3482cf778a46e9f6d289cdd6c5ca5c38abcf3c300000000000000000000000000000000008f7af2a279475f18fbd379770d5c1182d02da2014ee2be509534e03613ab35f8125bdaea35ddf22c3a8f77532ba2180000000000000000000000000000000012203133dd6979ff12b83695b16718ffa23217b5998f585e2fd129213d6807ddc7f42d0f417296c6ca9f76a2a8f6fbd4",
+   "signature": "0x0000000000000000000000000000000007c90183d6ae0145e908daabdf5435914973d86cb50538188547c1337331b2a7a8eb97c94f52cf8825f8832bf58faa4300000000000000000000000000000000086454d29024fc6ad1353a0e2090b446b28c00b5c9807a3bb0aade3351e9b3fa33ecdfb01dbfb20e751cac00c9375aaa",
+   "expect": {
+    "valid": true
+   },
+   "derivation": "Signed by Commonware over the 152-byte message; the testnet's pairing precompile returned 1."
+  },
+  {
+   "name": "the same signature for the claim without its binder",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111"
+   },
+   "issuer": "0x000000000000000000000000000000000c652bb2efc8812710ed75f3d23aaefd9383af5e4def279f2073ee0f0f5996f2380c5ffda18f99e617bdc973e00b441f000000000000000000000000000000000b90269b8c637ff87305bbd3d266e8e3ca0dd32a1cb5ba8d07e79d8ed3482cf778a46e9f6d289cdd6c5ca5c38abcf3c300000000000000000000000000000000008f7af2a279475f18fbd379770d5c1182d02da2014ee2be509534e03613ab35f8125bdaea35ddf22c3a8f77532ba2180000000000000000000000000000000012203133dd6979ff12b83695b16718ffa23217b5998f585e2fd129213d6807ddc7f42d0f417296c6ca9f76a2a8f6fbd4",
+   "signature": "0x0000000000000000000000000000000007c90183d6ae0145e908daabdf5435914973d86cb50538188547c1337331b2a7a8eb97c94f52cf8825f8832bf58faa4300000000000000000000000000000000086454d29024fc6ad1353a0e2090b446b28c00b5c9807a3bb0aade3351e9b3fa33ecdfb01dbfb20e751cac00c9375aaa",
+   "expect": {
+    "valid": false
+   },
+   "derivation": "The message is 132 bytes, not the one signed; the precompile returned 0. A verifier that drops the binder from the message fails here."
+  },
+  {
+   "name": "the same signature for another binder",
+   "claim": {
+    "chain_id": "0x1fcd",
+    "sender": "0x73e47a8da2c83beb802708fc473b5b7d094f3ee6",
+    "nonce_keys": [
+     "0x253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9"
+    ],
+    "nonce_seq": "0x0",
+    "epoch": "0x472eaa",
+    "salt": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "binder": "0x21b9133d17817bd86a124a434718c70642662f1c"
+   },
+   "issuer": "0x000000000000000000000000000000000c652bb2efc8812710ed75f3d23aaefd9383af5e4def279f2073ee0f0f5996f2380c5ffda18f99e617bdc973e00b441f000000000000000000000000000000000b90269b8c637ff87305bbd3d266e8e3ca0dd32a1cb5ba8d07e79d8ed3482cf778a46e9f6d289cdd6c5ca5c38abcf3c300000000000000000000000000000000008f7af2a279475f18fbd379770d5c1182d02da2014ee2be509534e03613ab35f8125bdaea35ddf22c3a8f77532ba2180000000000000000000000000000000012203133dd6979ff12b83695b16718ffa23217b5998f585e2fd129213d6807ddc7f42d0f417296c6ca9f76a2a8f6fbd4",
+   "signature": "0x0000000000000000000000000000000007c90183d6ae0145e908daabdf5435914973d86cb50538188547c1337331b2a7a8eb97c94f52cf8825f8832bf58faa4300000000000000000000000000000000086454d29024fc6ad1353a0e2090b446b28c00b5c9807a3bb0aade3351e9b3fa33ecdfb01dbfb20e751cac00c9375aaa",
+   "expect": {
+    "valid": false
+   },
+   "derivation": "The binder is signed: the precompile returned 0."
   }
  ]
 }

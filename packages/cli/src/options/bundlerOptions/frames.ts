@@ -7,6 +7,8 @@ export interface IFramesArgs {
   "frames.rpc"?: string;
   "frames.handoff": boolean;
   "frames.claims": boolean;
+  "frames.binding": boolean;
+  "frames.boundTemplate"?: string;
   "frames.log"?: string;
   "frames.name"?: string;
   "frames.descriptor"?: string;
@@ -45,6 +47,19 @@ export const options: ICliCommandOptions<IFramesArgs> = {
     description:
       "Claim-gated admission (CG-1): read the ticket a transaction carries to a ticket paymaster, recognised by its code with eth_getCode, and check it before the client is asked",
     default: false,
+    group: "frames",
+  },
+  "frames.binding": {
+    type: "boolean",
+    description:
+      "With frames.claims, a ticket's claim counts only if the one-time key its message names signed the transaction's signature hash (CG-12)",
+    default: false,
+    group: "frames",
+  },
+  "frames.boundTemplate": {
+    type: "string",
+    description:
+      "The bound ticket paymaster's template, as its length and keccak256, length:0x..., which CG-10 recognises a bound ticket paymaster by",
     group: "frames",
   },
   "frames.log": {

@@ -1,18 +1,21 @@
 /**
  * A claim's ticket: exp-mempool-l2s `docs/spec/10-claim-gated-admission.md`,
- * version 4. CG-8, the bytes an issuer signs; CG-9, when a node takes a
+ * version 6. CG-8, the bytes an issuer signs; CG-9, when a node takes a
  * ticket as valid (a BLS12-381 signature in G1 under a key in G2, both in
  * EIP-2537's encoding); CG-10, the frame to a ticket paymaster that carries
- * it, the paymaster recognised by its code.
+ * it, the paymaster recognised by its code; CG-12, whether the binder the
+ * ticket names signed the transaction's signature hash.
  *
- * The curve is @noble/curves'. EIP-2537's encoding is decoded here, with its
+ * The curves are @noble/curves'. EIP-2537's encoding is decoded here, with its
  * padding, range and infinity rules, before noble sees the points.
  */
 import { bls12_381 as bls } from "@noble/curves/bls12-381";
+import { secp256k1 } from "@noble/curves/secp256k1";
 import { keccak256 } from "./keccak.js";
 
 export const NAMESPACE = new TextEncoder().encode("FRAME_TICKET_V1");
 export const PAY_DATA = 168; // CG-10: epoch (8), salt (32), the signature (128)
+export const BOUND_PAY_DATA = 188; // CG-10: epoch (8), salt (32), the binder (20), the signature (128)
 const DST = "BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_POP_";
 const P = bls.fields.Fp.ORDER;
 const U64 = BigInt(2) ** BigInt(64);
@@ -31,6 +34,7 @@ export interface TicketClaim {
   readonly nonceSeq: bigint;
   readonly nonceKeys: readonly bigint[];
   readonly salt: Uint8Array;
+  readonly binder?: Uint8Array; // CG-8, version 6: absent or empty, no binder
 }
 
 function be(x: bigint, width: number): Uint8Array {
@@ -64,6 +68,8 @@ export function ticketMessage(c: TicketClaim): Uint8Array | null {
   if (c.chainId >= U256 || c.nonceKeys.some((k) => k >= U256)) return null;
   if (c.epoch >= U64 || c.nonceSeq >= U64) return null;
   if (c.sender.length !== 20 || c.salt.length !== 32) return null;
+  const binder = c.binder ?? new Uint8Array(0);
+  if (binder.length !== 0 && binder.length !== 20) return null;
   return concat([
     be(c.chainId, 32),
     c.sender,
@@ -71,6 +77,7 @@ export function ticketMessage(c: TicketClaim): Uint8Array | null {
     be(c.nonceSeq, 8),
     be(c.epoch, 8),
     c.salt,
+    binder,
   ]);
 }
 
@@ -139,12 +146,29 @@ export function ticketValid(
   }
 }
 
-/** CG-10: the key of a ticket paymaster whose code this is, or null if it is not one. */
-export function paymasterKey(code: Uint8Array): Uint8Array | null {
-  if (code.length !== TEMPLATE_LENGTH + 256 + 32) return null;
-  if (hex(keccak256(code.subarray(0, TEMPLATE_LENGTH))) !== TEMPLATE_KECCAK)
+/** CG-1's `bound_template`, or the version 5 template: a length and a keccak256. */
+export interface Template {
+  readonly length: number;
+  readonly keccak: string;
+}
+
+const TICKET_TEMPLATE: Template = {
+  length: TEMPLATE_LENGTH,
+  keccak: TEMPLATE_KECCAK,
+};
+
+/** CG-10: the key of a paymaster whose code is `template`, a key and 32 bytes, or null if it is not one. */
+export function paymasterKey(
+  code: Uint8Array,
+  template: Template = TICKET_TEMPLATE
+): Uint8Array | null {
+  if (code.length !== template.length + 256 + 32) return null;
+  if (
+    hex(keccak256(code.subarray(0, template.length))) !==
+    template.keccak.toLowerCase()
+  )
     return null;
-  const key = code.subarray(TEMPLATE_LENGTH, TEMPLATE_LENGTH + 256);
+  const key = code.subarray(template.length, template.length + 256);
   try {
     const point = g2(key);
     return point !== null && point.isTorsionFree() ? key : null;
@@ -160,40 +184,113 @@ export interface TicketFrame {
   readonly data: Uint8Array;
 }
 
-/** What CG-10 finds: the claim's epoch and salt (null if the data is not a ticket's), its issuer, and CG-9's verdict. */
+/**
+ * What CG-10 finds: the claim's epoch, salt and binder (null if the data is
+ * not a ticket's, and the binder null for a ticket paymaster's claim, which
+ * has none), its issuer, and CG-9's verdict.
+ */
 export interface CarriedTicket {
   readonly epoch: bigint | null;
   readonly salt: Uint8Array | null;
+  readonly binder: Uint8Array | null;
   readonly issuer: Uint8Array;
   readonly valid: boolean;
 }
 
 /**
  * CG-10: the claim a transaction carries, or null. `c` gives the
- * transaction's chain, sender and nonces; its epoch and salt are ignored.
- * `codes` is the code at the node's head of each account a frame targets;
- * an account it leaves out has none.
+ * transaction's chain, sender and nonces; its epoch, salt and binder are
+ * ignored. `codes` is the code at the node's head of each account a frame
+ * targets; an account it leaves out has none. `boundTemplate` is CG-1's
+ * `bound_template`, or null if the profile names none.
  */
 export function carriedTicket(
   c: TicketClaim,
   frames: readonly TicketFrame[],
-  codes: ReadonlyMap<string, Uint8Array>
+  codes: ReadonlyMap<string, Uint8Array>,
+  boundTemplate: Template | null = null
 ): CarriedTicket | null {
   for (const f of frames) {
     if (f.mode !== VERIFY) continue;
-    const issuer = paymasterKey(codes.get(f.target) ?? new Uint8Array(0));
+    const code = codes.get(f.target) ?? new Uint8Array(0);
+    let isBound = false;
+    let issuer = paymasterKey(code);
+    if (issuer === null && boundTemplate !== null) {
+      isBound = true;
+      issuer = paymasterKey(code, boundTemplate);
+    }
     if (issuer === null) continue;
-    if (f.data.length !== PAY_DATA)
-      return { epoch: null, salt: null, issuer, valid: false };
+    if (f.data.length !== (isBound ? BOUND_PAY_DATA : PAY_DATA))
+      return { epoch: null, salt: null, binder: null, issuer, valid: false };
     const epoch = BigInt(hex(f.data.subarray(0, 8)));
     const salt = f.data.subarray(8, 40);
-    const claim = { ...c, epoch, salt };
+    const binder = isBound ? f.data.subarray(40, 60) : null;
+    const claim = { ...c, epoch, salt, binder: binder ?? new Uint8Array(0) };
     return {
       epoch,
       salt,
+      binder,
       issuer,
-      valid: ticketValid(claim, issuer, f.data.subarray(40)),
+      valid: ticketValid(claim, issuer, f.data.subarray(isBound ? 60 : 40)),
     };
   }
   return null;
+}
+
+/** An entry of a frame transaction's `signatures`, as EIP-8141 encodes it. */
+export interface TxSignature {
+  readonly scheme: number;
+  readonly signer: Uint8Array;
+  readonly msg: Uint8Array;
+  readonly signature: Uint8Array;
+}
+
+const SECP256K1 = 1;
+const N = secp256k1.CURVE.n;
+
+const equal = (a: Uint8Array, b: Uint8Array): boolean =>
+  a.length === b.length && a.every((x, i) => x === b[i]);
+
+/** The address whose key signed `digest` with (v, r, s), or null. */
+function recover(
+  digest: Uint8Array,
+  v: number,
+  r: bigint,
+  s: bigint
+): Uint8Array | null {
+  try {
+    const point = new secp256k1.Signature(r, s)
+      .addRecoveryBit(v)
+      .recoverPublicKey(digest);
+    return keccak256(point.toRawBytes(false).subarray(1)).subarray(12);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * CG-12: whether some `secp256k1` signature with an empty msg, resolved to
+ * `binder`, verifies over the signature hash as EIP-8141's
+ * `validate_signature` verifies it (v 0 or 1, 0 < r < n, 0 < s <= n / 2).
+ */
+export function isBound(
+  binder: Uint8Array | null,
+  sender: Uint8Array,
+  signatures: readonly TxSignature[],
+  sigHash: Uint8Array
+): boolean {
+  if (binder === null || binder.length !== 20) return false;
+  for (const s of signatures) {
+    if (s.scheme !== SECP256K1 || s.msg.length !== 0) continue;
+    if (!equal(s.signer.length === 0 ? sender : s.signer, binder)) continue;
+    if (s.signature.length !== 65) continue;
+    const v = s.signature[0];
+    const r = BigInt(hex(s.signature.subarray(1, 33)));
+    const sv = BigInt(hex(s.signature.subarray(33)));
+    if (v > 1 || !(r > BigInt(0) && r < N)) continue;
+    if (!(sv > BigInt(0) && sv <= N / BigInt(2))) continue;
+    const who = recover(sigHash, v, r, sv);
+    if (who !== null && equal(who, binder)) return true;
+  }
+  return false;
 }

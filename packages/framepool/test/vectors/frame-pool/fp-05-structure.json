@@ -1,7 +1,7 @@
 {
   "clause": "FP-5",
   "document": "02-frame-pool.md",
-  "version": 7,
+  "version": 8,
   "also": ["FP-4"],
   "operation": "pool",
   "distinguishes": "Which validation prefixes the public mempool recognises, where the expiry frame may sit, and the order of the structural refusals.",

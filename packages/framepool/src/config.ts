@@ -91,6 +91,9 @@ export interface FramePoolConfig {
   readonly signedProofs: boolean; // CG-3: whether a sender's signature covers its wrapper's proofs
   readonly verifies: boolean; // CG-7: false makes the node a relay, which verifies no proof
   readonly bond: boolean; // CG-11: a bond on the ticket paymaster, with AM-1's stake and reputation parameters below
+  readonly binding: boolean; // CG-12: a claim must be bound to its transaction by its binder's signature
+  readonly boundTemplateLength: number | null; // CG-10: the bound template's length and keccak256, none until fixed
+  readonly boundTemplateKeccak: string | null;
   // 14-erc-8421.md, AM-1, read when ruleset is "erc-8421", and the stake and reputation ones under `bond` (CG-11);
   // a descriptor sets them (13-descriptors.md, DS-6)
   readonly ruleset: "eip-8141" | "erc-8421";
@@ -176,6 +179,9 @@ export const EIP_8141: FramePoolConfig = Object.freeze({
   signedProofs: false,
   verifies: true,
   bond: false,
+  binding: false,
+  boundTemplateLength: null,
+  boundTemplateKeccak: null,
   ruleset: "eip-8141",
   maxVerifyGasPerEntity: 100_000n,
   maxVerifyGasStakedEntity: 1_000_000n,
@@ -246,6 +252,7 @@ export const CLAIM_GATED = withChanges(EIP_8288, {
   name: "claim-gated",
   claims: true,
   bond: true,
+  binding: true,
 });
 
 export const PROFILES: ReadonlyMap<string, FramePoolConfig> = new Map(

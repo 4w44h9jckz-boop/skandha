@@ -25,6 +25,7 @@ import {
   Frame,
   FrameTx,
   MAX_FRAMES,
+  MAX_NONCE_KEYS,
   SENDER_MODE,
   SIGNATURE_GAS,
   TX_MAX_GAS_LIMIT,
@@ -165,6 +166,9 @@ export function checkFp3(
   ) {
     fail(E.ErrFrameMalformed);
   }
+  // EIP-8250's key set, version 8: at most 16 keys, and key 0 only alone
+  if (keys.length > MAX_NONCE_KEYS || (keys.includes(0n) && keys.length > 1))
+    fail(E.ErrFrameMalformed);
   if (tx.nonceSeq < 0n || tx.nonceSeq >= 2n ** 64n) fail(E.ErrFrameMalformed);
   if (
     cfg.expiring &&

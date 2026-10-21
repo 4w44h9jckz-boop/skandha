@@ -170,6 +170,35 @@ the testnet's client does: a second spend through the same paymaster waits
 for the first to be included. A recorded run is in
 [`docs/frames/runs/2026-10-20-tickets/`](docs/frames/runs/2026-10-20-tickets/README.md).
 
+### A ticket bound to its transaction
+
+A ticket names one slot, and nothing the transaction does or pays. A copy of
+a transaction whose sender signs nothing, with a higher priority fee or
+other calldata, carries the same ticket. exp-mempool-l2s
+`docs/spec/10-claim-gated-admission.md` version 6 binds the ticket to its
+transaction.
+
+- **The message.** It also names a binder: the address of a one-time key
+  the buyer chose.
+- **Where it rides.** A bound ticket paymaster's frame carries it as 188
+  bytes: epoch, salt, binder, signature.
+- **The binding.** The claim counts only if the transaction carries a
+  `secp256k1` signature with an empty `msg` whose resolved signer is the
+  binder, valid over EIP-8141's signature hash (CG-12).
+
+Two flags turn it on, beside `--frames.claims`:
+
+- `--frames.binding` refuses an unbound claim with `ErrClaimUnbound`
+  before the client is asked. The node computes the signature hash from the
+  bytes it received and recovers the signer itself.
+- `--frames.boundTemplate <length>:<keccak256>` names the bound ticket
+  paymaster's template. Version 6 fixes none until one is deployed, and the
+  testnet's version 5 paymaster is not one. With `--frames.binding` and no
+  template, every ticket is unbound.
+
+The `start` line logs `binding` and the template. Each transaction's `claim`
+logs its `binder` and `bound`.
+
 ## A ruleset from a file
 
 `--frames.descriptor <file>` runs the frame pool under the ruleset a

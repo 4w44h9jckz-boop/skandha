@@ -1,7 +1,7 @@
 {
   "clause": "FP-12",
   "document": "02-frame-pool.md",
-  "version": 7,
+  "version": 8,
   "operation": "pool",
   "distinguishes": "One pending frame transaction per sender under the specification, several on disjoint non-zero keys under the testnet profile, replacement by identity with the price bump, and a replacement's reservation leaving the old one out. Under `static_first` a copy or a second transaction is refused before its prefix runs, and a copy that pays the bump is still run.",
   "cases": [

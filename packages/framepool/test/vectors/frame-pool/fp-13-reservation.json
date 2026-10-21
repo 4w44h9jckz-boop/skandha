@@ -1,7 +1,7 @@
 {
   "clause": "FP-13",
   "document": "02-frame-pool.md",
-  "version": 7,
+  "version": 8,
   "also": ["NP-8", "MD-11"],
   "operation": "pool",
   "distinguishes": "A sender lives in one subpool at a time, in both directions; an authority held by the other subpool blocks a set code transaction; and the hold is released when the sender's last transaction leaves.",

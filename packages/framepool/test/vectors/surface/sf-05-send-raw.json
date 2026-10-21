@@ -6,7 +6,7 @@
   "CG-2"
  ],
  "document": "11-surface.md",
- "version": 3,
+ "version": 4,
  "operation": "surface",
  "distinguishes": "eth_sendRawTransaction answers the chain's hash for what the pool admits and relays it, answers a refusal as an error carrying its code and relays nothing, and asks the client only about a transaction that SF-2 and FP-2 to FP-7 let through, and, under claims, that CG-2, CG-4 and CG-6 let through: a node that asks the client about a junk ticket, or refuses a valid one, fails here.",
  "cases": [
@@ -565,6 +565,101 @@
    ],
    "derivation": "0xe178b6f6 again: no frame is a ticket paymaster's, so there is no claim; a transaction with no dependency needs none (CG-2), so the node asks the client, as a node without claims would, and maps its refusal (SF-4).",
    "source": "kohaku-rs eea02a3, crates/frame-ticket/tests/fixtures/record.json, experiment 36's re-run under FRAME_TICKET_V1 on the Hegota testnet; the paymaster's code is eth_getCode of 0x273795f6eb2730d50c3544cbef1e0c1adba4f541, and each ticket's verdict the testnet's EIP-2537 pairing precompile on the message CG-8 builds from the bytes, 2026-10-20; the head is block 0x75728 by eth_getBlockByNumber, and the paymaster's balance eth_getBalance at it, 2026-10-20"
+  },
+  {
+   "name": "a bound ticket is admitted and asked about once",
+   "profile": "hegota-testnet",
+   "config": {
+    "frame": {
+     "claims": true,
+     "binding": true,
+     "bound_template_length": 32,
+     "bound_template_keccak": "0x59c3290d81fbdfe9ce1ffd3df2b61185e3089df0e3c49e0918e82a60acbed75a"
+    }
+   },
+   "codes": {
+    "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2": "0xfefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefe000000000000000000000000000000000c652bb2efc8812710ed75f3d23aaefd9383af5e4def279f2073ee0f0f5996f2380c5ffda18f99e617bdc973e00b441f000000000000000000000000000000000b90269b8c637ff87305bbd3d266e8e3ca0dd32a1cb5ba8d07e79d8ed3482cf778a46e9f6d289cdd6c5ca5c38abcf3c300000000000000000000000000000000008f7af2a279475f18fbd379770d5c1182d02da2014ee2be509534e03613ab35f8125bdaea35ddf22c3a8f77532ba2180000000000000000000000000000000012203133dd6979ff12b83695b16718ffa23217b5998f585e2fd129213d6807ddc7f42d0f417296c6ca9f76a2a8f6fbd400000000000000000000000000000000000000000000000000038d7ea4c68000"
+   },
+   "head": {
+    "number": 490875,
+    "timestamp": 1791360768,
+    "gas_limit": 200000000,
+    "gas_used": 0,
+    "base_fee": 7,
+    "slot": 520000
+   },
+   "state": {
+    "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2": {
+     "balance": 1000000000000000000
+    }
+   },
+   "peers": [
+    "p1"
+   ],
+   "steps": [
+    {
+     "rpc": "0x06f901f7821fcde1a0253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9809473e47a8da2c83beb802708fc473b5b7d094f3ee6f9014eca010280c482c350808080f8dc010194a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2c58301fbd08080b8bc0000000000472eaa11111111111111111111111111111111111111111111111111111111111111114960d61e699ab1daf195b1a3ee8bdcede2b6a80c0000000000000000000000000000000007c90183d6ae0145e908daabdf5435914973d86cb50538188547c1337331b2a7a8eb97c94f52cf8825f8832bf58faa4300000000000000000000000000000000086454d29024fc6ad1353a0e2090b446b28c00b5c9807a3bb0aade3351e9b3fa33ecdfb01dbfb20e751cac00c9375aaaf8630280945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ec482ea608080b844a9059cbb0000000000000000000000005e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e00000000000000000000000000000000000000000000000000000000000003e8f85cf85a01944960d61e699ab1daf195b1a3ee8bdcede2b6a80c80b84101cbb8de9b503adb711dc921de30e7e1d176872fc99fd938a550bf2f23439354c169ccd1692b90ab4dac27ad23fcde80fa73f6e1d3e061459c0104c948c6af9152cb843b9aca00847735940080c0",
+     "expect": {
+      "result": "ok",
+      "asked_client": true,
+      "relay_to": [
+       "p1"
+      ]
+     },
+     "client": {
+      "valid": true
+     }
+    }
+   ],
+   "derivation": "The claim is bound and valid, names the transaction's slot, and its epoch is the head's: 4665002 * 384 is the head's timestamp (CG-1). The client is asked and answers valid.",
+   "source": "Not mined: made by exp-frames' encoder and signer (src/frametx/ at 85ee60d), the ticket signed by Commonware at c18a6b9 over the 152-byte message, the paymaster's code the stand-in bound template, a key and 32 bytes (decision record 0067); the same transactions are cases of cg-12-bound-copies.json."
+  },
+  {
+   "name": "a copy with a higher priority fee is refused before the client is asked",
+   "profile": "hegota-testnet",
+   "config": {
+    "frame": {
+     "claims": true,
+     "binding": true,
+     "bound_template_length": 32,
+     "bound_template_keccak": "0x59c3290d81fbdfe9ce1ffd3df2b61185e3089df0e3c49e0918e82a60acbed75a"
+    }
+   },
+   "codes": {
+    "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2": "0xfefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefe000000000000000000000000000000000c652bb2efc8812710ed75f3d23aaefd9383af5e4def279f2073ee0f0f5996f2380c5ffda18f99e617bdc973e00b441f000000000000000000000000000000000b90269b8c637ff87305bbd3d266e8e3ca0dd32a1cb5ba8d07e79d8ed3482cf778a46e9f6d289cdd6c5ca5c38abcf3c300000000000000000000000000000000008f7af2a279475f18fbd379770d5c1182d02da2014ee2be509534e03613ab35f8125bdaea35ddf22c3a8f77532ba2180000000000000000000000000000000012203133dd6979ff12b83695b16718ffa23217b5998f585e2fd129213d6807ddc7f42d0f417296c6ca9f76a2a8f6fbd400000000000000000000000000000000000000000000000000038d7ea4c68000"
+   },
+   "head": {
+    "number": 490875,
+    "timestamp": 1791360768,
+    "gas_limit": 200000000,
+    "gas_used": 0,
+    "base_fee": 7,
+    "slot": 520000
+   },
+   "state": {
+    "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2": {
+     "balance": 1000000000000000000
+    }
+   },
+   "peers": [
+    "p1"
+   ],
+   "steps": [
+    {
+     "rpc": "0x06f901f7821fcde1a0253589f6adb619e8620cdcad8083c9291ac101f402d2426d03921b41171b5ce9809473e47a8da2c83beb802708fc473b5b7d094f3ee6f9014eca010280c482c350808080f8dc010194a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2c58301fbd08080b8bc0000000000472eaa11111111111111111111111111111111111111111111111111111111111111114960d61e699ab1daf195b1a3ee8bdcede2b6a80c0000000000000000000000000000000007c90183d6ae0145e908daabdf5435914973d86cb50538188547c1337331b2a7a8eb97c94f52cf8825f8832bf58faa4300000000000000000000000000000000086454d29024fc6ad1353a0e2090b446b28c00b5c9807a3bb0aade3351e9b3fa33ecdfb01dbfb20e751cac00c9375aaaf8630280945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ec482ea608080b844a9059cbb0000000000000000000000005e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e00000000000000000000000000000000000000000000000000000000000003e8f85cf85a01944960d61e699ab1daf195b1a3ee8bdcede2b6a80c80b84101cbb8de9b503adb711dc921de30e7e1d176872fc99fd938a550bf2f23439354c169ccd1692b90ab4dac27ad23fcde80fa73f6e1d3e061459c0104c948c6af9152cb8477359400847735940080c0",
+     "expect": {
+      "result": "ErrClaimUnbound",
+      "error_code": -32000,
+      "asked_client": false,
+      "relay_to": []
+     },
+     "client": {
+      "valid": true
+     }
+    }
+   ],
+   "derivation": "CG-12 refuses the copy's claim, which its binder did not sign for, and SF-4 asks the client about nothing CG-2 refuses, so the copy costs a node one recovery and no simulation, and is not relayed.",
+   "source": "Not mined: made by exp-frames' encoder and signer (src/frametx/ at 85ee60d), the ticket signed by Commonware at c18a6b9 over the 152-byte message, the paymaster's code the stand-in bound template, a key and 32 bytes (decision record 0067); the same transactions are cases of cg-12-bound-copies.json."
   }
  ]
 }

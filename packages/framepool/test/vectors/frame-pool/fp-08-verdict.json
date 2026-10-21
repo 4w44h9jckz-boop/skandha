@@ -8,7 +8,7 @@
     "MD-8"
   ],
   "document": "02-frame-pool.md",
-  "version": 7,
+  "version": 8,
   "operation": "pool",
   "distinguishes": "A transaction's verdict replaces the evaluation of its prefix frames and nothing else: an implementation that still reads the frames' observations, skips the payment check or the checks before FP-8, ignores a new verdict at a head, or re-runs a transaction whose verdict and dependencies did not change, fails a case here.",
   "cases": [

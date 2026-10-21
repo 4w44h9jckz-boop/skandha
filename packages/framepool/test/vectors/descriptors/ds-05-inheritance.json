@@ -2,7 +2,7 @@
  "clause": "DS-5",
  "also": [],
  "document": "13-descriptors.md",
- "version": 2,
+ "version": 3,
  "operation": "descriptor",
  "distinguishes": "A child's effective modules are its parent's, without those it removes, with its own added or replacing whole, each remembering who set it; a parent must be held and a removal must name a module the parent has. A loader that merges parameters, ignores an unknown parent, or forgets who set a module fails here.",
  "cases": [

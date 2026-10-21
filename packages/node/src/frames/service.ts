@@ -13,7 +13,10 @@
  * carries is read and checked before the client is asked (SF-3's `claim`,
  * SF-4): a ticket paymaster is any account whose code is the template, a key
  * and a denomination (CG-10), found by `eth_getCode`, with nothing to
- * configure.
+ * configure. With `binding` as well (version 6, CG-12) a claim counts only if
+ * the one-time key its ticket names signed the transaction's signature hash;
+ * `boundTemplate`, `length:0x...`, names the bound ticket paymaster's
+ * template, which CG-10 recognises such a paymaster by.
  *
  * With `descriptor` (`13-descriptors.md`) the frame pool's rules are the
  * ruleset a descriptor file names, loaded with the parents it finds beside
@@ -48,6 +51,7 @@ import {
   addressForm,
   buildIl,
   paymasterKey,
+  boundTemplate,
   verifyTargets,
   withChanges,
   costs,
@@ -65,6 +69,8 @@ export interface FrameServiceOptions {
   profile: string; // a frame pool profile with a surface (SF-1): eip-8141 or hegota-testnet
   handoff: boolean; // SF-9
   claims?: boolean; // CG-1: claim-gated admission, the ticket checked before the client is asked
+  binding?: boolean; // CG-12: a claim counts only if its binder signed the transaction
+  boundTemplate?: string; // CG-1's bound_template, "length:0x" and the keccak256
   logFile?: string; // one JSON object a line for every admission, head and hand-off
   pollMs?: number;
   name?: string; // how this node names itself in its log
@@ -214,7 +220,9 @@ export class FrameService {
     if (profile === undefined)
       throw new Error(`no frame pool profile ${this.opts.profile}`);
     const cfg = addressForm(
-      this.opts.claims ? withChanges(profile, { claims: true }) : profile
+      this.opts.claims
+        ? withChanges(profile, { claims: true, ...this.binding() })
+        : profile
     );
     this.pool = new FramePool(
       FrameService.toHead(this.head),
@@ -231,8 +239,34 @@ export class FrameService {
       head: this.head.number,
       handoff: this.opts.handoff,
       claims: cfg.claims,
+      binding: cfg.binding,
+      boundTemplate: this.opts.boundTemplate,
     });
     this.timer = setInterval(() => void this.poll(), this.opts.pollMs ?? 1000);
+  }
+
+  /** CG-12's `binding` and CG-1's `bound_template` from the options, under `claims`. */
+  private binding(): {
+    binding?: boolean;
+    boundTemplateLength?: number;
+    boundTemplateKeccak?: string;
+  } {
+    const out: {
+      binding?: boolean;
+      boundTemplateLength?: number;
+      boundTemplateKeccak?: string;
+    } = {};
+    if (this.opts.binding) out.binding = true;
+    if (this.opts.boundTemplate !== undefined) {
+      const [length, keccak] = this.opts.boundTemplate.split(":");
+      if (!/^\d+$/.test(length) || !/^0x[0-9a-fA-F]{64}$/.test(keccak ?? ""))
+        throw new Error(
+          `frames.boundTemplate is length:0x and 32 bytes, not ${this.opts.boundTemplate}`
+        );
+      out.boundTemplateLength = Number(length);
+      out.boundTemplateKeccak = keccak.toLowerCase();
+    }
+    return out;
   }
 
   stop(): void {
@@ -282,7 +316,12 @@ export class FrameService {
             block,
           ]);
           code = Buffer.from(got.slice(2), "hex");
-          if (paymasterKey(code) !== null) this.paymasters.set(addr, code);
+          const bound = boundTemplate(this.pool.config);
+          if (
+            paymasterKey(code) !== null ||
+            (bound !== null && paymasterKey(code, bound) !== null)
+          )
+            this.paymasters.set(addr, code);
           else this.headCodes.set(addr, code);
         }
         out.set(addr, code);
@@ -317,7 +356,13 @@ export class FrameService {
       const claim =
         c === null
           ? undefined
-          : { epoch: c.epoch, salt: c.salt, valid: c.valid };
+          : {
+              epoch: c.epoch,
+              salt: c.salt,
+              binder: c.binder,
+              valid: c.valid,
+              bound: c.bound,
+            };
       if (prepared.tx === undefined)
         return {
           result: prepared.result as string,

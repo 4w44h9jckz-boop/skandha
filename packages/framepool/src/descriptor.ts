@@ -202,6 +202,7 @@ type ParamType =
   | "int"
   | "int|null"
   | "bool"
+  | "str|null"
   | "str"
   | "str[]"
   | "amount"
@@ -341,6 +342,8 @@ export const CLAIMS: Readonly<Record<string, Module>> = {
   "CG-10": m("rule", [], {
     template_length: [TEMPLATE_LENGTH],
     template_keccak: [TEMPLATE_KECCAK],
+    bound_template_length: "int|null",
+    bound_template_keccak: "str|null",
   }),
   "CG-11": m(
     "rule",
@@ -355,6 +358,7 @@ export const CLAIMS: Readonly<Record<string, Module>> = {
       throttled_entity_mempool_count: "int",
     }
   ),
+  "CG-12": m("rule", ["ErrClaimUnbound"]),
 };
 
 const ERC_CODES: Readonly<Record<string, readonly string[]>> = {
@@ -515,6 +519,8 @@ function typeOk(t: ParamType, v: Value): boolean {
       return typeof v === "boolean";
     case "str":
       return typeof v === "string";
+    case "str|null":
+      return v === null || typeof v === "string";
     case "str[]":
       return Array.isArray(v) && v.every((x) => typeof x === "string");
     case "amount":
@@ -534,6 +540,13 @@ export function checkModules(rules: Record<string, Value>): void {
     if (
       Object.keys(params).length !== want.length ||
       !want.every((p) => has(params, p) && typeOk(mod.params[p], params[p]))
+    )
+      throw new DescriptorError("ErrDescriptorParams", name);
+    // CG-10: the bound template is named whole, or not at all
+    if (
+      name === "CG-10" &&
+      (params.bound_template_length === null) !==
+        (params.bound_template_keccak === null)
     )
       throw new DescriptorError("ErrDescriptorParams", name);
   }
@@ -694,5 +707,6 @@ export function compileConfig(d: Descriptor): FramePoolConfig {
   changes.dependencyFrames = eff.has("AG-2");
   changes.claims = eff.has("CG-2");
   changes.bond = eff.has("CG-11");
+  changes.binding = eff.has("CG-12");
   return withChanges(EIP_8141, changes as Partial<FramePoolConfig>);
 }
