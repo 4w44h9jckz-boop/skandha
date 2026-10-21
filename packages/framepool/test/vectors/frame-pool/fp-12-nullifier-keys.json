@@ -1,0 +1,942 @@
+{
+ "clause": "FP-12",
+ "document": "02-frame-pool.md",
+ "version": 8,
+ "also": [
+  "FP-3",
+  "FP-6",
+  "FP-7",
+  "FP-8",
+  "FP-11",
+  "FP-15"
+ ],
+ "operation": "pool",
+ "distinguishes": "An Aztec-model private transfer from a shared contract, with one EIP-8250 nonce key per nullifier: transfers on disjoint nullifiers are pending together under disjoint-keys and one at a time under one; a double spend that shares one nullifier is refused while the first is pending and can never be valid after it is mined; the same nullifiers replace only at the bump; the first-use state gas caps fresh nullifiers at 5 under the EIP's budget and the key limit at 16 under any.",
+ "cases": [
+  {
+   "name": "two transfers with disjoint nullifiers are pending together",
+   "profile": "hegota-testnet",
+   "state": {
+    "pool": {
+     "balance": 1000000000000000000,
+     "code": "privacy-pool"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        101,
+        102
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        103,
+        104
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "pool": [
+        "A",
+        "B"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "Under disjoint-keys neither uses key 0 and their key sets share nothing (FP-12). Every key is fresh, so each is at sequence 0 (FP-7). The contract pays for itself, so FP-11 caps nothing."
+  },
+  {
+   "name": "a double spend that shares one nullifier is refused while the first is pending, whatever it pays",
+   "profile": "hegota-testnet",
+   "state": {
+    "pool": {
+     "balance": 1000000000000000000,
+     "code": "privacy-pool"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        101,
+        102
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      },
+      {
+       "label": "C",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        102,
+        105
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      },
+      {
+       "label": "C2",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        102,
+        105
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ],
+       "tip": 20,
+       "max_fee": 200
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrFrameSenderBusy",
+      "ErrFrameSenderBusy"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "pool": [
+        "A"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "C's key set is not A's, so it is no replacement; it shares key 102 with A, so disjoint-keys does not admit it beside A (FP-12). A higher fee does not change that."
+  },
+  {
+   "name": "the same nullifiers again replace the pending transfer only at the bump",
+   "profile": "hegota-testnet",
+   "state": {
+    "pool": {
+     "balance": 1000000000000000000,
+     "code": "privacy-pool"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        101,
+        102
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      },
+      {
+       "label": "A2",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        101,
+        102
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r2",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      },
+      {
+       "label": "A3",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        101,
+        102
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r2",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ],
+       "tip": 11,
+       "max_fee": 110
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrReplaceUnderpriced",
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "pool": [
+        "A3"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "A2 and A3 have A's identity (pool, [101, 102], 0) and another recipient. A2 pays what A pays; A3 pays 10 percent more of both fees and replaces A, so the notes are never pending twice (FP-12)."
+  },
+  {
+   "name": "after inclusion a spent nullifier is too low, and a pending transfer that names it is dropped",
+   "profile": "hegota-testnet",
+   "state": {
+    "pool": {
+     "balance": 1000000000000000000,
+     "code": "privacy-pool"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        101,
+        102
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        103,
+        104
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ok"
+     ]
+    },
+    {
+     "reset": {
+      "state": {
+       "pool": {
+        "nonce_seqs": {
+         "104": 1,
+         "106": 1
+        }
+       }
+      }
+     }
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "pool": [
+        "A"
+       ]
+      }
+     }
+    },
+    {
+     "add": [
+      {
+       "label": "D",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        102,
+        107
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      },
+      {
+       "label": "E",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        104,
+        108
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      },
+      {
+       "label": "F",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        106
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 97920
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrFrameSenderBusy",
+      "ErrNonceTooLow",
+      "ErrNonceTooLow"
+     ]
+    },
+    {
+     "reset": {
+      "state": {
+       "pool": {
+        "nonce_seqs": {
+         "101": 1,
+         "102": 1
+        }
+       }
+      }
+     }
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    },
+    {
+     "add": [
+      {
+       "label": "D",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        102,
+        107
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrNonceTooLow"
+     ]
+    }
+   ],
+   "derivation": "A block another node built spent 104 and 106: B names 104 and is dropped (FP-15 step 1). D shares 102 with pending A; E and F name a spent key (FP-7). Then A is included: it is dropped, and D, which names 102, can never be valid again."
+  },
+  {
+   "name": "under one, the shared contract holds a single pending transfer",
+   "profile": "hegota-testnet",
+   "config": {
+    "frame": {
+     "per_sender": "one"
+    }
+   },
+   "state": {
+    "pool": {
+     "balance": 1000000000000000000,
+     "code": "privacy-pool"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        101,
+        102
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        103,
+        104
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrFrameSenderBusy"
+     ]
+    }
+   ],
+   "derivation": "per_sender one, the EIP's mempool rule, admits one pending transaction per sender whatever its keys (FP-12), as decision record 0054 set it on the testnet's profile."
+  },
+  {
+   "name": "the EIP's budget: five fresh nullifiers fit, six do not",
+   "profile": "eip-8141",
+   "state": {
+    "pool": {
+     "balance": 1000000000000000000,
+     "code": "privacy-pool"
+    },
+    "pool2": {
+     "balance": 1000000000000000000,
+     "code": "privacy-pool"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "five",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        101,
+        102,
+        103,
+        104,
+        105
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 60000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 489600
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      },
+      {
+       "label": "six",
+       "type": 6,
+       "sender": "pool2",
+       "nonce_keys": [
+        111,
+        112,
+        113,
+        114,
+        115,
+        116
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 60000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 587520
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrFrameVerifyStateGas"
+     ]
+    }
+   ],
+   "derivation": "Each fresh key costs 97920 state gas from the approving frame's state limit (EIP-8250), and the prefix's state limits sum to at most 500000 (FP-6): 5 * 97920 = 489600 fits and 6 * 97920 = 587520 does not. The proof's 60000 gas keeps the prefix under max_verify_gas."
+  },
+  {
+   "name": "the testnet's budget: sixteen fresh nullifiers, and seventeen are malformed",
+   "profile": "hegota-testnet",
+   "state": {
+    "pool": {
+     "balance": 1000000000000000000,
+     "code": "privacy-pool"
+    },
+    "pool2": {
+     "balance": 1000000000000000000,
+     "code": "privacy-pool"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "sixteen",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 1566720
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      },
+      {
+       "label": "seventeen",
+       "type": 6,
+       "sender": "pool2",
+       "nonce_keys": [
+        201,
+        202,
+        203,
+        204,
+        205,
+        206,
+        207,
+        208,
+        209,
+        210,
+        211,
+        212,
+        213,
+        214,
+        215,
+        216,
+        217
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 1664640
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrFrameMalformed"
+     ]
+    }
+   ],
+   "derivation": "hegota-testnet does not enforce max_verify_state_gas (FP-1), so 16 * 97920 state gas is admitted; 17 keys break EIP-8250's MAX_NONCE_KEYS (FP-3)."
+  },
+  {
+   "name": "a proof that does not verify fails the prefix",
+   "profile": "hegota-testnet",
+   "state": {
+    "pool": {
+     "balance": 1000000000000000000,
+     "code": "privacy-pool"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "bad",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        101,
+        102
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840,
+         "reverts": true
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrFramePrefixReverted"
+     ]
+    }
+   ],
+   "derivation": "The contract's VERIFY frame reverts when the proof fails, so the prefix never approves (FP-8)."
+  },
+  {
+   "name": "the contract's balance must cover every pending transfer",
+   "profile": "hegota-testnet",
+   "state": {
+    "pool": {
+     "balance": 100000000,
+     "code": "privacy-pool"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        101,
+        102
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ],
+       "max_fee": 100
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "pool",
+       "nonce_keys": [
+        103,
+        104
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 300000,
+         "data_size": 2048,
+         "approves": 3,
+         "state_gas": 195840
+        },
+        {
+         "mode": 2,
+         "target": "r1",
+         "exec_gas": 50000,
+         "data_size": 100
+        }
+       ],
+       "max_fee": 100
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrFramePayerExposure"
+     ]
+    }
+   ],
+   "derivation": "Each transfer: D = 2048 + 100 + N with N = 3 + 1 = 4, so g_intr = 12000 + 2 * 475 + 16 * 2152 = 47382; the frames add 300000 + 195840 + 50000; max_gas = 593222 against a floor of 346518, and max_cost = 59322200 at a fee cap of 100. The contract pays for itself, and FP-11's reservation leaves 100000000 - 59322200 = 40677800 for B."
+  }
+ ]
+}

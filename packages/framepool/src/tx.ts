@@ -205,6 +205,7 @@ export const STANDARD_TOKEN_COST = 4n;
 export const TOTAL_COST_FLOOR_PER_TOKEN = 16n;
 export const TX_MAX_GAS_LIMIT = 16_777_216n;
 export const MAX_FRAMES = 64;
+export const MAX_NONCE_KEYS = 16; // EIP-8250
 
 export const SIGNATURE_GAS: Readonly<Record<string, bigint>> = {
   secp256k1: 2800n,

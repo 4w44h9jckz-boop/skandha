@@ -1,7 +1,7 @@
 {
   "clause": "FP-11",
   "document": "02-frame-pool.md",
-  "version": 7,
+  "version": 8,
   "also": ["FP-10"],
   "operation": "pool",
   "distinguishes": "Reservation applies to every payer, a canonical paymaster's pending withdrawal is subtracted, a non-canonical paymaster serves one pending transaction, and a default-code sponsor is exempt from that cap by the specification but not on the testnet. Under `static_first` a sponsor that cannot pay, or is busy, is refused before the prefix runs.",

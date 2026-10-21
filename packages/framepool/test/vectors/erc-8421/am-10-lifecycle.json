@@ -315,7 +315,7 @@
     {
      "add": [
       {
-       "label": "k0",
+       "label": "k3",
        "type": 6,
        "sender": "alice",
        "nonce_seq": 0,
@@ -336,7 +336,7 @@
         }
        ],
        "nonce_keys": [
-        0
+        3
        ]
       },
       {
@@ -386,7 +386,7 @@
         }
        ],
        "nonce_keys": [
-        0,
+        3,
         5
        ]
       }
@@ -403,7 +403,7 @@
      ]
     }
    ],
-   "derivation": "both: key 0 has k0 pending at 0, key 5 has k5 pending at 0; 1 is one above each."
+   "derivation": "both: key 3 has k3 pending at 0, key 5 has k5 pending at 0; 1 is one above each. Re-read for 02-frame-pool.md version 8, whose FP-3 refuses key 0 beside another key, so the case uses keys 3 and 5 where it used 0 and 5."
   },
   {
    "name": "a replacement needs ten percent on both fees",
