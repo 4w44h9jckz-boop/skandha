@@ -1,7 +1,7 @@
 {
   "format": 1,
   "name": "Claim-gated admission",
-  "source": "05-aggregation.md version 4, AG-1's eip-8288 column; 10-claim-gated-admission.md version 6, CG-1; erc-8421.json's values for CG-11",
+  "source": "05-aggregation.md version 4, AG-1's eip-8288 column; 10-claim-gated-admission.md version 7, CG-1; erc-8421.json's values for CG-11",
   "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
   "remove": [],
   "rules": {
@@ -45,8 +45,8 @@
     "CG-10": {
       "template_length": 1105,
       "template_keccak": "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0",
-      "bound_template_length": null,
-      "bound_template_keccak": null
+      "bound_template_length": 1185,
+      "bound_template_keccak": "0x52c656815e560bb189c3fb362c9628432ca1ed6b720e239857775236c18bc1d3"
     },
     "CG-11": {
       "min_stake_value": "1000000000000000000",

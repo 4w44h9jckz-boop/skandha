@@ -176,7 +176,7 @@ A ticket names one slot, and nothing the transaction does or pays. A copy of
 a transaction whose sender signs nothing, with a higher priority fee or
 other calldata, carries the same ticket. exp-mempool-l2s
 `docs/spec/10-claim-gated-admission.md` version 6 binds the ticket to its
-transaction.
+transaction, and version 7 names the bound template.
 
 - **The message.** It also names a binder: the address of a one-time key
   the buyer chose.
@@ -192,9 +192,12 @@ Two flags turn it on, beside `--frames.claims`:
   before the client is asked. The node computes the signature hash from the
   bytes it received and recovers the signer itself.
 - `--frames.boundTemplate <length>:<keccak256>` names the bound ticket
-  paymaster's template. Version 6 fixes none until one is deployed, and the
-  testnet's version 5 paymaster is not one. With `--frames.binding` and no
-  template, every ticket is unbound.
+  paymaster's template. Version 7 names exp-frames experiment 48's,
+  `1185:0x52c656815e560bb189c3fb362c9628432ca1ed6b720e239857775236c18bc1d3`,
+  which the `claim-gated` profile carries. On the Hegota testnet the bound
+  paymaster `0xca7aa9eb83846186c1562abab968d1568ad55228` has it, and the
+  version 5 paymasters do not. With `--frames.binding` and no template,
+  every ticket is unbound.
 
 The `start` line logs `binding` and the template. Each transaction's `claim`
 logs its `binder` and `bound`.

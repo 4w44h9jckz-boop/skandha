@@ -2,7 +2,7 @@
  "clause": "DS-4",
  "also": [],
  "document": "13-descriptors.md",
- "version": 3,
+ "version": 4,
  "operation": "descriptor",
  "distinguishes": "Every module is one a node implements, with exactly its parameters, each of its type, checked in the byte order of the names: a loader that ignores an unknown module, fills a default, accepts an extra parameter or a value of another type, or checks in another order, fails here.",
  "cases": [
@@ -254,7 +254,7 @@
     "format": 1,
     "name": "a child",
     "source": "a vector",
-    "parent": "bafkreiajtflwbqbw5jzsyg4zqykpt327xmwtp7zm673bs4lf7rigybvtfq",
+    "parent": "bafkreigdwjfslxd6hbroctviyyikp2kudifirzznwlbfxouqx56yinjqui",
     "remove": [],
     "rules": {
      "CG-10": {
@@ -285,7 +285,7 @@
     "format": 1,
     "name": "a child",
     "source": "a vector",
-    "parent": "bafkreiajtflwbqbw5jzsyg4zqykpt327xmwtp7zm673bs4lf7rigybvtfq",
+    "parent": "bafkreigdwjfslxd6hbroctviyyikp2kudifirzznwlbfxouqx56yinjqui",
     "remove": [],
     "rules": {
      "CG-10": {
@@ -315,7 +315,7 @@
     "format": 1,
     "name": "a child",
     "source": "a vector",
-    "parent": "bafkreiajtflwbqbw5jzsyg4zqykpt327xmwtp7zm673bs4lf7rigybvtfq",
+    "parent": "bafkreigdwjfslxd6hbroctviyyikp2kudifirzznwlbfxouqx56yinjqui",
     "remove": [],
     "rules": {
      "CG-12": {
