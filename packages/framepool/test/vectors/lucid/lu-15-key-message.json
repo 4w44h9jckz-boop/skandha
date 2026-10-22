@@ -1,0 +1,65 @@
+{
+  "clause": "LU-15",
+  "document": "06-lucid.md",
+  "version": 3,
+  "operation": "key_round",
+  "distinguishes": "Which check refuses a key message, in the order the public checks come before decryption, and that the ciphertext is read only for a message that has released the committed key.",
+  "cases": [
+    {"name": "each check, one at a time",
+     "block": {"root": "B", "slot": 7, "commitments": [
+       {"label": "a", "sender": "alice", "k_dem": "0x1111111111111111111111111111111111111111111111111111111111111111"},
+       {"label": "b", "sender": "bob", "k_dem": "0x2222222222222222222222222222222222222222222222222222222222222222", "decrypts": false}]},
+     "steps": [
+       {"message": {"commit_index": 0, "k_dems": ["0x1111111111111111111111111111111111111111111111111111111111111111"]},
+        "expect": "valid", "expect_read": true},
+       {"message": {"chain_id": 5, "commit_index": 0, "k_dems": ["0x1111111111111111111111111111111111111111111111111111111111111111"]},
+        "expect": "chain", "expect_read": false},
+       {"message": {"root": "X", "commit_index": 0, "k_dems": ["0x1111111111111111111111111111111111111111111111111111111111111111"]},
+        "expect": "block", "expect_read": false},
+       {"message": {"slot": 8, "commit_index": 0, "k_dems": ["0x1111111111111111111111111111111111111111111111111111111111111111"]},
+        "expect": "block", "expect_read": false},
+       {"message": {"commit_index": 2, "k_dems": ["0x1111111111111111111111111111111111111111111111111111111111111111"]},
+        "expect": "index", "expect_read": false},
+       {"message": {"commit_index": 0, "k_dems": []},
+        "expect": "length", "expect_read": false},
+       {"message": {"commit_index": 0, "k_dems": ["0x1111111111111111111111111111111111111111111111111111111111111111", "0x1111111111111111111111111111111111111111111111111111111111111111"]},
+        "expect": "length", "expect_read": false},
+       {"message": {"commit_index": 0, "k_dems": ["0x2222222222222222222222222222222222222222222222222222222222222222"]},
+        "expect": "key", "expect_read": false},
+       {"message": {"commit_index": 1, "k_dems": ["0x2222222222222222222222222222222222222222222222222222222222222222"]},
+        "expect": "decrypt", "expect_read": true}
+     ]},
+    {"name": "the first check that applies is the reason",
+     "block": {"root": "B", "slot": 7, "commitments": [
+       {"label": "a", "k_dem": "0x1111111111111111111111111111111111111111111111111111111111111111"}]},
+     "steps": [
+       {"message": {"chain_id": 5, "root": "X", "commit_index": 3, "k_dems": []}, "expect": "chain", "expect_read": false},
+       {"message": {"root": "X", "commit_index": 3, "k_dems": []}, "expect": "block", "expect_read": false},
+       {"message": {"commit_index": 3, "k_dems": []}, "expect": "index", "expect_read": false},
+       {"message": {"commit_index": 0, "k_dems": []}, "expect": "length", "expect_read": false}
+     ]},
+    {"name": "a wrong key for a ciphertext that would not decrypt is refused on the key, without reading the ciphertext",
+     "block": {"commitments": [
+       {"label": "b", "k_dem": "0x2222222222222222222222222222222222222222222222222222222222222222", "decrypts": false}]},
+     "steps": [
+       {"message": {"commit_index": 0, "k_dems": ["0x1111111111111111111111111111111111111111111111111111111111111111"]},
+        "expect": "key", "expect_read": false}
+     ]},
+    {"name": "the key is checked against the commitment's key, by keccak256",
+     "provenance": "keccak256 of 32 zero bytes, 0x290dec...e563, computed with @noble/hashes 1.x keccak_256 and with ref/python/emem/keccak.py, which agree",
+     "block": {"commitments": [
+       {"label": "c", "key_commitment": "0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563"},
+       {"label": "d", "sender": "dave", "key_commitment": "0x0000000000000000000000000000000000000000000000000000000000000000"}]},
+     "steps": [
+       {"message": {"commit_index": 0, "k_dems": ["0x0000000000000000000000000000000000000000000000000000000000000000"]},
+        "expect": "valid", "expect_read": true},
+       {"message": {"commit_index": 1, "k_dems": ["0x0000000000000000000000000000000000000000000000000000000000000000"]},
+        "expect": "key", "expect_read": false}
+     ]},
+    {"name": "a message for a block the node does not hold is refused, whatever its key",
+     "block": {"root": "B", "slot": 7, "commitments": [{"label": "a"}]},
+     "steps": [
+       {"message": {"root": "C", "slot": 8, "commit_index": 0}, "expect": "block", "expect_read": false}
+     ]}
+  ]
+}

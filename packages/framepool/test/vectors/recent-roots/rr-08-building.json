@@ -1,0 +1,13 @@
+{
+  "clause": "RR-8",
+  "document": "08-recent-roots.md",
+  "version": 2,
+  "also": ["BB-5", "RR-2"],
+  "operation": "pool",
+  "distinguishes": "A builder checks a spend's roots against the block's own slot with no margin, so a spend admitted at age W fails in a block that follows a slot without one and lands in one that does not.",
+  "cases": [
+    {"name": "a spend admitted at age W lands in the next slot", "profile": "eip-8272", "head": {"slot": 8199}, "state": {"alice": {"balance": 1000000000000}, "bob": {"balance": 1000000000000}, "0x0000000000000000000000000000000000008272": {"code": "recent-root"}}, "roots": [["pool", "0", 9, "r9"]], "steps": [{"add": [{"label": "s", "type": 6, "sender": "alice", "frames": [{"mode": 1, "target": "0x0000000000000000000000000000000000008272", "data_size": 72, "exec_gas": 8000, "roots": [["pool/0", 9, "r9"]]}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]}, {"build": {}, "expect": ["s"]}], "derivation": "The block is at slot 8200: 9 < 8200 and 8200 - 9 = 8191 = W."},
+    {"name": "and fails in a block a slot later", "profile": "eip-8272", "head": {"slot": 8199}, "state": {"alice": {"balance": 1000000000000}, "bob": {"balance": 1000000000000}, "0x0000000000000000000000000000000000008272": {"code": "recent-root"}}, "roots": [["pool", "0", 9, "r9"]], "steps": [{"add": [{"label": "s", "type": 6, "sender": "alice", "frames": [{"mode": 1, "target": "0x0000000000000000000000000000000000008272", "data_size": 72, "exec_gas": 8000, "roots": [["pool/0", 9, "r9"]]}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]}, {"build": {"slot": 8201}, "expect": [], "expect_failed": [["s", "ErrFrameRootExpired"]]}, {"expect_pool": {}}], "derivation": "At slot 8201 the age is 8192. The pool, reset to that head, evicts it (RR-7)."},
+    {"name": "a margin in the pool is not applied in a block", "profile": "eip-8272", "config": {"frame": {"root_margin": 4}}, "head": {"slot": 8195}, "state": {"alice": {"balance": 1000000000000}, "bob": {"balance": 1000000000000}, "0x0000000000000000000000000000000000008272": {"code": "recent-root"}}, "roots": [["pool", "0", 9, "r9"]], "steps": [{"add": [{"label": "s", "type": 6, "sender": "alice", "frames": [{"mode": 1, "target": "0x0000000000000000000000000000000000008272", "data_size": 72, "exec_gas": 8000, "roots": [["pool/0", 9, "r9"]]}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]}, {"reset": {"head": {"number": 1, "slot": 8199}}}, {"build": {}, "expect": ["s"]}], "derivation": "Admitted at age 8187 = 8191 - 4. In the block at slot 8200 the age is 8191."}
+  ]
+}

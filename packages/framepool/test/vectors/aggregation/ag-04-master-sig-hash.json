@@ -1,0 +1,266 @@
+{
+ "clause": "AG-4",
+ "also": [
+  "AG-5"
+ ],
+ "document": "05-aggregation.md",
+ "version": 4,
+ "operation": "pool",
+ "distinguishes": "Under eip-8288-master a data_hash of 32 zero bytes stands for the transaction's own signature hash, so two transactions that declare the same zero-hash triple share no dependency; under eip-8288 they share it. An implementation that takes the zero bytes as written under the master profile, or replaces them under the pinned one, fails here.",
+ "cases": [
+  {
+   "name": "two zero-hash triples are one dependency under eip-8288",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "pk-x"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       },
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "pk-x"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "deps": [
+       [
+        16,
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "pk-x"
+       ]
+      ],
+      "proofs": [
+       true
+      ]
+     },
+     "expect": [
+      "ok",
+      "ok"
+     ]
+    }
+   ],
+   "derivation": "Both declare (16, zero, pk-x); the union is that one triple."
+  },
+  {
+   "name": "and two under eip-8288-master",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "pk-x"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       },
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "pk-x"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "deps": [
+       [
+        16,
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "pk-x"
+       ]
+      ],
+      "proofs": [
+       true
+      ]
+     },
+     "expect": "ErrWrapperDeps"
+    }
+   ],
+   "derivation": "Each holds its own signature hash in place of the zero bytes, so the union is two triples, neither with a zero data_hash."
+  },
+  {
+   "name": "the honest wrapper of both under eip-8288-master",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "pk-x"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       },
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "pk-x"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok",
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A"
+       ],
+       "bob": [
+        "B"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "A wrapper whose deps are the union of the two transactions' dependencies, each proven (conformance/README.md's default)."
+  }
+ ]
+}

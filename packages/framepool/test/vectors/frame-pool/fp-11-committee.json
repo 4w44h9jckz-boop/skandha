@@ -1,0 +1,1403 @@
+{
+ "clause": "FP-11",
+ "document": "02-frame-pool.md",
+ "version": 8,
+ "also": [
+  "FP-6",
+  "FP-7",
+  "FP-8",
+  "FP-12",
+  "FP-15"
+ ],
+ "operation": "pool",
+ "distinguishes": "A committee's two transactions: a result in the committee's fixed format, the request its nonce key, whose VERIFY frame checks the committee's threshold signature, over the EIP's verify budget and within the testnet's, with two results for one request held to one and at most one landing; and a shared-state update with the committee's account as sender and a payer. A non-canonical payer holds one pending transaction, and the next once a block includes it; the canonical paymaster, or a sender that pays for itself, is held by its balance alone; sequential updates are never queued; and under one a sender holds one pending transaction whatever pays.",
+ "cases": [
+  {
+   "name": "a result checked against the committee's threshold signature exceeds the EIP's budget",
+   "profile": "eip-8141",
+   "state": {
+    "results": {
+     "balance": 1000000000000000000,
+     "code": "result-verifier"
+    },
+    "committee": {
+     "balance": 1000000000000000000,
+     "code": "committee-account",
+     "nonce_seqs": {
+      "7": 1,
+      "8": 1,
+      "9": 1
+     }
+    },
+    "pm": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "pm2": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "cpm": {
+     "balance": 1000000000000000000,
+     "code": "canonical-paymaster"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "R",
+       "type": 6,
+       "sender": "results",
+       "nonce_keys": [
+        11
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 122006,
+         "data_size": 224,
+         "approves": 3,
+         "state_gas": 97920
+        },
+        {
+         "mode": 2,
+         "target": "results-store",
+         "exec_gas": 40000,
+         "data_size": 64
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrFrameVerifyGas"
+     ]
+    }
+   ],
+   "derivation": "The VERIFY frame's 122006 gas is above max_verify_gas, 100000 (FP-6)."
+  },
+  {
+   "name": "within the testnet's budget, and refused when the signature is below the threshold",
+   "profile": "hegota-testnet",
+   "state": {
+    "results": {
+     "balance": 1000000000000000000,
+     "code": "result-verifier"
+    },
+    "committee": {
+     "balance": 1000000000000000000,
+     "code": "committee-account",
+     "nonce_seqs": {
+      "7": 1,
+      "8": 1,
+      "9": 1
+     }
+    },
+    "pm": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "pm2": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "cpm": {
+     "balance": 1000000000000000000,
+     "code": "canonical-paymaster"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "R",
+       "type": 6,
+       "sender": "results",
+       "nonce_keys": [
+        11
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 122006,
+         "data_size": 224,
+         "approves": 3,
+         "state_gas": 97920
+        },
+        {
+         "mode": 2,
+         "target": "results-store",
+         "exec_gas": 40000,
+         "data_size": 64
+        }
+       ]
+      },
+      {
+       "label": "below",
+       "type": 6,
+       "sender": "results",
+       "nonce_keys": [
+        12
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 122006,
+         "data_size": 224,
+         "approves": 3,
+         "state_gas": 97920,
+         "reverts": true
+        },
+        {
+         "mode": 2,
+         "target": "results-store",
+         "exec_gas": 40000,
+         "data_size": 64
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrFramePrefixReverted"
+     ]
+    }
+   ],
+   "derivation": "122006 is under 500000 (FP-6). A signature from fewer than the threshold does not verify, the result contract's VERIFY frame reverts, and the prefix never approves (FP-8)."
+  },
+  {
+   "name": "results for different requests, paid by the result contract, are pending together",
+   "profile": "hegota-testnet",
+   "state": {
+    "results": {
+     "balance": 1000000000000000000,
+     "code": "result-verifier"
+    },
+    "committee": {
+     "balance": 1000000000000000000,
+     "code": "committee-account",
+     "nonce_seqs": {
+      "7": 1,
+      "8": 1,
+      "9": 1
+     }
+    },
+    "pm": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "pm2": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "cpm": {
+     "balance": 1000000000000000000,
+     "code": "canonical-paymaster"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "R1",
+       "type": 6,
+       "sender": "results",
+       "nonce_keys": [
+        11
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 122006,
+         "data_size": 224,
+         "approves": 3,
+         "state_gas": 97920
+        },
+        {
+         "mode": 2,
+         "target": "results-store",
+         "exec_gas": 40000,
+         "data_size": 64
+        }
+       ]
+      },
+      {
+       "label": "R2",
+       "type": 6,
+       "sender": "results",
+       "nonce_keys": [
+        12
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 122006,
+         "data_size": 224,
+         "approves": 3,
+         "state_gas": 97920
+        },
+        {
+         "mode": 2,
+         "target": "results-store",
+         "exec_gas": 40000,
+         "data_size": 64
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ok"
+     ]
+    }
+   ],
+   "derivation": "Each result's nonce key is its request; the keys are disjoint and the contract pays for itself, so neither FP-11's cap nor FP-12 holds the second."
+  },
+  {
+   "name": "results under one: the result contract holds one",
+   "profile": "hegota-testnet",
+   "config": {
+    "frame": {
+     "per_sender": "one"
+    }
+   },
+   "state": {
+    "results": {
+     "balance": 1000000000000000000,
+     "code": "result-verifier"
+    },
+    "committee": {
+     "balance": 1000000000000000000,
+     "code": "committee-account",
+     "nonce_seqs": {
+      "7": 1,
+      "8": 1,
+      "9": 1
+     }
+    },
+    "pm": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "pm2": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "cpm": {
+     "balance": 1000000000000000000,
+     "code": "canonical-paymaster"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "R1",
+       "type": 6,
+       "sender": "results",
+       "nonce_keys": [
+        11
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 122006,
+         "data_size": 224,
+         "approves": 3,
+         "state_gas": 97920
+        },
+        {
+         "mode": 2,
+         "target": "results-store",
+         "exec_gas": 40000,
+         "data_size": 64
+        }
+       ]
+      },
+      {
+       "label": "R2",
+       "type": 6,
+       "sender": "results",
+       "nonce_keys": [
+        12
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 122006,
+         "data_size": 224,
+         "approves": 3,
+         "state_gas": 97920
+        },
+        {
+         "mode": 2,
+         "target": "results-store",
+         "exec_gas": 40000,
+         "data_size": 64
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrFrameSenderBusy"
+     ]
+    }
+   ],
+   "derivation": "Under one, a sender holds one pending transaction whatever its keys (FP-12)."
+  },
+  {
+   "name": "results paid by a non-canonical paymaster: one pending, the next once it is mined",
+   "profile": "hegota-testnet",
+   "state": {
+    "results": {
+     "balance": 1000000000000000000,
+     "code": "result-verifier"
+    },
+    "committee": {
+     "balance": 1000000000000000000,
+     "code": "committee-account",
+     "nonce_seqs": {
+      "7": 1,
+      "8": 1,
+      "9": 1
+     }
+    },
+    "pm": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "pm2": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "cpm": {
+     "balance": 1000000000000000000,
+     "code": "canonical-paymaster"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "R1",
+       "type": 6,
+       "sender": "results",
+       "nonce_keys": [
+        11
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 122006,
+         "data_size": 224,
+         "approves": 2,
+         "state_gas": 97920
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "pm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "target": "results-store",
+         "exec_gas": 40000,
+         "data_size": 64
+        }
+       ]
+      },
+      {
+       "label": "R2",
+       "type": 6,
+       "sender": "results",
+       "nonce_keys": [
+        12
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 122006,
+         "data_size": 224,
+         "approves": 2,
+         "state_gas": 97920
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "pm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "target": "results-store",
+         "exec_gas": 40000,
+         "data_size": 64
+        }
+       ]
+      },
+      {
+       "label": "R3",
+       "type": 6,
+       "sender": "results",
+       "nonce_keys": [
+        13
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 122006,
+         "data_size": 224,
+         "approves": 2,
+         "state_gas": 97920
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "pm2",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "target": "results-store",
+         "exec_gas": 40000,
+         "data_size": 64
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrFramePaymasterBusy",
+      "ok"
+     ]
+    },
+    {
+     "reset": {
+      "state": {
+       "results": {
+        "nonce_seqs": {
+         "11": 1
+        }
+       }
+      }
+     }
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "results": [
+        "R3"
+       ]
+      }
+     }
+    },
+    {
+     "add": [
+      {
+       "label": "R2",
+       "type": 6,
+       "sender": "results",
+       "nonce_keys": [
+        12
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 122006,
+         "data_size": 224,
+         "approves": 2,
+         "state_gas": 97920
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "pm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "target": "results-store",
+         "exec_gas": 40000,
+         "data_size": 64
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    }
+   ],
+   "derivation": "The keys are disjoint, so FP-12 admits each; pm is non-canonical and pays for R1, so R2 is refused (FP-11), and pm2 pays for R3. Once a block includes R1 it is dropped (FP-15 step 1) and pm serves R2: a non-canonical paymaster carries one result a block."
+  },
+  {
+   "name": "two results for one request: the second replaces the first only at the bump, and is too low once one is mined",
+   "profile": "hegota-testnet",
+   "state": {
+    "results": {
+     "balance": 1000000000000000000,
+     "code": "result-verifier"
+    },
+    "committee": {
+     "balance": 1000000000000000000,
+     "code": "committee-account",
+     "nonce_seqs": {
+      "7": 1,
+      "8": 1,
+      "9": 1
+     }
+    },
+    "pm": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "pm2": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "cpm": {
+     "balance": 1000000000000000000,
+     "code": "canonical-paymaster"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "R",
+       "type": 6,
+       "sender": "results",
+       "nonce_keys": [
+        11
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 122006,
+         "data_size": 224,
+         "approves": 3,
+         "state_gas": 97920
+        },
+        {
+         "mode": 2,
+         "target": "results-store",
+         "exec_gas": 40000,
+         "data_size": 64
+        }
+       ]
+      },
+      {
+       "label": "R-other",
+       "type": 6,
+       "sender": "results",
+       "nonce_keys": [
+        11
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 122006,
+         "data_size": 224,
+         "approves": 3,
+         "state_gas": 97920
+        },
+        {
+         "mode": 2,
+         "target": "results-store",
+         "exec_gas": 40000,
+         "data_size": 64
+        }
+       ]
+      },
+      {
+       "label": "R-other-bumped",
+       "type": 6,
+       "sender": "results",
+       "nonce_keys": [
+        11
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 122006,
+         "data_size": 224,
+         "approves": 3,
+         "state_gas": 97920
+        },
+        {
+         "mode": 2,
+         "target": "results-store",
+         "exec_gas": 40000,
+         "data_size": 64
+        }
+       ],
+       "tip": 11,
+       "max_fee": 110
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrReplaceUnderpriced",
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "results": [
+        "R-other-bumped"
+       ]
+      }
+     }
+    },
+    {
+     "reset": {
+      "state": {
+       "results": {
+        "nonce_seqs": {
+         "11": 1
+        }
+       }
+      }
+     }
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    },
+    {
+     "add": [
+      {
+       "label": "R",
+       "type": 6,
+       "sender": "results",
+       "nonce_keys": [
+        11
+       ],
+       "nonce_seq": 0,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 122006,
+         "data_size": 224,
+         "approves": 3,
+         "state_gas": 97920
+        },
+        {
+         "mode": 2,
+         "target": "results-store",
+         "exec_gas": 40000,
+         "data_size": 64
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrNonceTooLow"
+     ]
+    }
+   ],
+   "derivation": "Two results for request 11, another value each, have one identity, (results, (11,), 0), so the pool holds one: the second replaces the first only at the 10 percent bump (FP-12). A pool cannot tell which value is right: a second result that a corrupted quorum signs replaces the first if it pays more, and the committee's lock on each request is what refuses to sign it. Once a block includes one, the request's key is at 1 and every other result for it is too low (FP-7), so at most one result per request lands."
+  },
+  {
+   "name": "the committee as sender, paid by a non-canonical paymaster: one update pending",
+   "profile": "hegota-testnet",
+   "state": {
+    "results": {
+     "balance": 1000000000000000000,
+     "code": "result-verifier"
+    },
+    "committee": {
+     "balance": 1000000000000000000,
+     "code": "committee-account",
+     "nonce_seqs": {
+      "7": 1,
+      "8": 1,
+      "9": 1
+     }
+    },
+    "pm": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "pm2": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "cpm": {
+     "balance": 1000000000000000000,
+     "code": "canonical-paymaster"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "U1",
+       "type": 6,
+       "sender": "committee",
+       "nonce_keys": [
+        7
+       ],
+       "nonce_seq": 1,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 122006,
+         "data_size": 160,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "pm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "target": "committee-state",
+         "exec_gas": 60000,
+         "data_size": 64
+        }
+       ]
+      },
+      {
+       "label": "U2",
+       "type": 6,
+       "sender": "committee",
+       "nonce_keys": [
+        8
+       ],
+       "nonce_seq": 1,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 122006,
+         "data_size": 160,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "pm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "target": "committee-state",
+         "exec_gas": 60000,
+         "data_size": 64
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrFramePaymasterBusy"
+     ]
+    },
+    {
+     "reset": {
+      "state": {
+       "committee": {
+        "nonce_seqs": {
+         "7": 2
+        }
+       }
+      }
+     }
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    },
+    {
+     "add": [
+      {
+       "label": "U2",
+       "type": 6,
+       "sender": "committee",
+       "nonce_keys": [
+        8
+       ],
+       "nonce_seq": 1,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 122006,
+         "data_size": 160,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "pm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "target": "committee-state",
+         "exec_gas": 60000,
+         "data_size": 64
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    }
+   ],
+   "derivation": "U1 and U2 are on disjoint keys, so FP-12 would admit both; pm is non-canonical and already pays for one pending transaction, max_pending_noncanonical (FP-11). A block includes U1, which is dropped (FP-15 step 1), and pm serves U2: one update a block through pm."
+  },
+  {
+   "name": "two paymasters, two pending updates",
+   "profile": "hegota-testnet",
+   "state": {
+    "results": {
+     "balance": 1000000000000000000,
+     "code": "result-verifier"
+    },
+    "committee": {
+     "balance": 1000000000000000000,
+     "code": "committee-account",
+     "nonce_seqs": {
+      "7": 1,
+      "8": 1,
+      "9": 1
+     }
+    },
+    "pm": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "pm2": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "cpm": {
+     "balance": 1000000000000000000,
+     "code": "canonical-paymaster"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "U1",
+       "type": 6,
+       "sender": "committee",
+       "nonce_keys": [
+        7
+       ],
+       "nonce_seq": 1,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 122006,
+         "data_size": 160,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "pm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "target": "committee-state",
+         "exec_gas": 60000,
+         "data_size": 64
+        }
+       ]
+      },
+      {
+       "label": "U2",
+       "type": 6,
+       "sender": "committee",
+       "nonce_keys": [
+        8
+       ],
+       "nonce_seq": 1,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 122006,
+         "data_size": 160,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "pm2",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "target": "committee-state",
+         "exec_gas": 60000,
+         "data_size": 64
+        }
+       ]
+      },
+      {
+       "label": "U3",
+       "type": 6,
+       "sender": "committee",
+       "nonce_keys": [
+        9
+       ],
+       "nonce_seq": 1,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 122006,
+         "data_size": 160,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "pm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "target": "committee-state",
+         "exec_gas": 60000,
+         "data_size": 64
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ok",
+      "ErrFramePaymasterBusy"
+     ]
+    }
+   ],
+   "derivation": "Each non-canonical paymaster pays for one pending transaction (FP-11)."
+  },
+  {
+   "name": "the canonical paymaster, or the committee paying for itself, is not capped",
+   "profile": "hegota-testnet",
+   "state": {
+    "results": {
+     "balance": 1000000000000000000,
+     "code": "result-verifier"
+    },
+    "committee": {
+     "balance": 1000000000000000000,
+     "code": "committee-account",
+     "nonce_seqs": {
+      "7": 1,
+      "8": 1,
+      "9": 1
+     }
+    },
+    "pm": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "pm2": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "cpm": {
+     "balance": 1000000000000000000,
+     "code": "canonical-paymaster"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "C1",
+       "type": 6,
+       "sender": "committee",
+       "nonce_keys": [
+        7
+       ],
+       "nonce_seq": 1,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 122006,
+         "data_size": 160,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "cpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "target": "committee-state",
+         "exec_gas": 60000,
+         "data_size": 64
+        }
+       ]
+      },
+      {
+       "label": "C2",
+       "type": 6,
+       "sender": "committee",
+       "nonce_keys": [
+        8
+       ],
+       "nonce_seq": 1,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 122006,
+         "data_size": 160,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "cpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "target": "committee-state",
+         "exec_gas": 60000,
+         "data_size": 64
+        }
+       ]
+      },
+      {
+       "label": "S1",
+       "type": 6,
+       "sender": "committee",
+       "nonce_keys": [
+        9
+       ],
+       "nonce_seq": 1,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 122006,
+         "data_size": 160,
+         "approves": 3
+        },
+        {
+         "mode": 2,
+         "target": "committee-state",
+         "exec_gas": 60000,
+         "data_size": 64
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ok",
+      "ok"
+     ]
+    }
+   ],
+   "derivation": "FP-11's cap is for class noncanonical; the canonical paymaster and a sender that pays for itself are held only by the reservation, which their balances cover."
+  },
+  {
+   "name": "sequential updates on one key: the next is too high until the first is mined",
+   "profile": "hegota-testnet",
+   "state": {
+    "results": {
+     "balance": 1000000000000000000,
+     "code": "result-verifier"
+    },
+    "committee": {
+     "balance": 1000000000000000000,
+     "code": "committee-account",
+     "nonce_seqs": {
+      "7": 1,
+      "8": 1,
+      "9": 1
+     }
+    },
+    "pm": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "pm2": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "cpm": {
+     "balance": 1000000000000000000,
+     "code": "canonical-paymaster"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "U1",
+       "type": 6,
+       "sender": "committee",
+       "nonce_keys": [
+        7
+       ],
+       "nonce_seq": 1,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 122006,
+         "data_size": 160,
+         "approves": 3
+        },
+        {
+         "mode": 2,
+         "target": "committee-state",
+         "exec_gas": 60000,
+         "data_size": 64
+        }
+       ]
+      },
+      {
+       "label": "U2",
+       "type": 6,
+       "sender": "committee",
+       "nonce_keys": [
+        7
+       ],
+       "nonce_seq": 2,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 122006,
+         "data_size": 160,
+         "approves": 3
+        },
+        {
+         "mode": 2,
+         "target": "committee-state",
+         "exec_gas": 60000,
+         "data_size": 64
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrNonceTooHigh"
+     ]
+    },
+    {
+     "reset": {
+      "state": {
+       "committee": {
+        "nonce_seqs": {
+         "7": 2
+        }
+       }
+      }
+     }
+    },
+    {
+     "add": [
+      {
+       "label": "U2",
+       "type": 6,
+       "sender": "committee",
+       "nonce_keys": [
+        7
+       ],
+       "nonce_seq": 2,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 122006,
+         "data_size": 160,
+         "approves": 3
+        },
+        {
+         "mode": 2,
+         "target": "committee-state",
+         "exec_gas": 60000,
+         "data_size": 64
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    }
+   ],
+   "derivation": "A frame transaction is never queued (FP-7): U2 needs key 7 at 2, which it reaches only when a block includes U1, and then U1 is dropped (FP-15 step 1)."
+  },
+  {
+   "name": "the committee as sender under one: one update pending whatever pays",
+   "profile": "hegota-testnet",
+   "config": {
+    "frame": {
+     "per_sender": "one"
+    }
+   },
+   "state": {
+    "results": {
+     "balance": 1000000000000000000,
+     "code": "result-verifier"
+    },
+    "committee": {
+     "balance": 1000000000000000000,
+     "code": "committee-account",
+     "nonce_seqs": {
+      "7": 1,
+      "8": 1,
+      "9": 1
+     }
+    },
+    "pm": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "pm2": {
+     "balance": 1000000000000000000,
+     "code": "paymaster"
+    },
+    "cpm": {
+     "balance": 1000000000000000000,
+     "code": "canonical-paymaster"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "C1",
+       "type": 6,
+       "sender": "committee",
+       "nonce_keys": [
+        7
+       ],
+       "nonce_seq": 1,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 122006,
+         "data_size": 160,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "cpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "target": "committee-state",
+         "exec_gas": 60000,
+         "data_size": 64
+        }
+       ]
+      },
+      {
+       "label": "C2",
+       "type": 6,
+       "sender": "committee",
+       "nonce_keys": [
+        8
+       ],
+       "nonce_seq": 1,
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 122006,
+         "data_size": 160,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "cpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "target": "committee-state",
+         "exec_gas": 60000,
+         "data_size": 64
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrFrameSenderBusy"
+     ]
+    }
+   ],
+   "derivation": "Under one, the committee's account holds one pending transaction (FP-12), so the canonical paymaster does not help."
+  }
+ ]
+}

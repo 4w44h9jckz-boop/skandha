@@ -1,0 +1,212 @@
+{
+ "clause": "SF-7",
+ "also": [
+  "SF-6",
+  "SF-4"
+ ],
+ "document": "11-surface.md",
+ "version": 4,
+ "operation": "surface",
+ "distinguishes": "A transaction from a peer is admitted as one from JSON-RPC and relayed to every other peer; bytes that are not a frame transaction put the peer at fault, and a well-formed transaction the node refuses does not, and is not relayed.",
+ "cases": [
+  {
+   "name": "from a peer: admitted and relayed to the others; again, known and ignored",
+   "profile": "hegota-testnet",
+   "state": {
+    "0xa6b01af7512a08b1f0a7603765b21a53a7d1d7db": {
+     "nonce": 9,
+     "balance": 1000000000000000000
+    }
+   },
+   "peers": [
+    "p1",
+    "p2",
+    "p3"
+   ],
+   "steps": [
+    {
+     "peer": "0x06f8cb821fcdc1800994a6b01af7512a08b1f0a7603765b21a53a7d1d7dbf857e60180940000000000000000000000000000000000008141c4821388808088ffffffffffffffffca010380c4824e20808080e4028094a93cee06b1e4ffacdf920bd500cb301a39ddeb74c482753080865af3107a400080f848f846018080b8410134798f54e7f1e268ade7d1aba5ab5a404867647066b65e404e102dc49ad4ecd93b567f7dfd64b157b47fe1a48f5a57151efb6d4df43c6972d8017f41b3dd16becb843b9aca00843b9aca0e80c0",
+     "from": "p1",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok",
+      "gossip": "accept",
+      "disconnect": false,
+      "asked_client": true,
+      "relay_to": [
+       "p2",
+       "p3"
+      ]
+     }
+    },
+    {
+     "peer": "0x06f8cb821fcdc1800994a6b01af7512a08b1f0a7603765b21a53a7d1d7dbf857e60180940000000000000000000000000000000000008141c4821388808088ffffffffffffffffca010380c4824e20808080e4028094a93cee06b1e4ffacdf920bd500cb301a39ddeb74c482753080865af3107a400080f848f846018080b8410134798f54e7f1e268ade7d1aba5ab5a404867647066b65e404e102dc49ad4ecd93b567f7dfd64b157b47fe1a48f5a57151efb6d4df43c6972d8017f41b3dd16becb843b9aca00843b9aca0e80c0",
+     "from": "p2",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ErrAlreadyKnown",
+      "gossip": "ignore",
+      "disconnect": false,
+      "asked_client": false,
+      "relay_to": []
+     }
+    }
+   ],
+   "derivation": "SF-7's first and last rows; SF-6 never relays back to the peer a transaction came from."
+  },
+  {
+   "name": "bytes that are not a frame transaction put the peer at fault",
+   "profile": "hegota-testnet",
+   "state": {
+    "0xa6b01af7512a08b1f0a7603765b21a53a7d1d7db": {
+     "nonce": 9,
+     "balance": 1000000000000000000
+    }
+   },
+   "peers": [
+    "p1",
+    "p2"
+   ],
+   "steps": [
+    {
+     "peer": "0x0500",
+     "from": "p1",
+     "expect": {
+      "result": "ErrTxTypeNotSupported",
+      "gossip": "reject",
+      "disconnect": true,
+      "asked_client": false,
+      "relay_to": []
+     }
+    },
+    {
+     "peer": "0x06c0",
+     "from": "p2",
+     "expect": {
+      "result": "ErrFrameDecode",
+      "gossip": "reject",
+      "disconnect": true,
+      "asked_client": false,
+      "relay_to": []
+     }
+    }
+   ],
+   "derivation": "SF-2 steps 1 and 3: 0x05 is not 0x06, and an empty list has none of the envelope's 8 items. Under eth the session ends; under gossipsub the message is rejected."
+  },
+  {
+   "name": "a well-formed transaction the node refuses costs the peer nothing",
+   "profile": "hegota-testnet",
+   "state": {
+    "0xa6b01af7512a08b1f0a7603765b21a53a7d1d7db": {
+     "nonce": 9,
+     "balance": 1000000000000000000
+    }
+   },
+   "peers": [
+    "p1",
+    "p2"
+   ],
+   "steps": [
+    {
+     "peer": "0x06f8cb821fcdc1800994a6b01af7512a08b1f0a7603765b21a53a7d1d7dbf857e60180940000000000000000000000000000000000008141c4821388808088ffffffffffffffffca010380c4824e20808080e4028094a93cee06b1e4ffacdf920bd500cb301a39ddeb74c482753080865af3107a400080f848f846018080b8410134798f54e7f1e268ade7d1aba5ab5a404867647066b65e404e102dc49ad4ecd93b567f7dfd64b157b47fe1a48f5a57151efb6d4df43c6972d8017f41b3dd16becb843b9aca00843b9aca0e80c0",
+     "from": "p1",
+     "client": {
+      "valid": false,
+      "violation": "validation prefix frame reverted"
+     },
+     "expect": {
+      "result": "ErrFramePrefixReverted",
+      "gossip": "ignore",
+      "disconnect": false,
+      "asked_client": true,
+      "relay_to": []
+     }
+    },
+    {
+     "peer": "0x06f8b201c1800794000000000000000000000000000000000000abcdeccc010380c48252088080821122de0280940000000000000000000000000000000000001234c4829c40808080f85cf85a0194000000000000000000000000000000000000abcd80b8410101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101cc843b9aca008506fc23ac0080c0",
+     "from": "p2",
+     "expect": {
+      "result": "ErrInvalidChainId",
+      "gossip": "ignore",
+      "disconnect": false,
+      "asked_client": false,
+      "relay_to": []
+     }
+    },
+    {
+     "peer": "0x06f8b101c18007930000000000000000000000000000000000abcdeccc010380c48252088080821122de0280940000000000000000000000000000000000001234c4829c40808080f85cf85a0194000000000000000000000000000000000000abcd80b8410101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101cc843b9aca008506fc23ac0080c0",
+     "from": "p2",
+     "expect": {
+      "result": "ErrFrameMalformed",
+      "gossip": "ignore",
+      "disconnect": false,
+      "asked_client": false,
+      "relay_to": []
+     }
+    }
+   ],
+   "derivation": "SF-7's middle row covers only decoding failures; the client's refusal, a chain id of 1 against 8141 and a malformed field are refusals of a frame transaction, ignored."
+  },
+  {
+   "name": "a replaced transaction is not relayed again",
+   "profile": "eip-8141",
+   "state": {
+    "0x000000000000000000000000000000000000abcd": {
+     "nonce": 7,
+     "balance": 10000000000000000
+    }
+   },
+   "peers": [
+    "p1",
+    "p2"
+   ],
+   "steps": [
+    {
+     "rpc": "0x06f8b201c1800794000000000000000000000000000000000000abcdeccc010380c48252088080821122de0280940000000000000000000000000000000000001234c4829c40808080f85cf85a0194000000000000000000000000000000000000abcd80b8410101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101cc843b9aca008506fc23ac0080c0",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok",
+      "relay_to": [
+       "p1",
+       "p2"
+      ]
+     }
+    },
+    {
+     "rpc": "0x06f8b201c1800794000000000000000000000000000000000000abcdeccc010380c48252088080821122de0280940000000000000000000000000000000000001234c4829c40808080f85cf85a0194000000000000000000000000000000000000abcd80b8410101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101cc84773594008509502f900080c0",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok",
+      "relay_to": [
+       "p1",
+       "p2"
+      ]
+     }
+    },
+    {
+     "peer": "0x06f8b201c1800794000000000000000000000000000000000000abcdeccc010380c48252088080821122de0280940000000000000000000000000000000000001234c4829c40808080f85cf85a0194000000000000000000000000000000000000abcd80b8410101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101cc843b9aca008506fc23ac0080c0",
+     "from": "p1",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ErrReplaceUnderpriced",
+      "gossip": "ignore",
+      "disconnect": false,
+      "asked_client": true,
+      "relay_to": []
+     }
+    }
+   ],
+   "derivation": "G2 replaced G (sf-05). G arriving again passes FP-2 to FP-7, so the client is asked, and FP-12 refuses it as underpriced against G2: EIP-8141, replaced transactions must not be re-propagated."
+  }
+ ]
+}

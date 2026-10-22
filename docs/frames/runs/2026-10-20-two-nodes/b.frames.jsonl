@@ -1,0 +1,4 @@
+{"t":"2026-10-20T03:41:32.534Z","node":"B","event":"start","profile":"hegota-testnet","head":478396,"handoff":true}
+{"t":"2026-10-20T03:41:44.795Z","node":"B","event":"gossip","from":"16Uiu2HAm8878JnUHBE8NK56QcorCFfUrpskm9rj1X5V22ZZ1vHM4","hash":"0xd9d959ffa3f7a952c681bb59a1738730b608d971b6e866d038443ec839a0851a","result":"ok","client":"valid","outcome":"accept","head":478398}
+{"t":"2026-10-20T03:41:44.901Z","node":"B","event":"handoff","hash":"0xd9d959ffa3f7a952c681bb59a1738730b608d971b6e866d038443ec839a0851a","agrees":true}
+{"t":"2026-10-20T03:41:49.841Z","node":"B","event":"head","head":478399,"asked":[],"verdicts":{},"resimulated":[],"removed":["0xd9d959ffa3f7a952c681bb59a1738730b608d971b6e866d038443ec839a0851a"],"pending":[]}

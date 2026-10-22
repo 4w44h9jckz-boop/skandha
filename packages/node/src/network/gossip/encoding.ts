@@ -5,7 +5,7 @@ import { digest } from "@chainsafe/as-sha256";
 import { RPC } from "@chainsafe/libp2p-gossipsub/message";
 import { intToBytes, toHex } from "@skandha/utils/lib";
 import { MESSAGE_DOMAIN_VALID_SNAPPY } from "./constants.js";
-import { getGossipSSZType, GossipTopicCache } from "./topic.js";
+import { getGossipSSZType, GossipTopicCache, isFrameTopic } from "./topic.js";
 
 // Load WASM
 const xxhash = await xxhashFactory();
@@ -60,6 +60,8 @@ export class DataTransformSnappy {
    */
   inboundTransform(topicStr: string, data: Uint8Array): Uint8Array {
     const uncompressedData = uncompress(data, this.maxSizePerMessage);
+    // A frame transaction's bytes (exp-mempool-l2s 11-surface.md, SF-6); its validator decodes them.
+    if (isFrameTopic(topicStr)) return uncompressedData;
 
     // check uncompressed data length before we extract beacon block root, slot or
     // attestation data at later steps

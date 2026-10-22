@@ -1,0 +1,48 @@
+{
+  "clause": "AG-8",
+  "document": "05-aggregation.md",
+  "version": 4,
+  "also": ["BB-3"],
+  "operation": "pool",
+  "distinguishes": "A block counts 30000 gas for every dependency triple its transactions declare, duplicates included and leanSPHINCS triples too, on top of their gas, and a builder leaves out a transaction that fits only without it. Counting declarations and charging nobody is an Interpretation (decision record 0012).",
+  "cases": [
+    {"name": "one leanSTARK dependency", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"build": {}, "expect": ["A"], "expect_gas_used": 78374}
+     ],
+     "derivation": "A's max_gas is 48374 (ag-03, its gas is in max_gas); 48374 + 30000 = 78374."},
+    {"name": "a leanSPHINCS dependency costs the block 30000 too", "profile": "eip-8288",
+     "state": {"bob": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "B", "type": 6, "sender": "bob", "frames": [{"mode": 3, "deps": [[16, "msg-b", "pk-b"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"build": {}, "expect": ["B"], "expect_gas_used": 56246}
+     ],
+     "derivation": "FEE-4: intrinsic 18374, floor 26246, max_gas = max(18374 + 3000, 26246) = 26246; 26246 + 30000 = 56246."},
+    {"name": "a triple declared twice is charged twice", "profile": "eip-8288",
+     "state": {"hank": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "H", "type": 6, "sender": "hank", "frames": [{"mode": 3, "deps": [[17, "pub-h", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 3, "deps": [[17, "pub-h", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"build": {}, "expect": ["H"], "expect_gas_used": 140385}
+     ],
+     "derivation": "Three frames: fixed 12000 + 3*475 + 2800 = 16225; D = 96 + 96 + 65 + 3 = 260; intrinsic 16225 + 16*260 = 20385; floor 16225 + 64*260 = 32865; max_gas = max(20385 + 60000, 32865) = 80385. Two declarations: 80385 + 60000 = 140385. The wrapper's deps hold the triple once."},
+    {"name": "transactions without dependencies are charged nothing more", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "dan": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"add": [{"label": "P", "type": 6, "sender": "dan", "frames": [{"mode": 1, "flags": 3}]}], "expect": ["ok"]},
+       {"build": {}, "expect": ["A", "P"], "expect_gas_used": 98001}
+     ],
+     "derivation": "P: fixed 12000 + 475 + 2800 = 15275; D = 65 + 3 = 68; intrinsic 15275 + 16*68 = 16363; floor 15275 + 64*68 = 19627; max_gas 19627. 78374 + 19627 = 98001."},
+    {"name": "a transaction that fits only without the charge is left out", "profile": "eip-8288",
+     "head": {"gas_limit": 60000, "gas_used": 30000},
+     "state": {"alice": {"balance": 1000000000}, "dan": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"add": [{"label": "P", "type": 6, "sender": "dan", "frames": [{"mode": 1, "flags": 3}]}], "expect": ["ok"]},
+       {"build": {}, "expect": ["P"], "expect_gas_used": 19627}
+     ],
+     "derivation": "The pending base fee stays 10 at half the limit. A's 48374 fits in 60000 but 78374 does not, so BB-3 drops it and goes on to P."}
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "clause": "FP-9",
+  "document": "02-frame-pool.md",
+  "version": 8,
+  "operation": "pool",
+  "distinguishes": "The trace rules as observations: which opcodes are banned and where the deploy frame is exempt, that the only readable storage is the sender's, which call targets are allowed, and which frames are exempt because the protocol defines them.",
+  "cases": [
+    {"name": "banned opcodes in a verify frame; SLOAD is not banned",
+     "state": {"a1": {"balance": 100000000, "code": "account-v1"}, "a2": {"balance": 100000000, "code": "account-v1"}, "a3": {"balance": 100000000, "code": "account-v1"}, "a4": {"balance": 100000000, "code": "account-v1"}},
+     "steps": [{"add": [
+       {"label": "timestamp", "type": 6, "sender": "a1", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "opcodes": ["TIMESTAMP"]}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "gas", "type": 6, "sender": "a2", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "opcodes": ["GAS"]}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "create2", "type": 6, "sender": "a3", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "opcodes": ["CREATE2"]}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "sload", "type": 6, "sender": "a4", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "opcodes": ["SLOAD"]}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ErrFrameBannedOpcode", "ErrFrameBannedOpcode", "ErrFrameBannedOpcode", "ok"]}]},
+    {"name": "the deploy frame may CREATE2 and write the sender's storage, but nobody else's",
+     "state": {"a1": {"balance": 100000000}, "a2": {"balance": 100000000}, "a3": {"balance": 100000000, "code": "account-v1"}, "factory": {"code": "factory-v1"}},
+     "steps": [{"add": [
+       {"label": "deploy-ok", "type": 6, "sender": "a1", "frames": [{"mode": 0, "target": "factory", "exec_gas": 30000, "installs_code": "account-v1", "opcodes": ["CREATE2", "SSTORE"], "writes": [["a1", 1, 1]]}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "deploy-writes-bob", "type": 6, "sender": "a2", "frames": [{"mode": 0, "target": "factory", "exec_gas": 30000, "installs_code": "account-v1", "writes": [["bob", 1, 1]]}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "verify-writes-self", "type": 6, "sender": "a3", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "writes": [["a3", 1, 1]]}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFrameStateWrite", "ErrFrameStateWrite"]}]},
+    {"name": "storage reads outside the sender",
+     "state": {"a1": {"balance": 100000000, "code": "account-v1"}},
+     "steps": [{"add": [
+       {"label": "reads-bob", "type": 6, "sender": "a1", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["bob", 1, null]]}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ErrFrameStorageReadNonSender"]}]},
+    {"name": "call targets: contracts, precompiles and the sender are allowed; empty and delegated accounts are not",
+     "state": {"a1": {"balance": 100000000, "code": "account-v1"}, "a2": {"balance": 100000000, "code": "account-v1"}, "a3": {"balance": 100000000, "code": "account-v1"}, "a4": {"balance": 100000000, "code": "account-v1"}, "lib": {"code": "lib-v1"}, "dave": {"code": "0xef0100impl"}},
+     "steps": [{"add": [
+       {"label": "lib-precompile-self", "type": 6, "sender": "a1", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "calls": ["lib", "0x0000000000000000000000000000000000000001", "a1"]}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "empty", "type": 6, "sender": "a2", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "calls": ["nobody"]}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "delegated", "type": 6, "sender": "a3", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "calls": ["dave"]}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "banned-and-reverts", "type": 6, "sender": "a4", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reverts": true, "opcodes": ["NUMBER"]}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFrameCallTarget", "ErrFrameCallTarget", "ErrFrameBannedOpcode"]}]},
+    {"name": "protocol-defined frames are exempt: the canonical paymaster and the default code",
+     "state": {"a1": {"balance": 100000000}, "a2": {"balance": 100000000}, "a3": {"balance": 100000000},
+               "pm": {"balance": 100000000, "code": "canonical-paymaster"}, "pm2": {"balance": 100000000, "code": "paymaster-v1"}},
+     "steps": [{"add": [
+       {"label": "canonical", "type": 6, "sender": "a1", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "pm"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "pm", "exec_gas": 30000, "approves": 1, "opcodes": ["BALANCE"], "reads": [["pm", 0, null]]}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "non-canonical", "type": 6, "sender": "a2", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "pm2"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "pm2", "exec_gas": 30000, "approves": 1, "opcodes": ["BALANCE"]}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "default-code", "type": 6, "sender": "a3", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "opcodes": ["TIMESTAMP"], "reads": [["bob", 1, null]]}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFrameBannedOpcode", "ok"]}]},
+    {"name": "a non-canonical paymaster may not read its own storage", "state": {"alice": {"balance": 100000000}, "pm2": {"balance": 100000000, "code": "paymaster-v1"}},
+     "steps": [{"add": [
+       {"label": "own-storage", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "pm2"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "pm2", "exec_gas": 30000, "approves": 1, "reads": [["pm2", 0, null]]}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ErrFrameStorageReadNonSender"]}]}
+  ]
+}

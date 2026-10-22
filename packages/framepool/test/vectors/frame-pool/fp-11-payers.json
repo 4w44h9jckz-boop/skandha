@@ -1,0 +1,75 @@
+{
+  "clause": "FP-11",
+  "document": "02-frame-pool.md",
+  "version": 8,
+  "also": ["FP-10"],
+  "operation": "pool",
+  "distinguishes": "Reservation applies to every payer, a canonical paymaster's pending withdrawal is subtracted, a non-canonical paymaster serves one pending transaction, and a default-code sponsor is exempt from that cap by the specification but not on the testnet. Under `static_first` a sponsor that cannot pay, or is busy, is refused before the prefix runs.",
+  "cases": [
+    {"name": "a default-code sponsor can back two transactions only if its balance covers both", "profile": "eip-8141",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "sponsor": {"balance": 20000000}},
+     "steps": [{"add": [
+       {"label": "fa", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "fb", "type": 6, "sender": "bob", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFramePayerExposure"]}],
+     "derivation": "max_gas = 12000 + 3*475 + 16*150 + 2*2800 + 110000 = 131425, max_cost 13142500. 20000000 - 13142500 = 6857500 < 13142500."},
+    {"name": "with enough balance the specification lets a default-code sponsor back both", "profile": "eip-8141",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "sponsor": {"balance": 30000000}},
+     "steps": [{"add": [
+       {"label": "fa", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "fb", "type": 6, "sender": "bob", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ok"]}]},
+    {"name": "the testnet caps the default-code sponsor at one, as measured", "profile": "hegota-testnet",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "sponsor": {"balance": 30000000}},
+     "steps": [{"add": [
+       {"label": "fa", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "fb", "type": 6, "sender": "bob", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFramePaymasterBusy"]}]},
+    {"name": "a non-canonical paymaster serves one pending transaction whatever its balance", "profile": "eip-8141",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "pm2": {"balance": 1000000000, "code": "paymaster-v1"}},
+     "steps": [{"add": [
+       {"label": "fa", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "pm2", "exec_gas": 30000, "approves": 1}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "fb", "type": 6, "sender": "bob", "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "pm2", "exec_gas": 30000, "approves": 1}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFramePaymasterBusy"]}]},
+    {"name": "a canonical paymaster's pending withdrawal is not available", "profile": "eip-8141",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "pm": {"balance": 30000000, "withdrawal": 5000000, "code": "canonical-paymaster"}},
+     "steps": [{"add": [
+       {"label": "fa", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "pm", "exec_gas": 30000, "approves": 1}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "fb", "type": 6, "sender": "bob", "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "pm", "exec_gas": 30000, "approves": 1}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFramePayerExposure"]}],
+     "derivation": "One signature: max_gas = 12000 + 1425 + 16*65 + 2800 + 110000 = 127265, max_cost 12726500. 30000000 - 12726500 - 5000000 = 12273500 < 12726500."},
+    {"name": "without a withdrawal the canonical paymaster backs as many as its balance covers", "profile": "eip-8141",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}, "pm": {"balance": 30000000, "code": "canonical-paymaster"}},
+     "steps": [{"add": [
+       {"label": "fa", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "pm", "exec_gas": 30000, "approves": 1}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "fb", "type": 6, "sender": "bob", "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "pm", "exec_gas": 30000, "approves": 1}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "fc", "type": 6, "sender": "carol", "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "pm", "exec_gas": 30000, "approves": 1}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ok", "ErrFramePayerExposure"]}]},
+    {"name": "a default-code sponsor that holds nothing fails the prefix's payment", "profile": "eip-8141",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [
+       {"label": "fa", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ErrInsufficientFunds"]}]},
+    {"name": "static_first: a default-code sponsor that holds nothing is refused by FP-11 before the prefix runs", "profile": "eip-8141",
+     "config": {"frame": {"static_first": true}},
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [
+       {"label": "fa", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ErrFramePayerExposure"]}],
+     "derivation": "The payer is the pay frame's target, sponsor, with empty code: class default. 0 - 0 - 0 < max_cost."},
+    {"name": "static_first: the testnet refuses a busy default-code sponsor's second transaction before its prefix runs", "profile": "hegota-testnet",
+     "config": {"frame": {"static_first": true}},
+     "state": {"alice": {"balance": 100000000}, "b1": {"balance": 100000000, "code": "account-v1"}, "sponsor": {"balance": 100000000}},
+     "steps": [{"add": [
+       {"label": "fa", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "fb-reverts", "type": 6, "sender": "b1", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000, "approves": 2, "reverts": true}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFramePaymasterBusy"]}],
+     "derivation": "131425 * 100 = 13142500 reserved for fa; 100000000 - 13142500 covers fb, so exposure passes, and sponsor already pays for 1 = max_pending_noncanonical."},
+    {"name": "without static_first the testnet's busy sponsor is reached only after the prefix", "profile": "hegota-testnet",
+     "state": {"alice": {"balance": 100000000}, "b1": {"balance": 100000000, "code": "account-v1"}, "sponsor": {"balance": 100000000}},
+     "steps": [{"add": [
+       {"label": "fa", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "fb-reverts", "type": 6, "sender": "b1", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000, "approves": 2, "reverts": true}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFramePrefixReverted"]}]}
+  ]
+}

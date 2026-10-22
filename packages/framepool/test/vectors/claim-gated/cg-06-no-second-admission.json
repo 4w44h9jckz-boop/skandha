@@ -1,0 +1,837 @@
+{
+ "clause": "CG-6",
+ "document": "10-claim-gated-admission.md",
+ "version": 8,
+ "also": [
+  "CG-2",
+  "FP-15"
+ ],
+ "operation": "pool",
+ "distinguishes": "A transaction with a claim that the pool removes, for anything but a consumed nonce, is not admitted again under that slot and claim in the claim's epoch, alone or in a wrapper; a fresh claim for the slot is; a replacement leaves the replaced transaction's claim recorded, except under binding a replacement under the same claim, the holder's re-pricing (version 8). A pool that records the holder's re-pricing, or that stops recording a replacement under another ticket or without binding, fails here.",
+ "cases": [
+  {
+   "name": "dropped when its sender cannot pay, then sent again",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "reset": {
+      "state": {
+       "alice": {
+        "balance": 0
+       }
+      }
+     }
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    },
+    {
+     "reset": {
+      "state": {
+       "alice": {
+        "balance": 1000000000
+       }
+      }
+     }
+    },
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           17,
+           "pub-a",
+           "vk-1"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1"
+       }
+      }
+     ],
+     "expect": [
+      "ErrClaimExpired"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1"
+        }
+       }
+      ]
+     },
+     "expect": "ErrClaimExpired"
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    }
+   ]
+  },
+  {
+   "name": "dropped, then a fresh claim for the slot",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "reset": {
+      "state": {
+       "alice": {
+        "balance": 0
+       }
+      }
+     }
+    },
+    {
+     "reset": {
+      "state": {
+       "alice": {
+        "balance": 1000000000
+       }
+      }
+     }
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A2",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t2"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A2"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "a replaced transaction's claim",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A2",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t2"
+        },
+        "max_fee": 121,
+        "tip": 13
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           17,
+           "pub-a",
+           "vk-1"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1"
+       }
+      }
+     ],
+     "expect": [
+      "ErrClaimExpired"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A2"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "a consumed nonce is not recorded",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "reset": {
+      "state": {
+       "alice": {
+        "nonce": 1
+       }
+      }
+     }
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    },
+    {
+     "reset": {
+      "state": {
+       "alice": {
+        "nonce": 0
+       }
+      }
+     }
+    },
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           17,
+           "pub-a",
+           "vk-1"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1"
+       }
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "under binding, a replacement under another ticket is recorded, and the holder's are not",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "pool"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "pool"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A1",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ],
+       "max_fee": 110,
+       "tip": 11
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A2",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t2",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ],
+       "max_fee": 121,
+       "tip": 13
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A3",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ],
+       "max_fee": 134,
+       "tip": 15
+      }
+     ],
+     "expect": [
+      "ErrClaimExpired"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A2"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "A1 replaces A under the same claim, so CG-6 records nothing (version 8). A2 replaces A1 under another ticket, salt t2, so A1's slot and claim are recorded for epoch 2, and A3, back under t1, is ErrClaimExpired before FP-12."
+  },
+  {
+   "name": "without binding, a replacement under the same claim is recorded",
+   "profile": "claim-gated",
+   "config": {
+    "frame": {
+     "binding": false
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "pool"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "pool"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A1",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ],
+       "max_fee": 110,
+       "tip": 11
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A2",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ],
+       "max_fee": 121,
+       "tip": 13
+      }
+     ],
+     "expect": [
+      "ErrClaimExpired"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A1"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "Without binding a claim is not bound to its transaction, so a replacement under the same claim may be anyone's copy, and CG-6 counts it as a removal, as before version 8: A1 replaces A, A's slot and claim are recorded, and A2 is ErrClaimExpired."
+  }
+ ]
+}

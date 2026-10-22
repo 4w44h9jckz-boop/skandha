@@ -1,0 +1,44 @@
+{
+  "clause": "NP-18",
+  "document": "01-nonce-pool.md",
+  "version": 1,
+  "operation": "pool",
+  "distinguishes": "Lifetime eviction runs on a fixed minute grid, uses a strict comparison against lifetime, and measures from the last heartbeat, which promotion refreshes.",
+  "cases": [
+    {
+      "name": "a queued sender is evicted at the first pass strictly more than three hours after its heartbeat",
+      "state": {"alice": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a2", "sender": "alice", "nonce": 2}], "now": 0, "expect": ["ok"]},
+        {"tick": 10800},
+        {"expect_pool": {"queued": {"alice": ["a2"]}}},
+        {"tick": 10859},
+        {"expect_pool": {"queued": {"alice": ["a2"]}}},
+        {"tick": 10860},
+        {"expect_pool": {}}
+      ]
+    },
+    {
+      "name": "promoting another transaction of the sender refreshes the heartbeat",
+      "state": {"alice": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a2", "sender": "alice", "nonce": 2}], "now": 0, "expect": ["ok"]},
+        {"add": [{"label": "a0", "sender": "alice", "nonce": 0}], "now": 5000, "expect": ["ok"]},
+        {"tick": 15780},
+        {"expect_pool": {"pending": {"alice": ["a0"]}, "queued": {"alice": ["a2"]}}},
+        {"tick": 15840},
+        {"expect_pool": {"pending": {"alice": ["a0"]}}}
+      ]
+    },
+    {
+      "name": "passes that fell due before an operation run before it",
+      "state": {"alice": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a2", "sender": "alice", "nonce": 2}], "now": 0, "expect": ["ok"]},
+        {"add": [{"label": "a0", "sender": "alice", "nonce": 0}], "now": 20000, "expect": ["ok"]},
+        {"expect_pool": {"pending": {"alice": ["a0"]}}}
+      ],
+      "derivation": "The pass at 10860 evicts a2 before a0 arrives at 20000, so a0's promotion has no queue to refresh."
+    }
+  ]
+}

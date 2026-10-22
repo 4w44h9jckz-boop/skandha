@@ -8,7 +8,10 @@ import { INodeAPI } from "@skandha/types/lib/node";
 import { Executor } from "@skandha/executor/lib/executor.js";
 import logger from "@skandha/api/lib/logger.js";
 import { BundlingMode } from "@skandha/types/lib/api/interfaces";
-import { createMetrics, getHttpMetricsServer } from "@skandha/monitoring/lib/index.js";
+import {
+  createMetrics,
+  getHttpMetricsServer,
+} from "@skandha/monitoring/lib/index.js";
 import { MetricsOptions } from "@skandha/types/lib/options/metrics";
 import { GetNodeAPI } from "@skandha/executor/lib/interfaces";
 import { SkandhaVersion } from "@skandha/types/lib/executor";
@@ -16,8 +19,10 @@ import { Network } from "./network/network.js";
 import { SyncService } from "./sync/index.js";
 import { IBundlerNodeOptions } from "./options/index.js";
 import { getApi } from "./api/index.js";
+import { FrameService, FrameServiceOptions } from "./frames/service.js";
 
 export * from "./options/index.js";
+export * from "./frames/service.js";
 
 export enum BundlerNodeStatus {
   started = "started",
@@ -46,6 +51,7 @@ export interface BundlerNodeInitOptions {
   metricsOptions: MetricsOptions;
   version: SkandhaVersion;
   retainPeerId?: boolean;
+  frames?: FrameServiceOptions; // exp-mempool-l2s `docs/spec/11-surface.md`
 }
 
 export class BundlerNode {
@@ -54,6 +60,7 @@ export class BundlerNode {
   status: BundlerNodeStatus;
   network: Network;
   syncService: SyncService;
+  frames?: FrameService;
 
   constructor(opts: BundlerNodeOptions) {
     this.status = BundlerNodeStatus.started;
@@ -74,6 +81,7 @@ export class BundlerNode {
       metricsOptions,
       version,
       retainPeerId,
+      frames: frameOptions,
     } = opts;
     let { peerId } = opts;
 
@@ -152,15 +160,19 @@ export class BundlerNode {
         )
       : null;
 
+    const frames =
+      frameOptions !== undefined ? new FrameService(frameOptions) : undefined;
+
     const bundler = new ApiApp({
       server,
       config: relayersConfig,
       testingMode,
       redirectRpc,
       executor,
+      frames,
     });
 
-    return new BundlerNode({
+    const node = new BundlerNode({
       network,
       server,
       bundler,
@@ -168,10 +180,16 @@ export class BundlerNode {
       executor,
       syncService,
     });
+    node.frames = frames;
+    return node;
   }
 
   async start(): Promise<void> {
     await this.network.start();
+    if (this.frames !== undefined) {
+      await this.frames.start();
+      this.network.enableFrames(this.frames);
+    }
     await this.server.listen();
   }
 

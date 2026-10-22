@@ -1,0 +1,59 @@
+{
+  "clause": "FP-3",
+  "document": "02-frame-pool.md",
+  "version": 8,
+  "also": ["FP-2"],
+  "operation": "pool",
+  "distinguishes": "The statically checkable constraints of EIP-8141 and the fee and gas checks that follow them, each in isolation.",
+  "cases": [
+    {"name": "FP-2: a duplicate", "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [
+       {"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrAlreadyKnown"]}]},
+    {"name": "no frames", "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": []}], "expect": ["ErrFrameMalformed"]}]},
+    {"name": "value on a VERIFY frame", "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "value": 1}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFrameMalformed"]}]},
+    {"name": "reserved flag bit", "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 11, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFrameMalformed"]}]},
+    {"name": "execution approval aimed at another account", "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "target": "bob", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFrameMalformed"]}]},
+    {"name": "atomic batch flag on the last frame", "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "flags": 4, "exec_gas": 50000}]}], "expect": ["ErrFrameMalformed"]}]},
+    {"name": "an approval scope inside an atomic batch", "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "flags": 4, "exec_gas": 50000}, {"mode": 0, "flags": 1, "exec_gas": 1000}]}], "expect": ["ErrFrameMalformed"]}]},
+    {"name": "an expiry frame with a flag, and one with 7 bytes of data", "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [{"add": [
+       {"label": "f1", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 2000}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "f2", "type": 6, "sender": "bob", "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 7, "deadline": 2000}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ErrFrameMalformed", "ErrFrameMalformed"]}]},
+    {"name": "two expiry frames", "state": {"alice": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [
+       {"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 2000},
+       {"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 3000},
+       {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFrameMalformed"]}]},
+    {"name": "nonce keys out of order", "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "nonce_keys": [5, 3], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFrameMalformed"]}]},
+    {"name": "sixteen nonce keys, and seventeen", "state": {"alice": {"balance": 100000000, "nonce_seqs": {"1": 1, "2": 1, "3": 1, "4": 1, "5": 1, "6": 1, "7": 1, "8": 1, "9": 1, "10": 1, "11": 1, "12": 1, "13": 1, "14": 1, "15": 1, "16": 1}}, "bob": {"balance": 100000000, "nonce_seqs": {"1": 1, "2": 1, "3": 1, "4": 1, "5": 1, "6": 1, "7": 1, "8": 1, "9": 1, "10": 1, "11": 1, "12": 1, "13": 1, "14": 1, "15": 1, "16": 1, "17": 1}}},
+     "steps": [{"add": [
+       {"label": "sixteen", "type": 6, "sender": "alice", "nonce_keys": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "nonce_seq": 1, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "seventeen", "type": 6, "sender": "bob", "nonce_keys": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], "nonce_seq": 1, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFrameMalformed"]}],
+     "derivation": "EIP-8250's MAX_NONCE_KEYS is 16 (version 8). Every key has been used once, so the sequence is 1 and no key is used for the first time."},
+    {"name": "key 0 beside another key", "state": {"alice": {"nonce": 1, "balance": 100000000, "nonce_seqs": {"7": 1}}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "nonce_keys": [0, 7], "nonce_seq": 1, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFrameMalformed"]}],
+     "derivation": "EIP-8250 rejects a key set that holds 0 and is not [0] (version 8); the account nonce and key 7 are both at 1, so only FP-3 refuses it."},
+    {"name": "execution gas above the EIP-7825 cap", "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 17000000}]}], "expect": ["ErrGasLimitTooHigh"]}]},
+    {"name": "an invalid signature", "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1", "valid": false}], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrInvalidSender"]}]},
+    {"name": "tip above fee cap, and a zero tip", "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [{"add": [
+       {"label": "f1", "type": 6, "sender": "alice", "tip": 101, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "f2", "type": 6, "sender": "bob", "tip": 0, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ErrTipAboveFeeCap", "ErrTxGasPriceTooLow"]}]},
+    {"name": "max_gas above the head's gas limit", "head": {"gas_limit": 90000, "gas_used": 45000}, "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrGasLimit"]}]}
+  ]
+}

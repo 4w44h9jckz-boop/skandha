@@ -1,0 +1,48 @@
+{
+  "clause": "NP-16",
+  "document": "01-nonce-pool.md",
+  "version": 1,
+  "also": ["NP-15"],
+  "operation": "pool",
+  "distinguishes": "Pending truncation equalises the largest senders down towards account_slots and never below it, lowering their pending nonce so a dropped nonce can be re-admitted and is truncated again; queue truncation drops the oldest heartbeats first, whole senders before partial ones.",
+  "cases": [
+    {
+      "name": "pending: the largest sender is cut to the next largest, then both to account_slots",
+      "config": {"nonce": {"account_slots": 2, "global_slots": 4}},
+      "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+      "steps": [
+        {"add": [
+          {"label": "a0", "sender": "alice", "nonce": 0}, {"label": "a1", "sender": "alice", "nonce": 1}, {"label": "a2", "sender": "alice", "nonce": 2}, {"label": "a3", "sender": "alice", "nonce": 3}, {"label": "a4", "sender": "alice", "nonce": 4},
+          {"label": "b0", "sender": "bob", "nonce": 0}, {"label": "b1", "sender": "bob", "nonce": 1}, {"label": "b2", "sender": "bob", "nonce": 2},
+          {"label": "c0", "sender": "carol", "nonce": 0}
+        ], "expect": ["ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok"]},
+        {"expect_pool": {"pending": {"alice": ["a0", "a1"], "bob": ["b0", "b1"], "carol": ["c0"]}}},
+        {"add": [{"label": "a2", "sender": "alice", "nonce": 2}], "expect": ["ok"]},
+        {"expect_pool": {"pending": {"alice": ["a0", "a1"], "bob": ["b0", "b1"], "carol": ["c0"]}}}
+      ],
+      "derivation": "9 pending > 4. Offenders alice (5), bob (3). Equalise alice to 3 (pending 7), then cut both while bob > 2: alice to 2, bob to 2 (pending 5), and stop at account_slots. Re-adding a2: pending nonce of alice is 2, so it is promoted, alice has 3 > 2, and it is cut again."
+    },
+    {
+      "name": "queue: the oldest sender goes whole when it fits the overflow",
+      "config": {"nonce": {"global_queue": 3}},
+      "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a2", "sender": "alice", "nonce": 2}, {"label": "a3", "sender": "alice", "nonce": 3}], "now": 0, "expect": ["ok", "ok"]},
+        {"add": [{"label": "b5", "sender": "bob", "nonce": 5}], "now": 10, "expect": ["ok"]},
+        {"add": [{"label": "c3", "sender": "carol", "nonce": 3}, {"label": "c4", "sender": "carol", "nonce": 4}], "now": 20, "expect": ["ok", "ok"]},
+        {"expect_pool": {"queued": {"bob": ["b5"], "carol": ["c3", "c4"]}}}
+      ]
+    },
+    {
+      "name": "queue: otherwise the oldest sender loses its highest nonces",
+      "config": {"nonce": {"global_queue": 4}},
+      "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a2", "sender": "alice", "nonce": 2}, {"label": "a3", "sender": "alice", "nonce": 3}], "now": 0, "expect": ["ok", "ok"]},
+        {"add": [{"label": "b5", "sender": "bob", "nonce": 5}], "now": 10, "expect": ["ok"]},
+        {"add": [{"label": "c3", "sender": "carol", "nonce": 3}, {"label": "c4", "sender": "carol", "nonce": 4}], "now": 20, "expect": ["ok", "ok"]},
+        {"expect_pool": {"queued": {"alice": ["a2"], "bob": ["b5"], "carol": ["c3", "c4"]}}}
+      ]
+    }
+  ]
+}

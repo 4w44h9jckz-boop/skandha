@@ -1,0 +1,4 @@
+{"t":"2026-10-20T03:41:28.893Z","node":"A","event":"start","profile":"hegota-testnet","head":478395,"handoff":false}
+{"t":"2026-10-20T03:41:44.495Z","node":"A","event":"rpc","hash":"0xd9d959ffa3f7a952c681bb59a1738730b608d971b6e866d038443ec839a0851a","result":"ok","client":"valid","head":478398}
+{"t":"2026-10-20T03:41:44.497Z","node":"A","event":"relay","hash":"0xd9d959ffa3f7a952c681bb59a1738730b608d971b6e866d038443ec839a0851a","peers":1}
+{"t":"2026-10-20T03:41:50.161Z","node":"A","event":"head","head":478399,"asked":[],"verdicts":{},"resimulated":[],"removed":["0xd9d959ffa3f7a952c681bb59a1738730b608d971b6e866d038443ec839a0851a"],"pending":[]}

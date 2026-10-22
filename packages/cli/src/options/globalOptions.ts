@@ -13,6 +13,10 @@ import {
   IMetricsArgs,
   options as metricsOptions,
 } from "./bundlerOptions/metrics.js";
+import {
+  IFramesArgs,
+  options as framesOptions,
+} from "./bundlerOptions/frames.js";
 
 const __dirname = process.cwd();
 
@@ -23,7 +27,6 @@ interface IGlobalSingleArgs {
   unsafeMode: boolean;
   redirectRpc: boolean;
 }
-
 
 const globalSingleOptions: ICliCommandOptions<IGlobalSingleArgs> = {
   configFile: {
@@ -56,7 +59,8 @@ const globalSingleOptions: ICliCommandOptions<IGlobalSingleArgs> = {
 export type IGlobalArgs = IGlobalSingleArgs &
   IApiArgs &
   INetworkArgs &
-  IExecutorArgs;
+  IExecutorArgs &
+  IFramesArgs;
 
 export const globalOptions = {
   ...globalSingleOptions,
@@ -64,6 +68,7 @@ export const globalOptions = {
   ...networkOptions,
   ...executorOptions,
   ...metricsOptions,
+  ...framesOptions,
 };
 
 export type IStandaloneGlobalArgs = IGlobalSingleArgs &

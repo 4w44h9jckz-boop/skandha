@@ -1,0 +1,159 @@
+{
+  "clause": "BB-5",
+  "document": "03-block-building.md",
+  "version": 4,
+  "operation": "pool",
+  "distinguishes": "The state a block leaves behind: who pays what at the effective price, what the coinbase earns, what a set code transaction does to its authorities and which of its authorizations it skips, a frame transaction whose prefix stops approving inside the block, and a transaction that pulls from accounts that signed for it: what it moves when every pull is covered, that one uncovered pull or pay reverts all of it at the gas it declares while the nonce, the fee and the authorizations stay, that an earlier transaction in the block can uncover a pull and a later one find the unit gone, and that a pull is skipped instead when the transaction is not atomic.",
+  "cases": [
+    {"name": "a value transfer at price 20",
+     "state": {"alice": {"balance": 10000000}},
+     "steps": [
+       {"add": [{"label": "a0", "sender": "alice", "to": "bob", "value": 1000}], "expect": ["ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["a0"]},
+       {"expect_state": {"alice": {"nonce": 1, "balance": 9579000}, "bob": {"balance": 1000}, "cb": {"balance": 210000}}}
+     ],
+     "derivation": "price = 10 + min(10, 100 - 10) = 20. alice pays 21000 * 20 + 1000; the coinbase gets 21000 * 10."},
+    {"name": "a set code transaction delegates its authority and bumps its nonce",
+     "state": {"alice": {"balance": 10000000}, "bob": {"balance": 10000000}},
+     "steps": [
+       {"add": [{"label": "b0", "sender": "bob", "type": 4, "gas": 46000, "authorities": ["alice"], "delegate": "impl"}], "expect": ["ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["b0"]},
+       {"expect_state": {"alice": {"nonce": 1, "code": "0xef0100impl", "balance": 10000000}, "bob": {"nonce": 1, "balance": 9080000}}}
+     ]},
+    {"name": "an authorization whose nonce its authority has used by then is skipped, and the transaction still applies",
+     "state": {"alice": {"balance": 10000000}, "bob": {"balance": 10000000}},
+     "steps": [
+       {"add": [{"label": "a0", "sender": "alice", "nonce": 0, "tip": 50},
+                {"label": "b0", "sender": "bob", "type": 4, "gas": 46000, "authorities": [["alice", 0]], "delegate": "impl"}], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["a0", "b0"]},
+       {"expect_state": {"alice": {"nonce": 1, "code": ""}, "bob": {"nonce": 1, "balance": 9080000}}}
+     ],
+     "derivation": "BB-2 takes a0 first, at tip 50 against 10, so alice's nonce is 1 when b0's tuple for nonce 0 is processed: EIP-7702 step 6 fails, the tuple is skipped, and bob still pays 46000 * 20."},
+    {"name": "the same authorization ahead of its authority's own transaction delegates it, and that transaction is then too low",
+     "state": {"alice": {"balance": 10000000}, "bob": {"balance": 10000000}},
+     "steps": [
+       {"add": [{"label": "a0", "sender": "alice", "nonce": 0, "tip": 10},
+                {"label": "b0", "sender": "bob", "type": 4, "gas": 46000, "tip": 50, "authorities": [["alice", 0]], "delegate": "impl"}], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["b0"]},
+       {"expect_state": {"alice": {"nonce": 1, "code": "0xef0100impl", "balance": 10000000}}}
+     ],
+     "derivation": "b0 goes first and its tuple matches alice's nonce 0, so alice is delegated at nonce 1; a0 then fails with ErrNonceTooLow (BB-3) and alice pays nothing."},
+    {"name": "a sender that authorizes itself signs for the nonce after its transaction's",
+     "state": {"alice": {"balance": 10000000}, "carol": {"balance": 10000000}},
+     "steps": [
+       {"add": [{"label": "a0", "sender": "alice", "type": 4, "gas": 46000, "authorities": [["alice", 1]], "delegate": "impl"},
+                {"label": "c0", "sender": "carol", "type": 4, "gas": 46000, "authorities": [["carol", 0]], "delegate": "impl"}], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["a0", "c0"]},
+       {"expect_state": {"alice": {"nonce": 2, "code": "0xef0100impl", "balance": 9080000}, "carol": {"nonce": 1, "code": "", "balance": 9080000}}}
+     ],
+     "derivation": "The list is processed after the sender's nonce is incremented: alice's tuple for 1 matches and moves her to 2; carol's tuple for 0 meets nonce 1 and is skipped. Each pays 46000 * 20."},
+    {"name": "an authority whose code is a contract's is skipped",
+     "state": {"bob": {"balance": 10000000}, "carol": {"code": "account-v1"}, "dave": {"code": "0xef0100old"}},
+     "steps": [
+       {"add": [{"label": "b0", "sender": "bob", "type": 4, "gas": 71000, "authorities": ["carol", "dave"], "delegate": "impl"}], "expect": ["ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["b0"]},
+       {"expect_state": {"carol": {"nonce": 0, "code": "account-v1"}, "dave": {"nonce": 1, "code": "0xef0100impl"}, "bob": {"nonce": 1, "balance": 8580000}}}
+     ],
+     "derivation": "EIP-7702 step 5: carol's code is neither empty nor a delegation indicator, so her tuple is skipped; dave's is a delegation indicator, so it is replaced. Intrinsic gas 21000 + 2 * 25000 = 71000, at price 20."},
+    {"name": "a sponsor pays for a frame transaction",
+     "state": {"alice": {"balance": 1000}, "sponsor": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "f", "type": 6, "sender": "alice", "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["f"]},
+       {"expect_state": {"alice": {"nonce": 1, "balance": 1000}, "sponsor": {"balance": 97370540}, "cb": {"balance": 1314730}}}
+     ],
+     "derivation": "D = 65 + 85 + 3 nonce bytes = 153, so max_gas = 12000 + 3*475 + 16*153 + 2*2800 + 110000 = 131473 (00-model.md version 2); gas_used defaults to it; the sponsor pays 131473 * 20, the coinbase earns 131473 * 10."},
+    {"name": "an earlier transaction in the block changes the slot a prefix reads",
+     "state": {"alice": {"balance": 100000000, "code": "account-v1", "storage": {"1": 42}}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [
+         {"label": "fa", "type": 6, "sender": "alice", "tip": 10, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["alice", 1, 42]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b0", "sender": "bob", "tip": 50, "writes": [["alice", 1, 43]]}
+       ], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["b0"]},
+       {"expect_resimulated": ["fa"]},
+       {"expect_pool": {}},
+       {"expect_state": {"alice": {"nonce": 0}}}
+     ]},
+    {"name": "a round whose every input can pay moves each unit to its output",
+     "state": {"pub": {"balance": 100000000}, "i1": {"balance": 1000000}, "i2": {"balance": 1000000}},
+     "steps": [
+       {"add": [{"label": "r0", "sender": "pub", "to": "round", "gas": 100000,
+                 "pulls": [["i1", 1000000], ["i2", 1000000]], "pays": [["o1", 1000000], ["o2", 1000000]]}], "expect": ["ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["r0"], "expect_gas_used": 100000},
+       {"expect_state": {"pub": {"nonce": 1, "balance": 98000000}, "i1": {"balance": 0}, "i2": {"balance": 0},
+                         "o1": {"balance": 1000000}, "o2": {"balance": 1000000}, "round": {"balance": 0}, "cb": {"balance": 1000000}}}
+     ],
+     "derivation": "Price 20. Each pull moves 1000000 to round, and each pay moves it on, so round ends empty. pub pays 100000 * 20 = 2000000; the coinbase gets 100000 * 10."},
+    {"name": "an input that cannot cover its pull reverts the round, its value and writes too, and the sender pays the gas it declares",
+     "state": {"pub": {"balance": 100000000}, "i1": {"balance": 1000000}, "i2": {"balance": 999999}},
+     "steps": [
+       {"add": [{"label": "r0", "sender": "pub", "to": "round", "gas": 100000, "revert_gas_used": 70000, "value": 5000,
+                 "writes": [["round", 1, 7]],
+                 "pulls": [["i1", 1000000], ["i2", 1000000]], "pays": [["o1", 1000000], ["o2", 1000000]]}], "expect": ["ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["r0"], "expect_gas_used": 70000},
+       {"expect_state": {"pub": {"nonce": 1, "balance": 98600000}, "i1": {"balance": 1000000}, "i2": {"balance": 999999},
+                         "o1": {"balance": 0}, "round": {"balance": 0, "storage": {}}, "cb": {"balance": 700000}}}
+     ],
+     "derivation": "i2 holds 1 wei less than its pull, so the execution reverts: no value, no pull, no pay, no write. The transaction is still in the block, the nonce rises, and pub pays 70000 * 20 = 1400000; the coinbase gets 70000 * 10. The block's gas used is 70000."},
+    {"name": "a spend earlier in the block takes an input's unit, and the round reverts",
+     "state": {"pub": {"balance": 100000000}, "i1": {"balance": 5000000}, "i2": {"balance": 1000000}},
+     "steps": [
+       {"add": [{"label": "g0", "sender": "i1", "to": "fresh", "value": 3500000, "max_fee": 60, "tip": 50},
+                {"label": "r0", "sender": "pub", "to": "round", "gas": 100000, "revert_gas_used": 70000,
+                 "pulls": [["i1", 1000000], ["i2", 1000000]], "pays": [["o1", 1000000], ["o2", 1000000]]}], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["g0", "r0"], "expect_gas_used": 91000},
+       {"expect_state": {"i1": {"nonce": 1, "balance": 240000}, "fresh": {"balance": 3500000}, "pub": {"nonce": 1, "balance": 98600000},
+                         "i2": {"balance": 1000000}, "o1": {"balance": 0}, "cb": {"balance": 1750000}}}
+     ],
+     "derivation": "g0 tips 50 against r0's 10, so it goes first (BB-2) at price 10 + min(50, 60 - 10) = 60: i1 keeps 5000000 - 21000 * 60 - 3500000 = 240000, below its pull of 1000000, so r0 reverts at 70000 gas: pub pays 70000 * 20. The coinbase gets 21000 * 50 + 70000 * 10 = 1750000."},
+    {"name": "the round first, and the spend that follows finds the unit gone",
+     "state": {"pub": {"balance": 100000000}, "i1": {"balance": 5000000}, "i2": {"balance": 1000000}},
+     "steps": [
+       {"add": [{"label": "g0", "sender": "i1", "to": "fresh", "value": 3500000, "max_fee": 60, "tip": 5},
+                {"label": "r0", "sender": "pub", "to": "round", "gas": 100000, "revert_gas_used": 70000,
+                 "pulls": [["i1", 1000000], ["i2", 1000000]], "pays": [["o1", 1000000], ["o2", 1000000]]}], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["r0"], "expect_failed": [["g0", "ErrInsufficientFunds"]]},
+       {"expect_state": {"pub": {"nonce": 1, "balance": 98000000}, "i1": {"nonce": 0, "balance": 4000000}, "i2": {"balance": 0},
+                         "o1": {"balance": 1000000}, "o2": {"balance": 1000000}, "fresh": {"balance": 0}}}
+     ],
+     "derivation": "r0 tips 10 against g0's 5, so it goes first and pulls both units. i1 then holds 4000000, below g0's cost of 21000 * 60 + 3500000 = 4760000, so g0 fails with ErrInsufficientFunds and is not in the block."},
+    {"name": "a pull that names an account twice draws on what its first pull left",
+     "state": {"pub": {"balance": 100000000}, "i1": {"balance": 1500000}},
+     "steps": [
+       {"add": [{"label": "r0", "sender": "pub", "to": "round", "gas": 100000, "revert_gas_used": 60000,
+                 "pulls": [["i1", 1000000], ["i1", 1000000]], "pays": [["o1", 1000000], ["o2", 1000000]]}], "expect": ["ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["r0"], "expect_gas_used": 60000},
+       {"expect_state": {"pub": {"nonce": 1, "balance": 98800000}, "i1": {"balance": 1500000}, "o1": {"balance": 0}}}
+     ],
+     "derivation": "The first pull leaves i1 500000, which does not cover the second, so the round reverts at 60000 gas and i1 keeps 1500000."},
+    {"name": "with atomic false, a pull its account cannot cover is skipped and the rest apply",
+     "state": {"pub": {"balance": 100000000}, "i1": {"balance": 1000000}, "i2": {"balance": 999999}},
+     "steps": [
+       {"add": [{"label": "l0", "sender": "pub", "to": "escrow", "gas": 100000, "revert_gas_used": 70000, "atomic": false,
+                 "pulls": [["i1", 1000000], ["i2", 1000000]]}], "expect": ["ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["l0"], "expect_gas_used": 100000},
+       {"expect_state": {"pub": {"nonce": 1, "balance": 98000000}, "i1": {"balance": 0}, "i2": {"balance": 999999},
+                         "escrow": {"balance": 1000000}, "cb": {"balance": 1000000}}}
+     ],
+     "derivation": "A lock: i2's pull is skipped as an EIP-7702 tuple is, i1's moves to escrow, and nothing reverts, so pub pays the gas_used, 100000 * 20."},
+    {"name": "a pay its recipient cannot cover reverts, at gas_used when no revert gas is declared",
+     "state": {"pub": {"balance": 100000000}, "escrow": {"balance": 1000000}},
+     "steps": [
+       {"add": [{"label": "s0", "sender": "pub", "to": "escrow", "gas": 50000,
+                 "pays": [["o1", 1000000], ["o2", 1000000]]}], "expect": ["ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["s0"], "expect_gas_used": 50000},
+       {"expect_state": {"pub": {"nonce": 1, "balance": 99000000}, "escrow": {"balance": 1000000}, "o1": {"balance": 0}, "cb": {"balance": 500000}}}
+     ],
+     "derivation": "The first pay empties escrow and the second finds nothing, so s0 reverts, o1's pay with it. revert_gas_used defaults to gas_used, 50000: pub pays 50000 * 20."},
+    {"name": "a set code transaction that reverts keeps its authorizations",
+     "state": {"alice": {"balance": 10000000}, "bob": {"balance": 10000000}},
+     "steps": [
+       {"add": [{"label": "b0", "sender": "bob", "type": 4, "gas": 46000, "authorities": ["alice"], "delegate": "impl",
+                 "to": "round", "pulls": [["carol", 1000]]}], "expect": ["ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["b0"]},
+       {"expect_state": {"alice": {"nonce": 1, "code": "0xef0100impl"}, "bob": {"nonce": 1, "balance": 9080000}, "round": {"balance": 0}}}
+     ],
+     "derivation": "carol holds nothing, so the execution reverts; the authorization was processed before it and stays, as the sender's nonce does. bob pays 46000 * 20."}
+  ]
+}

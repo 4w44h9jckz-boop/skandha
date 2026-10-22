@@ -59,6 +59,7 @@
     "@skandha/api": "^4.0.2",
     "@skandha/db": "^4.0.2",
     "@skandha/executor": "^4.0.2",
+    "@skandha/framepool": "^4.0.2",
     "@skandha/monitoring": "^4.0.2",
     "@skandha/params": "^4.0.2",
     "@skandha/types": "^4.0.2",

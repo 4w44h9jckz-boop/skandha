@@ -1,0 +1,1154 @@
+{
+ "clause": "AG-10",
+ "document": "05-aggregation.md",
+ "version": 4,
+ "also": [
+  "AG-7",
+  "AG-9"
+ ],
+ "operation": "pool",
+ "distinguishes": "What an aggregate's memory is and what a node lists under a memory budget: the same inputs and triples as AG-9's proving time, at their own costs, a recursive STARK taken as an input counting once however many of its transactions are kept; a transaction that would take the aggregate over the budget is passed over; it is added only if every bound that is set holds; and memory never changes which input covers a triple. The linear count and the budget per aggregate are an Interpretation (decision record 0042).",
+ "cases": [
+  {
+   "name": "without a memory budget everything is listed, and the memory is still counted",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "memory_base": 300,
+     "memory_recursive": 1200,
+     "memory_sig": 40,
+     "memory_stark": 1000
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-b",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-c",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "A",
+      "B",
+      "C"
+     ],
+     "expect_memory": 3300
+    }
+   ],
+   "derivation": "memory_base 300 and three leanSTARK triples verified directly at 1000 each."
+  },
+  {
+   "name": "under a memory budget, by tip until one does not fit",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "memory_base": 300,
+     "memory_recursive": 1200,
+     "memory_sig": 40,
+     "memory_stark": 1000,
+     "memory_budget": 2300
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-b",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "tip": 20,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-c",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "C",
+      "A"
+     ],
+     "expect_memory": 2300
+    }
+   ],
+   "derivation": "C at tip 20 first, 300 + 1000 = 1300; A, admitted before B, makes 2300; B would make 3300."
+  },
+  {
+   "name": "a transaction that does not fit is passed over and a cheaper one after it is listed",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "memory_base": 300,
+     "memory_recursive": 1200,
+     "memory_sig": 40,
+     "memory_stark": 1000,
+     "memory_budget": 1500
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "tip": 20,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-c",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "msg-b",
+            "pk-b"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "C",
+      "B"
+     ],
+     "expect_memory": 1340
+    }
+   ],
+   "derivation": "C makes 1300; A would make 2300, over 1500; B's leanSPHINCS triple makes 1340."
+  },
+  {
+   "name": "a memory budget below one transaction lists nothing",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "memory_base": 300,
+     "memory_recursive": 1200,
+     "memory_sig": 40,
+     "memory_stark": 1000,
+     "memory_budget": 1200
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": null
+    }
+   ],
+   "derivation": "300 + 1000 = 1300, over 1200, and an aggregate that lists nothing is not sent."
+  },
+  {
+   "name": "a received aggregate costs one input however many transactions it carries",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "memory_base": 300,
+     "memory_recursive": 1200,
+     "memory_sig": 40,
+     "memory_stark": 1000,
+     "memory_budget": 1500
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 1,
+      "from": "peer-1",
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       },
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-b",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       },
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-c",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok",
+      "ok",
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "A",
+      "B",
+      "C"
+     ],
+     "expect_memory": 1500
+    }
+   ],
+   "derivation": "One recursive input, 300 + 1200 = 1500, within 1500."
+  },
+  {
+   "name": "the previous aggregate is one input for everything it listed",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "memory_base": 300,
+     "memory_recursive": 1200,
+     "memory_sig": 40,
+     "memory_stark": 1000,
+     "memory_budget": 2500
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "tip": 20,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-c",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "C",
+      "A"
+     ],
+     "expect_memory": 2300
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-b",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "C",
+      "A",
+      "B"
+     ],
+     "expect_hashed": [
+      "C",
+      "A"
+     ],
+     "expect_memory": 2500
+    }
+   ],
+   "derivation": "The first aggregate verifies C's and A's triples, 300 + 2000. The second takes it as an input, 300 + 1200, and verifies B's triple, 1000, which makes 2500, within 2500; verified directly the three would make 3300."
+  },
+  {
+   "name": "memory binds where proving time does not",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "memory_base": 300,
+     "memory_recursive": 1200,
+     "memory_sig": 40,
+     "memory_stark": 1000,
+     "prove_base": 100,
+     "prove_recursive": 300,
+     "prove_sig": 10,
+     "prove_stark": 200,
+     "proving_budget": 500,
+     "memory_budget": 1400
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "tip": 20,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-c",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "msg-b",
+            "pk-b"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "C",
+      "B"
+     ],
+     "expect_time": 310,
+     "expect_memory": 1340
+    }
+   ],
+   "derivation": "C takes 300 ms and 1300 MiB. A would take 500 ms, within 500, but 2300 MiB, over 1400, so it is passed over. B takes 310 ms and 1340 MiB."
+  },
+  {
+   "name": "proving time binds where memory does not",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "memory_base": 300,
+     "memory_recursive": 1200,
+     "memory_sig": 40,
+     "memory_stark": 1000,
+     "prove_base": 100,
+     "prove_recursive": 300,
+     "prove_sig": 10,
+     "prove_stark": 200,
+     "proving_budget": 450,
+     "memory_budget": 2300
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "C",
+        "type": 6,
+        "sender": "carol",
+        "tip": 20,
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-c",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "msg-b",
+            "pk-b"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "C",
+      "B"
+     ],
+     "expect_time": 310,
+     "expect_memory": 1340
+    }
+   ],
+   "derivation": "C takes 300 ms and 1300 MiB. A would take 2300 MiB, within 2300, but 500 ms, over 450, so it is passed over. B takes 310 ms and 1340 MiB."
+  },
+  {
+   "name": "memory leaves the cover to AG-9: a transaction passed over in step 2 is listed in step 3 by its direct proof",
+   "profile": "eip-8288",
+   "config": {
+    "frame": {
+     "cap_aggregates": false,
+     "memory_base": 300,
+     "memory_recursive": 1200,
+     "memory_sig": 40,
+     "memory_stark": 1000,
+     "memory_budget": 1400
+    }
+   },
+   "state": {
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "D",
+        "type": 6,
+        "sender": "dave",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-d",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 1,
+      "from": "peer-1",
+      "txs": [
+       {
+        "label": "D",
+        "type": 6,
+        "sender": "dave",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-d",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       },
+       {
+        "label": "E",
+        "type": 6,
+        "sender": "erin",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-e",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ErrAlreadyKnown",
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "D"
+     ],
+     "expect_memory": 1300
+    }
+   ],
+   "derivation": "In step 2 D and E are listed from the received aggregate, which covers them for 300 + 1200 = 1500, over 1400, so both are passed over. In step 3 D's triple is covered by its direct proof (AG-9, 3), 300 + 1000 = 1300; E's only by that aggregate (AG-9, 4), which would make 2500."
+  }
+ ]
+}

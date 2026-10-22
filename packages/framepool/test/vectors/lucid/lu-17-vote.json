@@ -1,0 +1,69 @@
+{
+  "clause": "LU-17",
+  "document": "06-lucid.md",
+  "version": 3,
+  "operation": "key_round",
+  "distinguishes": "A committee member's bit for a commitment is 1 exactly when a valid key message for it arrived by the deadline, the deadline itself included, and the member reads the ciphertext only of a commitment whose key it was sent in time.",
+  "cases": [
+    {"name": "every key in time",
+     "block": {"commitments": [
+       {"label": "a", "sender": "alice", "key_publisher": "kp1"},
+       {"label": "b", "sender": "bob", "key_publisher": "kp2"},
+       {"label": "c", "sender": "carol", "key_publisher": "kp1"}]},
+     "steps": [
+       {"release": {"publisher": "kp1"}, "expect": ["a", "c"]},
+       {"release": {"publisher": "kp2"}, "expect": ["b"]},
+       {"vote": {"deadline": 1000, "received": [["a", 100], ["b", 200], ["c", 300]]},
+        "expect": [1, 1, 1], "expect_read": ["a", "b", "c"]}
+     ]},
+    {"name": "a withheld key is a zero bit, and its ciphertext is not read",
+     "block": {"commitments": [
+       {"label": "a", "sender": "alice", "key_publisher": "kp1"},
+       {"label": "b", "sender": "bob", "key_publisher": "kp2"},
+       {"label": "c", "sender": "carol", "key_publisher": "kp1"}]},
+     "steps": [
+       {"release": {"publisher": "kp1"}, "expect": ["a", "c"]},
+       {"vote": {"deadline": 1000, "received": [["a", 100], ["c", 300]]},
+        "expect": [1, 0, 1], "expect_read": ["a", "c"]}
+     ]},
+    {"name": "the deadline is inclusive",
+     "block": {"commitments": [
+       {"label": "a", "sender": "alice", "key_publisher": "kp1"},
+       {"label": "b", "sender": "bob", "key_publisher": "kp1"}]},
+     "steps": [
+       {"release": {"publisher": "kp1"}, "expect": ["a", "b"]},
+       {"vote": {"deadline": 1000, "received": [["a", 1000], ["b", 1001]]},
+        "expect": [1, 0], "expect_read": ["a"]}
+     ]},
+    {"name": "a wrong key in time is a zero bit, and a right one after it still counts",
+     "block": {"commitments": [
+       {"label": "a", "k_dem": "0x1111111111111111111111111111111111111111111111111111111111111111"}]},
+     "steps": [
+       {"message": {"commit_index": 0, "k_dems": ["0x2222222222222222222222222222222222222222222222222222222222222222"]}, "as": "wrong", "expect": "key", "expect_read": false},
+       {"vote": {"deadline": 1000, "received": [["wrong", 100]]}, "expect": [0], "expect_read": []},
+       {"message": {"commit_index": 0}, "as": "right", "expect": "valid", "expect_read": true},
+       {"vote": {"deadline": 1000, "received": [["wrong", 100], ["right", 900]]}, "expect": [1], "expect_read": ["a"]}
+     ]},
+    {"name": "a key that does not decrypt is a zero bit, after its ciphertext is read",
+     "block": {"commitments": [
+       {"label": "a", "sender": "alice", "key_publisher": "kp1"},
+       {"label": "b", "sender": "bob", "key_publisher": "kp1", "decrypts": false}]},
+     "steps": [
+       {"release": {"publisher": "kp1"}, "expect": ["a", "b"]},
+       {"vote": {"deadline": 1000, "received": [["a", 100], ["b", 100]]},
+        "expect": [1, 0], "expect_read": ["a", "b"]}
+     ]},
+    {"name": "a message for another block or another chain sets nothing",
+     "block": {"root": "B", "slot": 7, "commitments": [{"label": "a"}]},
+     "steps": [
+       {"message": {"root": "C", "commit_index": 0}, "as": "other_block", "expect": "block", "expect_read": false},
+       {"message": {"chain_id": 2, "commit_index": 0}, "as": "other_chain", "expect": "chain", "expect_read": false},
+       {"vote": {"deadline": 1000, "received": [["other_block", 100], ["other_chain", 100]]}, "expect": [0], "expect_read": []}
+     ]},
+    {"name": "no commitments, an empty vote",
+     "block": {"commitments": []},
+     "steps": [
+       {"vote": {"deadline": 1000, "received": []}, "expect": [], "expect_read": []}
+     ]}
+  ]
+}

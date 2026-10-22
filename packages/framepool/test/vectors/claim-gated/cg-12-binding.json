@@ -1,0 +1,1123 @@
+{
+ "clause": "CG-12",
+ "document": "10-claim-gated-admission.md",
+ "version": 8,
+ "also": [
+  "CG-2",
+  "FP-6"
+ ],
+ "operation": "pool",
+ "distinguishes": "Under binding, a claim that is not bound is refused with ErrClaimUnbound after CG-2's first step and before its others, with a dependency or without; without binding, or under eip-8288, it is not read; and the binder's secp256k1 signature counts 2800 gas against max_verify_gas. A pool that checks the binding after validity or the slot, or not at all, fails here. A holder's re-pricing under the same bound ticket is admitted at each bump without a dependency, while the client's verdict accepts its max_cost (CG-6, version 8), and refused at once with one (CG-5); a claim whose epoch ends while it is pending stays pending.",
+ "cases": [
+  {
+   "name": "a bound claim",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1",
+         "binder": "b1"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "bound is true by default (MD-6), and the claim is for its own slot in the head's epoch (CG-2)."
+  },
+  {
+   "name": "a claim that is not bound",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1",
+         "binder": "b1",
+         "bound": false
+        }
+       }
+      ]
+     },
+     "expect": "ErrClaimUnbound"
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    }
+   ],
+   "derivation": "CG-12."
+  },
+  {
+   "name": "a claim with no binder, not bound",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1",
+         "binder": "",
+         "bound": false
+        }
+       }
+      ]
+     },
+     "expect": "ErrClaimUnbound"
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    }
+   ],
+   "derivation": "A claim with no binder is never bound: a version 5 ticket under version 6 (CG-12)."
+  },
+  {
+   "name": "not bound and not valid: unbound first",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1",
+         "binder": "b1",
+         "bound": false,
+         "valid": false
+        }
+       }
+      ]
+     },
+     "expect": "ErrClaimUnbound"
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    }
+   ],
+   "derivation": "CG-12 runs before CG-2's step 2, so a node refuses an unbound claim without the pairing."
+  },
+  {
+   "name": "not bound and for another slot: unbound first",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 1,
+         "epoch": 2,
+         "salt": "t1",
+         "binder": "b1",
+         "bound": false
+        }
+       }
+      ]
+     },
+     "expect": "ErrClaimUnbound"
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    }
+   ],
+   "derivation": "CG-12 runs before CG-2's step 3."
+  },
+  {
+   "name": "not bound and of another epoch: unbound first",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 3,
+         "salt": "t1",
+         "binder": "b1",
+         "bound": false
+        }
+       }
+      ]
+     },
+     "expect": "ErrClaimUnbound"
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    }
+   ],
+   "derivation": "CG-12 runs before CG-2's step 4."
+  },
+  {
+   "name": "a dependency and no claim: missing first",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           17,
+           "pub-a",
+           "vk-1"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 3
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrClaimMissing"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    }
+   ],
+   "derivation": "CG-2's step 1 comes before CG-12."
+  },
+  {
+   "name": "no dependency, a claim that is not bound",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1",
+        "bound": false
+       }
+      }
+     ],
+     "expect": [
+      "ErrClaimUnbound"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {}
+     }
+    }
+   ],
+   "derivation": "A claim a transaction carries is checked whether or not it needs one (CG-2)."
+  },
+  {
+   "name": "without binding, a claim that is not bound",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1",
+         "binder": "b1",
+         "bound": false
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "A profile with claims and without binding is version 5's admission (CG-1).",
+   "config": {
+    "frame": {
+     "binding": false
+    }
+   }
+  },
+  {
+   "name": "eip-8288 reads no claim, bound or not",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1",
+         "binder": "b1",
+         "bound": false,
+         "valid": false
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "eip-8288 has no claims (CG-1)."
+  },
+  {
+   "name": "the binder's signature counts against max_verify_gas",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "pool"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "pool"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 97200,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ]
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 97201,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "bob",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrFrameVerifyGas"
+     ]
+    }
+   ],
+   "derivation": "A secp256k1 signature costs 2800 of FEE-4's verification cost, which FP-6 adds to the prefix's execution gas: 97200 + 2800 = 100000 is max_verify_gas under claim-gated, and 97201 + 2800 is above it. FP-6 runs before CG-2. The senders have code, so their VERIFY frames approve without a signature of their own."
+  },
+  {
+   "name": "the holder re-prices at each bump, and not beyond the ticket's price",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "pool"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "pool"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A0",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ],
+       "max_fee": 105,
+       "tip": 10
+      }
+     ],
+     "expect": [
+      "ErrReplaceUnderpriced"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A1",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ],
+       "max_fee": 110,
+       "tip": 11
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A2",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ],
+       "max_fee": 121,
+       "tip": 13
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A3",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ],
+       "max_fee": 134,
+       "tip": 15
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A4",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ],
+       "max_fee": 148,
+       "tip": 17,
+       "verdict": "ErrFramePrefixReverted"
+      }
+     ],
+     "expect": [
+      "ErrFramePrefixReverted"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A3"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "No dependency, so no proof and no CG-5. Each re-pricing carries the same ticket, re-signed by the binder, so its claim is the same claim and bound (CG-2, CG-12). A0 raises neither fee by 10 percent: FP-12, ErrReplaceUnderpriced. A1, A2 and A3 each raise both fees by the bump over the one they replace (110 and 11, 121 and 13, 134 and 15), and under binding CG-6 records nothing when FP-12 replaces a transaction with one under the same claim (version 8), so each is admitted. A4 raises both again by the bump, but its max_cost is above the ticket's price: the bound template refuses it, and the client's verdict says so (MD-6's verdict, SF-4), ErrFramePrefixReverted; A3 stays pending."
+  },
+  {
+   "name": "with a dependency, the holder's re-pricing under the same ticket is refused",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1",
+         "binder": "b1"
+        }
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A1",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1",
+         "binder": "b1"
+        },
+        "max_fee": 110,
+        "tip": 11
+       }
+      ]
+     },
+     "expect": "ErrClaimUsed"
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "CG-5 (R4): a node verifies one proof under each claim, so a transaction with a dependency replaces only under a new ticket. The binding changes nothing here: A1 is bound."
+  },
+  {
+   "name": "a ticket whose epoch ends while its transaction is pending",
+   "profile": "claim-gated",
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "pool"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "pool"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "reset": {
+      "head": {
+       "timestamp": 1152
+      }
+     }
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A"
+       ]
+      }
+     }
+    },
+    {
+     "add": [
+      {
+       "label": "A1",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "signatures": [
+        {
+         "scheme": "secp256k1",
+         "signer": "b1"
+        }
+       ],
+       "max_fee": 110,
+       "tip": 11
+      }
+     ],
+     "expect": [
+      "ErrClaimEpoch"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "A is admitted in epoch 2. A head at timestamp 1152 is in epoch 3 (CG-1, 384 seconds), and CG-2 checks a claim when a transaction is admitted and not again (Interpretation, decision record 0037), so A stays pending; the bound template reads no epoch and would pay for it on chain. A re-pricing under the epoch-2 ticket is a new admission and is ErrClaimEpoch."
+  }
+ ]
+}

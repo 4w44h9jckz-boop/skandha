@@ -1,0 +1,65 @@
+{
+  "clause": "NP-5",
+  "document": "01-nonce-pool.md",
+  "version": 1,
+  "also": ["NP-4"],
+  "operation": "pool",
+  "distinguishes": "The balance rule counts pending transactions only, so queued transactions and the not-yet-promoted members of one batch can together over-commit a balance; a replacement is charged only its cost increase.",
+  "cases": [
+    {
+      "name": "NP-4: below the account nonce is refused, a gap is queued",
+      "state": {"alice": {"nonce": 5, "balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a4", "sender": "alice", "nonce": 4}, {"label": "a5", "sender": "alice", "nonce": 5}, {"label": "a7", "sender": "alice", "nonce": 7}], "expect": ["ErrNonceTooLow", "ok", "ok"]},
+        {"expect_pool": {"pending": {"alice": ["a5"]}, "queued": {"alice": ["a7"]}}}
+      ]
+    },
+    {
+      "name": "separate batches: the third transaction would overdraw the pending two",
+      "state": {"alice": {"balance": 5000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "alice", "nonce": 0}], "expect": ["ok"]},
+        {"add": [{"label": "a1", "sender": "alice", "nonce": 1}], "expect": ["ok"]},
+        {"add": [{"label": "a2", "sender": "alice", "nonce": 2}], "expect": ["ErrInsufficientFunds"]},
+        {"expect_pool": {"pending": {"alice": ["a0", "a1"]}}}
+      ]
+    },
+    {
+      "name": "one batch: nothing is pending while the batch is admitted, so all three pass and are promoted",
+      "state": {"alice": {"balance": 5000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "alice", "nonce": 0}, {"label": "a1", "sender": "alice", "nonce": 1}, {"label": "a2", "sender": "alice", "nonce": 2}], "expect": ["ok", "ok", "ok"]},
+        {"expect_pool": {"pending": {"alice": ["a0", "a1", "a2"]}}}
+      ]
+    },
+    {
+      "name": "queued transactions are not counted",
+      "state": {"alice": {"balance": 5000000}},
+      "steps": [
+        {"add": [{"label": "a5", "sender": "alice", "nonce": 5}], "expect": ["ok"]},
+        {"add": [{"label": "a6", "sender": "alice", "nonce": 6}], "expect": ["ok"]},
+        {"add": [{"label": "a7", "sender": "alice", "nonce": 7}], "expect": ["ok"]},
+        {"expect_pool": {"queued": {"alice": ["a5", "a6", "a7"]}}}
+      ]
+    },
+    {
+      "name": "a single transaction costing more than the balance",
+      "state": {"alice": {"balance": 2099999}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "alice"}], "expect": ["ErrInsufficientFunds"]}
+      ]
+    },
+    {
+      "name": "a replacement is charged its cost increase against the pending total",
+      "state": {"alice": {"balance": 5000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "alice", "nonce": 0}], "expect": ["ok"]},
+        {"add": [{"label": "a1", "sender": "alice", "nonce": 1}], "expect": ["ok"]},
+        {"add": [{"label": "a0-150", "sender": "alice", "nonce": 0, "max_fee": 150, "tip": 11}], "expect": ["ErrInsufficientFunds"]},
+        {"add": [{"label": "a0-130", "sender": "alice", "nonce": 0, "max_fee": 130, "tip": 11}], "expect": ["ok"]},
+        {"expect_pool": {"pending": {"alice": ["a0-130", "a1"]}}}
+      ],
+      "derivation": "Pending total 4200000. At max_fee 150 the cost is 3150000 and the need is 4200000 + 1050000 = 5250000 > 5000000. At 130 it is 2730000 and the need 4830000."
+    }
+  ]
+}

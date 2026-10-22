@@ -1,0 +1,369 @@
+{
+ "clause": "AG-2",
+ "also": [],
+ "document": "05-aggregation.md",
+ "version": 4,
+ "operation": "pool",
+ "distinguishes": "Under eip-8288-master a dependency frame is of mode 4, holds leanSPHINCS triples only, and may not follow a frame with ATOMIC_BATCH_FLAG: an implementation that keeps mode 3, accepts a leanSTARK triple, or lets a dependency frame end an atomic batch fails here.",
+ "cases": [
+  {
+   "name": "a mode 4 frame with one leanSPHINCS triple is well formed",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 4,
+         "deps": [
+          [
+           16,
+           "msg-A-0",
+           "pk-alice"
+          ]
+         ],
+         "exec_gas": 3000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 3
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrFrameDepsUnproven"
+     ]
+    }
+   ],
+   "derivation": "AG-2 passes; the dependency is not proven, so AG-6 refuses it on its own."
+  },
+  {
+   "name": "a mode 3 frame is malformed under eip-8288-master",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           16,
+           "msg-A-0",
+           "pk-alice"
+          ]
+         ],
+         "exec_gas": 3000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 3
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrFrameMalformed"
+     ]
+    }
+   ],
+   "derivation": "Mode 3 is not dep_frame_mode, nor one of FP-3's modes."
+  },
+  {
+   "name": "a mode 4 frame is malformed under eip-8288",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 4,
+         "deps": [
+          [
+           16,
+           "msg-A-0",
+           "pk-alice"
+          ]
+         ],
+         "exec_gas": 3000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 3
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrFrameMalformed"
+     ]
+    }
+   ],
+   "derivation": "Under the pinned profile dep_frame_mode is 3."
+  },
+  {
+   "name": "a leanSTARK triple is reserved",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 4,
+         "deps": [
+          [
+           17,
+           "pub-a",
+           "vk-1"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 3
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrDepFrameMalformed"
+     ]
+    }
+   ],
+   "derivation": "leanstark is reserved: a frame that uses it is invalid."
+  },
+  {
+   "name": "a leanSPHINCS and a leanSTARK triple together",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 4,
+         "deps": [
+          [
+           16,
+           "msg-a",
+           "pk-a"
+          ],
+          [
+           17,
+           "pub-a",
+           "vk-1"
+          ]
+         ],
+         "exec_gas": 33000,
+         "data_size": 192
+        },
+        {
+         "mode": 1,
+         "flags": 3
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrDepFrameMalformed"
+     ]
+    }
+   ],
+   "derivation": "One reserved scheme makes the frame invalid."
+  },
+  {
+   "name": "a dependency frame after an atomic-batch frame",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3
+        },
+        {
+         "mode": 2,
+         "flags": 4,
+         "exec_gas": 10000
+        },
+        {
+         "mode": 4,
+         "deps": [
+          [
+           16,
+           "msg-a",
+           "pk-a"
+          ]
+         ],
+         "exec_gas": 3000,
+         "data_size": 96
+        },
+        {
+         "mode": 2,
+         "exec_gas": 10000
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrDepFrameMalformed"
+     ]
+    }
+   ],
+   "derivation": "dep_in_batch is false: the frame before it carries ATOMIC_BATCH_FLAG."
+  },
+  {
+   "name": "the same shape under eip-8288",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3
+        },
+        {
+         "mode": 2,
+         "flags": 4,
+         "exec_gas": 10000
+        },
+        {
+         "mode": 3,
+         "deps": [
+          [
+           16,
+           "msg-a",
+           "pk-a"
+          ]
+         ],
+         "exec_gas": 3000,
+         "data_size": 96
+        },
+        {
+         "mode": 2,
+         "exec_gas": 10000
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrFrameDepsUnproven"
+     ]
+    }
+   ],
+   "derivation": "Under the pinned profile the frame may end the batch; only AG-6 refuses it."
+  }
+ ]
+}

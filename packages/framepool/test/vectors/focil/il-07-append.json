@@ -1,0 +1,58 @@
+{
+  "clause": "IL-7",
+  "document": "07-focil.md",
+  "version": 2,
+  "operation": "pool",
+  "distinguishes": "What a builder appends after BB-3: a listed transaction its pool does not hold, at the end; a walk repeated until it appends nothing, so that one appended transaction can make another valid; nothing that does not fit or is already in the block.",
+  "cases": [
+    {"name": "a listed transaction the builder's pool does not hold goes at the end",
+     "focil": "eip-7805",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "b0", "sender": "bob", "tip": 5}], "expect": ["ok"]},
+       {"build": {"ils": [[{"label": "a0", "sender": "alice", "tip": 50}]]}, "expect": ["b0", "a0"], "expect_omission": null},
+       {"expect_state": {"alice": {"nonce": 1}, "bob": {"nonce": 1}}}
+     ]},
+    {"name": "a nonce order the IL does not keep: a second walk appends the later nonce",
+     "focil": "eip-7805",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"build": {"ils": [[{"label": "a1", "sender": "alice", "nonce": 1}, {"label": "a0", "sender": "alice", "nonce": 0}]]}, "expect": ["a0", "a1"], "expect_omission": null}
+     ]},
+    {"name": "a transfer that funds the sender of an earlier listed transaction",
+     "focil": "eip-7805",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 0}},
+     "steps": [
+       {"build": {"ils": [[{"label": "b0", "sender": "bob"}, {"label": "a0", "sender": "alice", "to": "bob", "value": 5000000}]]}, "expect": ["a0", "b0"], "expect_omission": null},
+       {"expect_state": {"bob": {"nonce": 1}}}
+     ]},
+    {"name": "one that does not fit the gas left is not appended, which is no omission",
+     "focil": "eip-7805",
+     "head": {"gas_limit": 60000, "gas_used": 30000},
+     "state": {"x": {"balance": 100000000}, "y": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "x", "sender": "x", "gas": 50000, "tip": 40}], "expect": ["ok"]},
+       {"build": {"ils": [[{"label": "y", "sender": "y"}]]}, "expect": ["x"], "expect_omission": null}
+     ]},
+    {"name": "one the builder took by price is not taken twice",
+     "focil": "eip-7805",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "a0", "sender": "alice"}], "expect": ["ok"]},
+       {"build": {"ils": [[{"label": "a0", "sender": "alice"}], [{"label": "a0", "sender": "alice"}]]}, "expect": ["a0"], "expect_omission": null}
+     ]},
+    {"name": "under eip-8369 a frame transaction listed and valid is appended",
+     "focil": "eip-8369",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"build": {"ils": [[{"label": "f", "type": 6, "sender": "alice", "nonce_keys": [7], "frames": [{"mode": 1, "flags": 3, "exec_gas": 20000}, {"mode": 2, "exec_gas": 50000}]}]]}, "expect": ["f"], "expect_omission": null},
+       {"expect_state": {"alice": {"nonce_seqs": {"7": 1}}}}
+     ]},
+    {"name": "under eip-7805 it is not",
+     "focil": "eip-7805",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"build": {"ils": [[{"label": "f", "type": 6, "sender": "alice", "nonce_keys": [7], "frames": [{"mode": 1, "flags": 3, "exec_gas": 20000}, {"mode": 2, "exec_gas": 50000}]}]]}, "expect": [], "expect_omission": null}
+     ]}
+  ]
+}

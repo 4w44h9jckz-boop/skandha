@@ -1,0 +1,43 @@
+{
+  "clause": "MA-2",
+  "document": "04-matcha.md",
+  "version": 3,
+  "also": ["MA-6"],
+  "operation": "pool",
+  "distinguishes": "The charge: FEE-4's intrinsic gas with the nonce bytes and without the value term, plus the prefix's declared execution limits and nothing after the prefix, times the safety factor, rounded up. The exclusions are an Interpretation (decision record 0007).",
+  "cases": [
+    {"name": "at the default safety factor of 2", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"expect_width": {"pool": 906324}}
+     ],
+     "derivation": "D = 65 + 3 nonce bytes = 68. a = 12000 + 2*475 + 16*68 + 2800 + 30000 = 46838; the sender frame's 50000 is after the prefix. charge = 2 * 46838 = 93676; 1000000 - 93676 = 906324. b is the baseline and spends nothing."},
+    {"name": "a fractional product is rounded up", "profile": "matcha", "config": {"frame": {"safety_factor": 1.5}},
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30001, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"expect_width": {"pool": 929741}}
+     ],
+     "derivation": "a = 46838 + 1 = 46839; 1.5 * 46839 = 70258.5, so the charge is 70259; 1000000 - 70259 = 929741."},
+    {"name": "an expiry frame's limit counts, a value transfer does not", "profile": "matcha", "config": {"frame": {"safety_factor": 1}},
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "v", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 2000, "exec_gas": 100}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "target": "bob", "value": 5, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"expect_width": {"pool": 952459}}
+     ],
+     "derivation": "D = 8 + 65 + 3 = 76. a = 12000 + 3*475 + 16*76 + 2800 + 100 + 30000 = 47541, without FEE-4's 6000 for the value-carrying frame and without the sender frame's 50000. charge = 47541; 1000000 - 47541 = 952459."}
+  ]
+}

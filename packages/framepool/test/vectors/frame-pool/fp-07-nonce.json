@@ -1,0 +1,24 @@
+{
+  "clause": "FP-7",
+  "document": "02-frame-pool.md",
+  "version": 8,
+  "operation": "pool",
+  "distinguishes": "A frame transaction must carry exactly the current sequence of every key it names; there is no queue, and a key that is behind wins over one that is ahead.",
+  "cases": [
+    {"name": "account nonce: behind, ahead, exact", "state": {"alice": {"nonce": 3, "balance": 100000000}},
+     "steps": [{"add": [
+       {"label": "behind", "type": 6, "sender": "alice", "nonce_seq": 2, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "ahead", "type": 6, "sender": "alice", "nonce_seq": 4, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "exact", "type": 6, "sender": "alice", "nonce_seq": 3, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ErrNonceTooLow", "ErrNonceTooHigh", "ok"]}]},
+    {"name": "keyed nonces read their own sequences, each at the one shared sequence",
+     "state": {"carol": {"balance": 100000000, "nonce_seqs": {"7": 2}}, "dave": {"balance": 100000000, "nonce_seqs": {"3": 1, "7": 1}}, "eve": {"balance": 100000000, "nonce_seqs": {"3": 1, "7": 2}}, "frank": {"balance": 100000000, "nonce_seqs": {"3": 1}}},
+     "steps": [{"add": [
+       {"label": "carol-7", "type": 6, "sender": "carol", "nonce_keys": [7], "nonce_seq": 2, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "dave-3-7", "type": 6, "sender": "dave", "nonce_keys": [3, 7], "nonce_seq": 1, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "eve-3-7", "type": 6, "sender": "eve", "nonce_keys": [3, 7], "nonce_seq": 1, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "frank-3-7", "type": 6, "sender": "frank", "nonce_keys": [3, 7], "nonce_seq": 1, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ok", "ErrNonceTooLow", "ErrNonceTooHigh"]}],
+     "derivation": "dave's keys 3 and 7 are both at 1. eve's key 7 is at 2, above her sequence 1: too low. frank's key 7 was never used and reads 0, below 1: too high. Version 8 re-reads this case: a key set may not hold key 0 beside another key (FP-3), so it uses keys 3 and 7 where version 7 used 0 and 7."}
+  ]
+}

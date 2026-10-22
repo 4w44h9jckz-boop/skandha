@@ -1,0 +1,47 @@
+{
+  "clause": "LU-6",
+  "document": "06-lucid.md",
+  "version": 3,
+  "also": ["LU-7"],
+  "operation": "pool",
+  "distinguishes": "The commitment order: the ToB fee computed at the base fee, not max_tob_fee, then the gas limit. No case depends on the order of hashes, which a reader cannot compute.",
+  "cases": [
+    {"name": "by ToB fee", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 300},
+                {"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 100},
+                {"type": "st", "label": "C", "sender": "carol", "max_tob_fee": 200}], "expect": ["ok", "ok", "ok"]},
+       {"expect_selection": {}, "expect": ["A", "C", "B"]}
+     ]},
+    {"name": "an equal ToB fee goes to the larger gas limit", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 100},
+                {"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 100, "gas_limit": 200000}], "expect": ["ok", "ok"]},
+       {"expect_selection": {}, "expect": ["B", "A"]}
+     ]},
+    {"name": "the ToB fee before the gas limit", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 200},
+                {"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 100, "gas_limit": 3000000}], "expect": ["ok", "ok"]},
+       {"expect_selection": {}, "expect": ["A", "B"]}
+     ]},
+    {"name": "the ToB fee the cap leaves, not max_tob_fee", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_fee": 12, "max_tob_fee": 1000000000},
+                {"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 50}], "expect": ["ok", "ok"]},
+       {"expect_selection": {}, "expect": ["B", "A"]}
+     ]},
+    {"name": "the base fee moves the order", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_fee": 20, "tip": 0, "max_tob_fee": 1000000000},
+                {"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 500000}], "expect": ["ok", "ok"]},
+       {"expect_selection": {}, "expect": ["A", "B"]},
+       {"expect_selection": {"base_fee": 19}, "expect": ["B", "A"]}
+     ]}
+  ]
+}

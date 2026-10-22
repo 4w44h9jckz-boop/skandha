@@ -1,0 +1,109 @@
+{
+ "clause": "SF-9",
+ "also": [
+  "SF-5",
+  "SF-7"
+ ],
+ "document": "11-surface.md",
+ "version": 4,
+ "operation": "surface",
+ "distinguishes": "A node with handoff true sends its client exactly what its pool admits, from JSON-RPC or from a peer, and a node with handoff false sends nothing.",
+ "cases": [
+  {
+   "name": "handoff true: what is admitted is handed on, and nothing else",
+   "profile": "hegota-testnet",
+   "config": {
+    "surface": {
+     "handoff": true
+    }
+   },
+   "state": {
+    "0xa6b01af7512a08b1f0a7603765b21a53a7d1d7db": {
+     "nonce": 9,
+     "balance": 1000000000000000000
+    },
+    "0xa7aff3568865020aa95d4ee82eee7c4d7ec01a5c": {
+     "balance": 1000000000000000000
+    }
+   },
+   "peers": [
+    "p1"
+   ],
+   "steps": [
+    {
+     "rpc": "0x06f8cb821fcdc1800994a6b01af7512a08b1f0a7603765b21a53a7d1d7dbf857e60180940000000000000000000000000000000000008141c4821388808088ffffffffffffffffca010380c4824e20808080e4028094a93cee06b1e4ffacdf920bd500cb301a39ddeb74c482753080865af3107a400080f848f846018080b8410134798f54e7f1e268ade7d1aba5ab5a404867647066b65e404e102dc49ad4ecd93b567f7dfd64b157b47fe1a48f5a57151efb6d4df43c6972d8017f41b3dd16becb843b9aca00843b9aca0e80c0",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok",
+      "handed": true
+     }
+    },
+    {
+     "rpc": "0x06f8cb821fcdc1800994a6b01af7512a08b1f0a7603765b21a53a7d1d7dbf857e60180940000000000000000000000000000000000008141c4821388808088ffffffffffffffffca010380c4824e20808080e4028094a93cee06b1e4ffacdf920bd500cb301a39ddeb74c482753080865af3107a400080f848f846018080b8410134798f54e7f1e268ade7d1aba5ab5a404867647066b65e404e102dc49ad4ecd93b567f7dfd64b157b47fe1a48f5a57151efb6d4df43c6972d8017f41b3dd16becb843b9aca00843b9aca0e80c0",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ErrAlreadyKnown",
+      "handed": false
+     }
+    },
+    {
+     "peer": "0x06f8b9821fcdca840c0b3d0a840c0b3d0b8094a7aff3568865020aa95d4ee82eee7c4d7ec01a5cedcd010380c78213888302fd008080de028094a7aff3568865020aa95d4ee82eee7c4d7ec01a5cc4821388800180f85cf85a0194a7aff3568865020aa95d4ee82eee7c4d7ec01a5c80b84101ec5110f3c86e5117a6801b277b3783f01244abd4455d8c05bca352445c55c6f0297e5052f3e0217b7589f0f30f2192062e45652b8d383d399921b2d13137aadfc701847735940080c0",
+     "from": "p1",
+     "client": {
+      "valid": false,
+      "violation": "StorageReadNonSender"
+     },
+     "expect": {
+      "result": "ErrFrameStorageReadNonSender",
+      "handed": false
+     }
+    },
+    {
+     "peer": "0x06f8b9821fcdca840c0b3d0a840c0b3d0b8094a7aff3568865020aa95d4ee82eee7c4d7ec01a5cedcd010380c78213888302fd008080de028094a7aff3568865020aa95d4ee82eee7c4d7ec01a5cc4821388800180f85cf85a0194a7aff3568865020aa95d4ee82eee7c4d7ec01a5c80b84101ec5110f3c86e5117a6801b277b3783f01244abd4455d8c05bca352445c55c6f0297e5052f3e0217b7589f0f30f2192062e45652b8d383d399921b2d13137aadfc701847735940080c0",
+     "from": "p1",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok",
+      "handed": true
+     }
+    }
+   ],
+   "derivation": "SF-9: every transaction the pool admits, and only those, whichever way it came."
+  },
+  {
+   "name": "handoff false: nothing is handed on",
+   "profile": "hegota-testnet",
+   "state": {
+    "0xa6b01af7512a08b1f0a7603765b21a53a7d1d7db": {
+     "nonce": 9,
+     "balance": 1000000000000000000
+    }
+   },
+   "peers": [
+    "p1"
+   ],
+   "steps": [
+    {
+     "rpc": "0x06f8cb821fcdc1800994a6b01af7512a08b1f0a7603765b21a53a7d1d7dbf857e60180940000000000000000000000000000000000008141c4821388808088ffffffffffffffffca010380c4824e20808080e4028094a93cee06b1e4ffacdf920bd500cb301a39ddeb74c482753080865af3107a400080f848f846018080b8410134798f54e7f1e268ade7d1aba5ab5a404867647066b65e404e102dc49ad4ecd93b567f7dfd64b157b47fe1a48f5a57151efb6d4df43c6972d8017f41b3dd16becb843b9aca00843b9aca0e80c0",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok",
+      "handed": false,
+      "relay_to": [
+       "p1"
+      ]
+     }
+    }
+   ],
+   "derivation": "SF-1: handoff is false in both profiles; the node still relays (SF-6)."
+  }
+ ]
+}

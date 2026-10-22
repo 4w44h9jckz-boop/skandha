@@ -1,0 +1,110 @@
+{
+  "clause": "MA-13",
+  "document": "04-matcha.md",
+  "version": 3,
+  "also": ["MA-6", "MA-7", "MA-12"],
+  "operation": "pool",
+  "distinguishes": "The optional load floor: load_price times (c + L) / c for an additional transaction of charge c when its sender's other additional transactions' charges sum to L, the new charge as the unit (an Interpretation, decision record 0022); met by the effective tip at the pending base fee; checked after width; L without a replaced transaction and without one that has left; no floor for the baseline or when load_price is 0.",
+  "cases": [
+    {"name": "the floor is load_price for the first additional transaction, twice it for the next, then three times", "profile": "matcha", "config": {"frame": {"load_price": 10}},
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "tip": 1, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x1", "type": 6, "sender": "pool", "nonce_keys": [2], "tip": 10, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x2", "type": 6, "sender": "pool", "nonce_keys": [3], "tip": 10, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x3", "type": 6, "sender": "pool", "nonce_keys": [4], "tip": 20, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x4", "type": 6, "sender": "pool", "nonce_keys": [5], "tip": 29, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x5", "type": 6, "sender": "pool", "nonce_keys": [6], "tip": 30, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok", "ErrFrameLoadUnderpriced", "ok", "ErrFrameLoadUnderpriced", "ok"]},
+       {"expect_load": {"pool": 281028}},
+       {"expect_width": {"pool": 718972}}
+     ],
+     "derivation": "The charge is 93676 (ma-02). Head base fee 10 at half the target, so the pending base fee is 10 and the effective tip of a transaction with fee cap 100 is its tip. b is the baseline, with no floor. x1: L = 0, floor 10 * (c + 0) / c = 10, tip 10. x2: L = c, floor 20, tip 10. x3: L = c, floor 20, tip 20. x4: L = 2c, floor 30, tip 29. x5: L = 2c, floor 30, tip 30. Load 3c = 281028; width 1000000 - 3c = 718972: a refusal spends nothing."},
+    {"name": "with load_price 0, as in the matcha profile, there is no floor", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "tip": 1, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x1", "type": 6, "sender": "pool", "nonce_keys": [2], "tip": 1, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x2", "type": 6, "sender": "pool", "nonce_keys": [3], "tip": 1, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok", "ok"]},
+       {"expect_load": {"pool": 187352}}
+     ],
+     "derivation": "MA-1 sets load_price to 0, so check 5 always holds; the load is still kept, 2c = 187352."},
+    {"name": "width is checked before the floor", "profile": "matcha", "config": {"frame": {"load_price": 10}},
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "tip": 10, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x1", "type": 6, "sender": "pool", "nonce_keys": [2], "tip": 1, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFrameInsufficientWidth"]},
+       {"expect_load": {"pool": 0}}
+     ],
+     "derivation": "No width has been earned, and x1's tip is also below its floor of 10: check 4 answers first."},
+    {"name": "the effective tip at the pending base fee is what meets the floor, not the tip", "profile": "matcha", "config": {"frame": {"load_price": 10}},
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "tip": 10, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x1", "type": 6, "sender": "pool", "nonce_keys": [2], "tip": 15, "max_fee": 15, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x2", "type": 6, "sender": "pool", "nonce_keys": [3], "tip": 15, "max_fee": 20, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFrameLoadUnderpriced", "ok"]}
+     ],
+     "derivation": "Pending base fee 10. x1: min(15, 15 - 10) = 5 below the floor of 10. x2: min(15, 20 - 10) = 10, the floor."},
+    {"name": "a transaction that leaves the pool leaves the load, and its width stays spent", "profile": "matcha", "config": {"frame": {"load_price": 10}},
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "tip": 10, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x1", "type": 6, "sender": "pool", "nonce_keys": [2], "tip": 10, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x2", "type": 6, "sender": "pool", "nonce_keys": [3], "tip": 20, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok", "ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"pool": {"nonce_seqs": {"2": 1}}}}},
+       {"expect_pool": {"pending": {"pool": ["b", "x2"]}}},
+       {"expect_load": {"pool": 93676}},
+       {"add": [
+         {"label": "x3", "type": 6, "sender": "pool", "nonce_keys": [4], "tip": 19, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x4", "type": 6, "sender": "pool", "nonce_keys": [5], "tip": 20, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ErrFrameLoadUnderpriced", "ok"]},
+       {"expect_load": {"pool": 187352}},
+       {"expect_width": {"pool": 718972}}
+     ],
+     "derivation": "Key 2 moves on, so FP-15 step 1 removes x1 and the load falls from 2c to c = 93676. x3 and x4: L = c, floor 20. Width spent: x1, x2 and x4, 3c, none returned."},
+    {"name": "a replacement leaves the transaction it replaces out of the load", "profile": "matcha", "config": {"frame": {"load_price": 10}},
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "tip": 10, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x1", "type": 6, "sender": "pool", "nonce_keys": [2], "tip": 10, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x1r", "type": 6, "sender": "pool", "nonce_keys": [2], "tip": 11, "max_fee": 110, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x2", "type": 6, "sender": "pool", "nonce_keys": [3], "tip": 19, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x3", "type": 6, "sender": "pool", "nonce_keys": [3], "tip": 20, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok", "ok", "ErrFrameLoadUnderpriced", "ok"]},
+       {"expect_pool": {"pending": {"pool": ["b", "x1r", "x3"]}}},
+       {"expect_load": {"pool": 187352}},
+       {"expect_width": {"pool": 718972}}
+     ],
+     "derivation": "x1r replaces x1 with the 10% bump; L leaves out x1, so L = 0 and the floor is 10, met by 11. Counting x1 it would be 20. x2: L = c (x1r), floor 20, tip 19. x3: floor 20, tip 20. Width spent: x1, x1r and x3."},
+    {"name": "with unequal charges the new transaction's own charge is the unit", "profile": "matcha", "config": {"frame": {"load_price": 10}},
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "tip": 10, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x1", "type": 6, "sender": "pool", "nonce_keys": [2], "tip": 10, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "big1", "type": 6, "sender": "pool", "nonce_keys": [3], "tip": 14, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 76838, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "big2", "type": 6, "sender": "pool", "nonce_keys": [4], "tip": 15, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 76838, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x2", "type": 6, "sender": "pool", "nonce_keys": [5], "tip": 39, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x3", "type": 6, "sender": "pool", "nonce_keys": [6], "tip": 40, "max_fee": 100, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok", "ErrFrameLoadUnderpriced", "ok", "ErrFrameLoadUnderpriced", "ok"]},
+       {"expect_load": {"pool": 374704}}
+     ],
+     "derivation": "big's prefix limit 76838 gives a = 46838 + 46838 = 93676 and a charge of 2c = 187352. big1 and big2: L = c, floor 10 * (2c + c) / 2c = 15, tips 14 and 15. x2 and x3: L = c + 2c = 3c, floor 10 * (c + 3c) / c = 40, tips 39 and 40. Load after x3: c + 2c + c = 4c = 374704."}
+  ]
+}

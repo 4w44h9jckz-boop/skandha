@@ -1,0 +1,50 @@
+{
+  "clause": "BB-3",
+  "document": "03-block-building.md",
+  "version": 4,
+  "also": ["BB-1", "BB-2", "BB-4"],
+  "operation": "pool",
+  "distinguishes": "Which transactions a builder takes and in what order: price across senders with nonce order inside one, a sender dropped when its next transaction does not fit, the minimum tip, the base fee, and frame transactions merged in by the same price.",
+  "cases": [
+    {"name": "price across senders, nonce order within one",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "a0", "sender": "alice", "nonce": 0, "tip": 10}, {"label": "a1", "sender": "alice", "nonce": 1, "tip": 50}, {"label": "b0", "sender": "bob", "tip": 20}], "expect": ["ok", "ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["b0", "a0", "a1"]},
+       {"expect_pool": {}}
+     ]},
+    {"name": "a transaction that does not fit drops its sender; the loop stops below 21000 gas",
+     "head": {"gas_limit": 60000, "gas_used": 30000},
+     "state": {"x": {"balance": 100000000}, "y": {"balance": 100000000}, "z": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "x", "sender": "x", "gas": 30000, "tip": 40}, {"label": "y", "sender": "y", "gas": 40000, "tip": 30}, {"label": "z", "sender": "z", "gas": 21000, "tip": 20}], "expect": ["ok", "ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["x", "z"]},
+       {"expect_pool": {"pending": {"y": ["y"]}}}
+     ]},
+    {"name": "the builder's minimum tip",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "a0", "sender": "alice", "tip": 10}, {"label": "b0", "sender": "bob", "tip": 20}], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 15, "coinbase": "cb"}, "expect": ["b0"]}
+     ]},
+    {"name": "a fee cap below the base fee is pooled but not built",
+     "head": {"base_fee": 50},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "a0", "sender": "alice", "max_fee": 40, "tip": 10}, {"label": "b0", "sender": "bob", "tip": 20}], "expect": ["ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["b0"]},
+       {"expect_pool": {"pending": {"alice": ["a0"]}}}
+     ]},
+    {"name": "frame transactions compete on the same price",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+     "steps": [
+       {"add": [
+         {"label": "a0", "sender": "alice", "tip": 10},
+         {"label": "fb", "type": 6, "sender": "bob", "tip": 25, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "c0", "sender": "carol", "tip": 30}
+       ], "expect": ["ok", "ok", "ok"]},
+       {"build": {"min_tip": 1, "coinbase": "cb"}, "expect": ["c0", "fb", "a0"]},
+       {"expect_state": {"alice": {"nonce": 1}, "bob": {"nonce": 1}, "carol": {"nonce": 1}}}
+     ]}
+  ]
+}

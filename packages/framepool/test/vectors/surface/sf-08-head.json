@@ -1,0 +1,258 @@
+{
+ "clause": "SF-8",
+ "also": [
+  "FP-15",
+  "MD-8",
+  "RR-6",
+  "RR-7",
+  "SF-4"
+ ],
+ "document": "11-surface.md",
+ "version": 4,
+ "operation": "surface",
+ "distinguishes": "At a new head the node asks the client about every transaction still pending, reads the state its dependencies name, and resets the pool with both, so that a changed verdict removes a transaction and an included one leaves without being asked about.",
+ "cases": [
+  {
+   "name": "every pending transaction is asked about, and nothing changed re-runs nothing",
+   "profile": "hegota-testnet",
+   "state": {
+    "0xa6b01af7512a08b1f0a7603765b21a53a7d1d7db": {
+     "nonce": 9,
+     "balance": 1000000000000000000
+    },
+    "0xa7aff3568865020aa95d4ee82eee7c4d7ec01a5c": {
+     "balance": 1000000000000000000
+    }
+   },
+   "steps": [
+    {
+     "rpc": "0x06f8cb821fcdc1800994a6b01af7512a08b1f0a7603765b21a53a7d1d7dbf857e60180940000000000000000000000000000000000008141c4821388808088ffffffffffffffffca010380c4824e20808080e4028094a93cee06b1e4ffacdf920bd500cb301a39ddeb74c482753080865af3107a400080f848f846018080b8410134798f54e7f1e268ade7d1aba5ab5a404867647066b65e404e102dc49ad4ecd93b567f7dfd64b157b47fe1a48f5a57151efb6d4df43c6972d8017f41b3dd16becb843b9aca00843b9aca0e80c0",
+     "as": "t1",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok"
+     }
+    },
+    {
+     "rpc": "0x06f8b9821fcdca840c0b3d0a840c0b3d0b8094a7aff3568865020aa95d4ee82eee7c4d7ec01a5cedcd010380c78213888302fd008080de028094a7aff3568865020aa95d4ee82eee7c4d7ec01a5cc4821388800180f85cf85a0194a7aff3568865020aa95d4ee82eee7c4d7ec01a5c80b84101ec5110f3c86e5117a6801b277b3783f01244abd4455d8c05bca352445c55c6f0297e5052f3e0217b7589f0f30f2192062e45652b8d383d399921b2d13137aadfc701847735940080c0",
+     "as": "t3",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok",
+      "hash": "0x26ed3e31ef89ea6f6713dafb34e952ca510bb30634d3e8c0ebc5abc9dadc12a3"
+     }
+    },
+    {
+     "head": {
+      "number": 1,
+      "timestamp": 1012
+     },
+     "client": {
+      "t1": {
+       "valid": true
+      },
+      "t3": {
+       "valid": true
+      }
+     },
+     "expect_asked": [
+      "t1",
+      "t3"
+     ],
+     "expect_resimulated": [],
+     "expect_pending": [
+      "t1",
+      "t3"
+     ]
+    }
+   ],
+   "derivation": "SF-8 step 2 asks about both; their verdicts and the balances, codes and sequences step 1 reads are unchanged, so FP-15 re-runs neither."
+  },
+  {
+   "name": "a different verdict at the new head removes the transaction",
+   "profile": "hegota-testnet",
+   "state": {
+    "0xa6b01af7512a08b1f0a7603765b21a53a7d1d7db": {
+     "nonce": 9,
+     "balance": 1000000000000000000
+    },
+    "0xa7aff3568865020aa95d4ee82eee7c4d7ec01a5c": {
+     "balance": 1000000000000000000
+    }
+   },
+   "steps": [
+    {
+     "rpc": "0x06f8cb821fcdc1800994a6b01af7512a08b1f0a7603765b21a53a7d1d7dbf857e60180940000000000000000000000000000000000008141c4821388808088ffffffffffffffffca010380c4824e20808080e4028094a93cee06b1e4ffacdf920bd500cb301a39ddeb74c482753080865af3107a400080f848f846018080b8410134798f54e7f1e268ade7d1aba5ab5a404867647066b65e404e102dc49ad4ecd93b567f7dfd64b157b47fe1a48f5a57151efb6d4df43c6972d8017f41b3dd16becb843b9aca00843b9aca0e80c0",
+     "as": "t1",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok"
+     }
+    },
+    {
+     "rpc": "0x06f8b9821fcdca840c0b3d0a840c0b3d0b8094a7aff3568865020aa95d4ee82eee7c4d7ec01a5cedcd010380c78213888302fd008080de028094a7aff3568865020aa95d4ee82eee7c4d7ec01a5cc4821388800180f85cf85a0194a7aff3568865020aa95d4ee82eee7c4d7ec01a5c80b84101ec5110f3c86e5117a6801b277b3783f01244abd4455d8c05bca352445c55c6f0297e5052f3e0217b7589f0f30f2192062e45652b8d383d399921b2d13137aadfc701847735940080c0",
+     "as": "t3",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok"
+     }
+    },
+    {
+     "head": {
+      "number": 1,
+      "timestamp": 1012
+     },
+     "client": {
+      "t1": {
+       "valid": false,
+       "violation": "validation prefix frame reverted"
+      },
+      "t3": {
+       "valid": true
+      }
+     },
+     "expect_asked": [
+      "t1",
+      "t3"
+     ],
+     "expect_resimulated": [
+      "t1"
+     ],
+     "expect_pending": [
+      "t3"
+     ]
+    }
+   ],
+   "derivation": "t1's verdict at the new head differs from the one recorded, which FP-15 step 3 counts as a changed dependency; re-run with it, t1 is refused."
+  },
+  {
+   "name": "an included transaction is not asked about and leaves without a re-run",
+   "profile": "hegota-testnet",
+   "state": {
+    "0xa6b01af7512a08b1f0a7603765b21a53a7d1d7db": {
+     "nonce": 9,
+     "balance": 1000000000000000000
+    },
+    "0xa7aff3568865020aa95d4ee82eee7c4d7ec01a5c": {
+     "balance": 1000000000000000000
+    }
+   },
+   "steps": [
+    {
+     "rpc": "0x06f8cb821fcdc1800994a6b01af7512a08b1f0a7603765b21a53a7d1d7dbf857e60180940000000000000000000000000000000000008141c4821388808088ffffffffffffffffca010380c4824e20808080e4028094a93cee06b1e4ffacdf920bd500cb301a39ddeb74c482753080865af3107a400080f848f846018080b8410134798f54e7f1e268ade7d1aba5ab5a404867647066b65e404e102dc49ad4ecd93b567f7dfd64b157b47fe1a48f5a57151efb6d4df43c6972d8017f41b3dd16becb843b9aca00843b9aca0e80c0",
+     "as": "t1",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok"
+     }
+    },
+    {
+     "rpc": "0x06f8b9821fcdca840c0b3d0a840c0b3d0b8094a7aff3568865020aa95d4ee82eee7c4d7ec01a5cedcd010380c78213888302fd008080de028094a7aff3568865020aa95d4ee82eee7c4d7ec01a5cc4821388800180f85cf85a0194a7aff3568865020aa95d4ee82eee7c4d7ec01a5c80b84101ec5110f3c86e5117a6801b277b3783f01244abd4455d8c05bca352445c55c6f0297e5052f3e0217b7589f0f30f2192062e45652b8d383d399921b2d13137aadfc701847735940080c0",
+     "as": "t3",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok"
+     }
+    },
+    {
+     "head": {
+      "number": 1,
+      "timestamp": 1012
+     },
+     "state": {
+      "0xa6b01af7512a08b1f0a7603765b21a53a7d1d7db": {
+       "nonce": 10
+      }
+     },
+     "client": {
+      "t3": {
+       "valid": true
+      }
+     },
+     "expect_asked": [
+      "t3"
+     ],
+     "expect_resimulated": [],
+     "expect_pending": [
+      "t3"
+     ]
+    }
+   ],
+   "derivation": "Step 1 reads t1's sender at sequence 10, above its 9, so step 2 does not ask about it, and FP-15 step 1 removes it as included."
+  },
+  {
+   "name": "a withdrawal with a recent root: kept while the root is in the window, evicted by RR-7 when it leaves, without a re-run",
+   "profile": "hegota-testnet",
+   "head": {
+    "number": 477923,
+    "slot": 507055
+   },
+   "state": {
+    "0xe19605853a749322655470199fd31d3f3e53baf9": {
+     "balance": 1000000000000000000,
+     "code": "privacy-pool"
+    }
+   },
+   "steps": [
+    {
+     "rpc": "0x06f9030e821fcde1a01ba8645ce343a7e0a5b59d617dc857ead276917974a55a844594967bc25a94758094e19605853a749322655470199fd31d3f3e53baf9f902c2f8670180940000000000000000000000000000000000008272c4822ec58080b848377359fb3160077a95d6f9aaab59fc72144e644e3f93fd09f29df7473a809d1c000000000007bcaa0491c6bf4c74a9950f60a837a106b872141ec6b836042e806d1d203d0f2a107ace010380c88304be9283017e808080f90228028094e19605853a749322655470199fd31d3f3e53baf9c8830186a08302cd3080b9020421a0adb600000000000000000000000000000000000000000000000000000000000000e00491c6bf4c74a9950f60a837a106b872141ec6b836042e806d1d203d0f2a107a1ba8645ce343a7e0a5b59d617dc857ead276917974a55a844594967bc25a947500000000000000000000000095f57e54d5c645fcb6154080802d94cca91f09ef000000000000000000000000e19605853a749322655470199fd31d3f3e53baf900000000000000000000000000000000000000000000000000008905d87e5600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000b475da29f1b63ab97b2db8dd04723fa2fd1c7c7b90c37a72718af5dd281fad414539efe2e0484374345a79164d212241b2c3db07ddb6004c097e8bf2293a81c1b97a5f5ff942b16062a71a8429fef61f5606ed6dcf5f0fc476e4c546cdb792926798bb297f309c890270c564308681e8016e0139f90037d6c483c67d4862bc82128f8e57151c1e543d794e8cb7fd4b093999c1fe2cce791acee6655d84dd90f133f1598ed7b3d1ca70882720ffd4a89c679f9fd70c61ca85990792c04f3f6410cbbfe1c065ce162a00461a3932d5f1f14f328179dc60963b34b3ebd5f6c95e029874692a548eaede49991d5bf680d6395cbea3b4fbb18abdd873f468d169b9bde808094e19605853a749322655470199fd31d3f3e53baf9c48261a8808080c0cb8405f5e100840bebc20080c0",
+     "as": "w",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok",
+      "hash": "0x339af560b79b175b240b4250809cc14e84b34799023cb2a847053bd2e7119659"
+     }
+    },
+    {
+     "head": {
+      "number": 477924,
+      "slot": 507060
+     },
+     "client": {
+      "w": {
+       "valid": true
+      }
+     },
+     "expect_asked": [
+      "w"
+     ],
+     "expect_resimulated": [],
+     "expect_pending": [
+      "w"
+     ]
+    },
+    {
+     "head": {
+      "number": 477925,
+      "slot": 515241
+     },
+     "client": {
+      "w": {
+       "valid": true
+      }
+     },
+     "expect_asked": [
+      "w"
+     ],
+     "expect_resimulated": [],
+     "expect_pending": []
+    }
+   ],
+   "derivation": "FP-5 skips the leading recent_root_verify frame (RR-4) and finds [self_verify]; FP-6: 11973 + 310930 = 322903, under 500000; the key's sequence is 0. The verdict stands for RR-5, and RR-6 still records the tuple's slot, 0x7bcaa = 507050, so the root expiry is 507050 + 8192 = 515242. At head slot 507060 the current slot is 507061: kept, nothing changed. At head slot 515241 the current slot is 515242, the root expiry, so RR-7 removes it before step 3, after SF-8 asked about it, since its nonce key had not moved."
+  }
+ ]
+}

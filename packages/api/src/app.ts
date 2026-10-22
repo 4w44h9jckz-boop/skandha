@@ -25,12 +25,26 @@ export interface RpcHandlerOptions {
   config: Config;
 }
 
+/** Frame transactions over `eth_sendRawTransaction` (exp-mempool-l2s `docs/spec/11-surface.md`, SF-5). */
+export interface FrameRpc {
+  sendRawTransaction(param: unknown): Promise<{
+    result?: string;
+    error?: { code: number; message: string; data?: unknown };
+  }>;
+  /** IL-2 of `07-focil.md`: the inclusion list this node would publish from its pool. */
+  inclusionList(param: unknown): Promise<{
+    result?: unknown;
+    error?: { code: number; message: string };
+  }>;
+}
+
 export interface EtherspotBundlerOptions {
   server: Server;
   config: Config;
   executor: Executor;
   testingMode: boolean;
   redirectRpc: boolean;
+  frames?: FrameRpc;
 }
 
 export interface RelayerAPI {
@@ -55,8 +69,10 @@ export class ApiApp {
   private redirectApi: RedirectAPI;
   private skandhaApi: SkandhaAPI;
   private subscriptionApi: SubscriptionApi;
+  private frames?: FrameRpc;
 
   constructor(options: EtherspotBundlerOptions) {
+    this.frames = options.frames;
     this.server = options.server;
     this.config = options.config;
     this.testingMode = options.testingMode;
@@ -195,6 +211,19 @@ export class ApiApp {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let result: any;
     const { method, params, jsonrpc, id } = request;
+    if (this.frames && method === "eth_sendRawTransaction") {
+      // SF-5: with frames on, this node takes type 0x06 and refuses the rest (SF-2)
+      const out = await this.frames.sendRawTransaction(params?.[0]);
+      return (out.error !== undefined
+        ? { jsonrpc, id, error: out.error }
+        : { jsonrpc, id, result: out.result }) as unknown as JsonRpcResponse;
+    }
+    if (this.frames && method === "skandha_frameInclusionList") {
+      const out = await this.frames.inclusionList(params?.[0]);
+      return (out.error !== undefined
+        ? { jsonrpc, id, error: out.error }
+        : { jsonrpc, id, result: out.result }) as unknown as JsonRpcResponse;
+    }
     if (
       this.testingMode ||
       ip === "localhost" ||

@@ -1,0 +1,73 @@
+{
+  "clause": "LU-5",
+  "document": "06-lucid.md",
+  "version": 3,
+  "also": ["MD-11"],
+  "operation": "pool",
+  "distinguishes": "The checks against the head and the state and their order: the ToB segment, the reservation, the nonce with no queue, the balance against the full cost, and whether the ticket can pay at the pending base fee with its key fee.",
+  "cases": [
+    {"name": "a gas limit at the ToB segment, an eighth of the head's", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [{"add": [{"type": "st", "label": "S", "gas_limit": 3750000}], "expect": ["ok"]}]},
+    {"name": "a gas limit one above the ToB segment", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [{"add": [{"type": "st", "label": "S", "gas_limit": 3750001}], "expect": ["ErrSTExceedsToB"]}]},
+    {"name": "the ToB segment before the reservation", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "A"}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "S", "gas_limit": 3750001}], "expect": ["ErrSTExceedsToB"]}
+     ]},
+    {"name": "a sender the account-nonce pool holds", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "A"}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "S", "nonce": 1}], "expect": ["ErrAlreadyReserved"]},
+       {"expect_pool": {"pending": {"alice": ["A"]}}}
+     ]},
+    {"name": "a sender the sealed pool holds, for the account-nonce pool", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "S"}], "expect": ["ok"]},
+       {"add": [{"label": "A", "nonce": 1}], "expect": ["ErrAlreadyReserved"]},
+       {"expect_pool": {"pending": {"alice": ["S"]}}}
+     ]},
+    {"name": "a nonce below the sender's", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000, "nonce": 3}},
+     "steps": [{"add": [{"type": "st", "label": "S", "nonce": 2}], "expect": ["ErrNonceTooLow"]}]},
+    {"name": "a nonce above the sender's is refused, not queued", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000, "nonce": 3}},
+     "steps": [
+       {"add": [{"type": "st", "label": "S", "nonce": 4}], "expect": ["ErrNonceTooHigh"]},
+       {"expect_pool": {"pending": {}, "queued": {}}}
+     ]},
+    {"name": "the sender's nonce", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000, "nonce": 3}},
+     "steps": [{"add": [{"type": "st", "label": "S", "nonce": 3}], "expect": ["ok"]}]},
+    {"name": "a balance one wei below max_fee times gas_limit", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 9999999}},
+     "steps": [{"add": [{"type": "st", "label": "S"}], "expect": ["ErrInsufficientFunds"]}]},
+    {"name": "a balance of exactly max_fee times gas_limit", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 10000000}},
+     "steps": [{"add": [{"type": "st", "label": "S"}], "expect": ["ok"]}]},
+    {"name": "a fee cap below the pending base fee", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"type": "st", "label": "S", "max_fee": 9, "tip": 0}], "expect": ["ErrFeeCapTooLow"]}]},
+    {"name": "a fee cap at the pending base fee with a key fee of one wei", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"type": "st", "label": "S", "max_fee": 10, "tip": 0, "key_fee": 1}], "expect": ["ErrFeeCapTooLow"]}]},
+    {"name": "a fee cap at the pending base fee with no key fee", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"type": "st", "label": "S", "max_fee": 10, "tip": 0}], "expect": ["ok"]}]},
+    {"name": "the pending base fee, not the head's", "sealed": "eip-8184",
+     "head": {"gas_used": 30000000},
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "S", "max_fee": 10, "tip": 0}], "expect": ["ErrFeeCapTooLow"]},
+       {"add": [{"type": "st", "label": "T", "max_fee": 11, "tip": 0}], "expect": ["ok"]}
+     ]},
+    {"name": "the balance before the fee", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 0}},
+     "steps": [{"add": [{"type": "st", "label": "S", "max_fee": 9, "tip": 0}], "expect": ["ErrInsufficientFunds"]}]}
+  ]
+}

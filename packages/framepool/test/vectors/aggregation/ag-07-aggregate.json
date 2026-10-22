@@ -1,0 +1,113 @@
+{
+  "clause": "AG-7",
+  "document": "05-aggregation.md",
+  "version": 4,
+  "also": ["AG-5"],
+  "operation": "pool",
+  "distinguishes": "What a node's aggregate holds and in what order: its previous aggregate, then received aggregates by how many transactions they add, then the rest by effective tip, skipping what breaks a limit when cap_aggregates is true; transactions already sent go as hashes, and only what the node still holds is listed. Reading the EIP's proving-time order as the order that fills the limits is an Interpretation (decision record 0012).",
+  "cases": [
+    {"name": "a node that holds nothing sends nothing", "profile": "eip-8288",
+     "steps": [
+       {"aggregate": {}, "expect": null}
+     ]},
+    {"name": "every transaction held when no limit binds", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "bob": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"wrapper": {"mode": 0, "txs": [{"label": "B", "type": 6, "sender": "bob", "frames": [{"mode": 3, "deps": [[16, "msg-b", "pk-b"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"aggregate": {}, "expect": ["A", "B"], "expect_hashed": [], "expect_deps": [[16, "msg-b", "pk-b"], [17, "pub-a", "vk-1"]]}
+     ],
+     "derivation": "Both tip 10 at the pending base fee of 10, so the earlier admitted, A, comes first."},
+    {"name": "a transaction without dependencies is not in it", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "dan": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"label": "P", "type": 6, "sender": "dan", "frames": [{"mode": 1, "flags": 3}]}], "expect": ["ok"]},
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"aggregate": {}, "expect": ["A"]}
+     ]},
+    {"name": "under the limit, the highest tip first", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "carol": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"wrapper": {"mode": 0, "txs": [{"label": "C", "type": 6, "sender": "carol", "tip": 20, "frames": [{"mode": 3, "deps": [[17, "pub-c", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"aggregate": {}, "expect": ["C"], "expect_deps": [[17, "pub-c", "vk-1"]]}
+     ]},
+    {"name": "the previous aggregate comes first, as hashes", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "carol": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"aggregate": {}, "expect": ["A"], "expect_hashed": []},
+       {"wrapper": {"mode": 0, "txs": [{"label": "C", "type": 6, "sender": "carol", "tip": 20, "frames": [{"mode": 3, "deps": [[17, "pub-c", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"aggregate": {}, "expect": ["A"], "expect_hashed": ["A"]}
+     ],
+     "derivation": "C pays more, but A was in the previous aggregate, and the one leanSTARK triple the limit allows is A's."},
+    {"name": "a transaction that leaves the pool leaves the aggregate", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "carol": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"wrapper": {"mode": 0, "txs": [{"label": "C", "type": 6, "sender": "carol", "tip": 20, "frames": [{"mode": 3, "deps": [[17, "pub-c", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"aggregate": {}, "expect": ["C"]},
+       {"reset": {"state": {"carol": {"nonce": 1}}}},
+       {"aggregate": {}, "expect": ["A"], "expect_hashed": [], "expect_deps": [[17, "pub-a", "vk-1"]]}
+     ],
+     "derivation": "carol's nonce moves past C's, so FP-15 removes C."},
+    {"name": "received aggregates come before the rest", "profile": "eip-8288", "config": {"frame": {"max_sig_deps_per_wrapper": 2}},
+     "state": {"dave": {"balance": 1000000000}, "erin": {"balance": 1000000000}, "frank": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "F", "type": 6, "sender": "frank", "tip": 50, "frames": [{"mode": 3, "deps": [[16, "msg-f", "pk-f"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"wrapper": {"mode": 1, "from": "peer-1", "txs": [
+          {"label": "D", "type": 6, "sender": "dave", "frames": [{"mode": 3, "deps": [[16, "msg-d", "pk-d"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "E", "type": 6, "sender": "erin", "frames": [{"mode": 3, "deps": [[16, "msg-e", "pk-e"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}]},
+        "expect": ["ok", "ok"]},
+       {"aggregate": {}, "expect": ["D", "E"], "expect_deps": [[16, "msg-d", "pk-d"], [16, "msg-e", "pk-e"]]}
+     ]},
+    {"name": "the received aggregate that adds more goes first", "profile": "eip-8288", "config": {"frame": {"max_sig_deps_per_wrapper": 2}},
+     "state": {"dave": {"balance": 1000000000}, "erin": {"balance": 1000000000}, "frank": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 1, "from": "peer-1", "txs": [
+          {"label": "D", "type": 6, "sender": "dave", "frames": [{"mode": 3, "deps": [[16, "msg-d", "pk-d"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}]},
+        "expect": ["ok"]},
+       {"wrapper": {"mode": 1, "from": "peer-2", "txs": [
+          {"label": "E", "type": 6, "sender": "erin", "frames": [{"mode": 3, "deps": [[16, "msg-e", "pk-e"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]},
+          {"label": "F", "type": 6, "sender": "frank", "frames": [{"mode": 3, "deps": [[16, "msg-f", "pk-f"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}]},
+        "expect": ["ok", "ok"]},
+       {"aggregate": {}, "expect": ["E", "F"]}
+     ]},
+    {"name": "ties go to the aggregate received first", "profile": "eip-8288", "config": {"frame": {"max_sig_deps_per_wrapper": 1}},
+     "state": {"dave": {"balance": 1000000000}, "erin": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 1, "from": "peer-1", "txs": [
+          {"label": "D", "type": 6, "sender": "dave", "frames": [{"mode": 3, "deps": [[16, "msg-d", "pk-d"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}]},
+        "expect": ["ok"]},
+       {"wrapper": {"mode": 1, "from": "peer-2", "txs": [
+          {"label": "E", "type": 6, "sender": "erin", "frames": [{"mode": 3, "deps": [[16, "msg-e", "pk-e"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}]},
+        "expect": ["ok"]},
+       {"aggregate": {}, "expect": ["D"]}
+     ]},
+    {"name": "a transaction that does not fit is skipped, and filling goes on", "profile": "eip-8288", "config": {"frame": {"max_sig_deps_per_wrapper": 1}},
+     "state": {"alice": {"balance": 1000000000}, "bob": {"balance": 1000000000}, "carol": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"wrapper": {"mode": 0, "txs": [{"label": "C", "type": 6, "sender": "carol", "tip": 20, "frames": [{"mode": 3, "deps": [[17, "pub-c", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"wrapper": {"mode": 0, "txs": [{"label": "B", "type": 6, "sender": "bob", "frames": [{"mode": 3, "deps": [[16, "msg-b", "pk-b"]], "exec_gas": 3000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"aggregate": {}, "expect": ["C", "B"], "expect_deps": [[16, "msg-b", "pk-b"], [17, "pub-c", "vk-1"]]}
+     ],
+     "derivation": "By tip: C (20), then A and B at 10 in admission order. C takes the leanSTARK place, A does not fit, B does."},
+    {"name": "with cap_aggregates false every transaction is listed", "profile": "eip-8288", "config": {"frame": {"cap_aggregates": false}},
+     "state": {"alice": {"balance": 1000000000}, "carol": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"wrapper": {"mode": 0, "txs": [{"label": "C", "type": 6, "sender": "carol", "tip": 20, "frames": [{"mode": 3, "deps": [[17, "pub-c", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"aggregate": {}, "expect": ["C", "A"], "expect_deps": [[17, "pub-a", "vk-1"], [17, "pub-c", "vk-1"]]}
+     ]},
+    {"name": "a shared triple counts once and stays while a holder remains", "profile": "eip-8288",
+     "state": {"alice": {"balance": 1000000000}, "gina": {"balance": 1000000000}},
+     "steps": [
+       {"wrapper": {"mode": 0, "txs": [{"label": "A", "type": 6, "sender": "alice", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"wrapper": {"mode": 0, "txs": [{"label": "G", "type": 6, "sender": "gina", "frames": [{"mode": 3, "deps": [[17, "pub-a", "vk-1"]], "exec_gas": 30000, "data_size": 96}, {"mode": 1, "flags": 3}]}]}, "expect": ["ok"]},
+       {"aggregate": {}, "expect": ["A", "G"], "expect_deps": [[17, "pub-a", "vk-1"]]},
+       {"reset": {"state": {"alice": {"nonce": 1}}}},
+       {"aggregate": {}, "expect": ["G"], "expect_hashed": ["G"], "expect_deps": [[17, "pub-a", "vk-1"]]}
+     ]}
+  ]
+}

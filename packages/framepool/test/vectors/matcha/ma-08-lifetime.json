@@ -1,0 +1,52 @@
+{
+  "clause": "MA-8",
+  "document": "04-matcha.md",
+  "version": 3,
+  "also": ["MA-5", "MA-12"],
+  "operation": "pool",
+  "distinguishes": "Every frame transaction leaves once it has been pending more than the lifetime, counted from its own admission and checked before anything else at every operation that carries a time; the width it spent stays spent.",
+  "cases": [
+    {"name": "more than the lifetime, not equal to it", "profile": "matcha", "config": {"frame": {"lifetime": 100}},
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 1000000}}], "now": 0},
+       {"add": [{"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "now": 0, "expect": ["ok"]},
+       {"add": [{"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "now": 50, "expect": ["ok"]},
+       {"tick": 100},
+       {"expect_pool": {"pending": {"pool": ["b", "x"]}}},
+       {"tick": 101},
+       {"expect_pool": {"pending": {"pool": ["x"]}}},
+       {"expect_baseline": {"pool": null}},
+       {"tick": 150},
+       {"expect_pool": {"pending": {"pool": ["x"]}}},
+       {"tick": 151},
+       {"expect_pool": {}},
+       {"expect_width": {"pool": 906324}}
+     ]},
+    {"name": "a replacement starts a lifetime of its own", "profile": "matcha", "config": {"frame": {"lifetime": 100}},
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"add": [{"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "now": 0, "expect": ["ok"]},
+       {"add": [{"label": "bR", "type": 6, "sender": "pool", "nonce_keys": [1], "max_fee": 110, "tip": 11, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "now": 60, "expect": ["ok"]},
+       {"tick": 101},
+       {"expect_pool": {"pending": {"pool": ["bR"]}}},
+       {"tick": 161},
+       {"expect_pool": {}}
+     ]},
+    {"name": "an add removes the expired first, so the newcomer is a baseline", "profile": "matcha", "config": {"frame": {"lifetime": 100}},
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"add": [{"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "now": 0, "expect": ["ok"]},
+       {"add": [{"label": "c", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "now": 101, "expect": ["ok"]},
+       {"expect_baseline": {"pool": "c"}},
+       {"expect_width": {"pool": 0}}
+     ]},
+    {"name": "a reset removes the expired too", "profile": "matcha", "config": {"frame": {"lifetime": 100}},
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"add": [{"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "now": 0, "expect": ["ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}}, "now": 101},
+       {"expect_pool": {}}
+     ]}
+  ]
+}

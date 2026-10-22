@@ -1,0 +1,36 @@
+{
+  "clause": "FP-13",
+  "document": "02-frame-pool.md",
+  "version": 8,
+  "also": ["NP-8", "MD-11"],
+  "operation": "pool",
+  "distinguishes": "A sender lives in one subpool at a time, in both directions; an authority held by the other subpool blocks a set code transaction; and the hold is released when the sender's last transaction leaves.",
+  "cases": [
+    {"name": "account-nonce first, then a frame transaction",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "a0", "sender": "alice"}], "expect": ["ok"]},
+       {"add": [{"label": "f1", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrAlreadyReserved"]}
+     ]},
+    {"name": "frame transaction first, then an account-nonce one",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "f0", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"add": [{"label": "a1", "sender": "alice", "nonce": 1}], "expect": ["ErrAlreadyReserved"]}
+     ]},
+    {"name": "an authority held by the frame pool",
+     "state": {"bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "fc", "type": 6, "sender": "carol", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"add": [{"label": "b0", "sender": "bob", "type": 4, "gas": 46000, "authorities": ["carol"], "delegate": "impl"}], "expect": ["ErrAuthorityReserved"]}
+     ]},
+    {"name": "the hold is released when the last transaction is included",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "a0", "sender": "alice"}], "expect": ["ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"alice": {"nonce": 1}}}},
+       {"add": [{"label": "f1", "type": 6, "sender": "alice", "nonce_seq": 1, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["f1"]}}}
+     ]}
+  ]
+}

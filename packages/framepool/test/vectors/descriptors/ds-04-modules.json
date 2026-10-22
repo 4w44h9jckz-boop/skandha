@@ -1,0 +1,333 @@
+{
+ "clause": "DS-4",
+ "also": [],
+ "document": "13-descriptors.md",
+ "version": 4,
+ "operation": "descriptor",
+ "distinguishes": "Every module is one a node implements, with exactly its parameters, each of its type, checked in the byte order of the names: a loader that ignores an unknown module, fills a default, accepts an extra parameter or a value of another type, or checks in another order, fails here.",
+ "cases": [
+  {
+   "name": "a module no node implements",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "FP-99": {}
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorUnknownRule",
+    "rule": "FP-99"
+   },
+   "derivation": "FP-99 is not in DS-4's table nor in 14-erc-8421.md."
+  },
+  {
+   "name": "a parameter missing",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "FP-6": {
+      "max_verify_gas": 100000
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorParams",
+    "rule": "FP-6"
+   },
+   "derivation": "FP-6 takes max_verify_gas and max_verify_state_gas; there are no defaults."
+  },
+  {
+   "name": "a parameter too many",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "FP-3": {
+      "price_limit": 1,
+      "price_bump": 10
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorParams",
+    "rule": "FP-3"
+   },
+   "derivation": "FP-3 takes price_limit only."
+  },
+  {
+   "name": "a string where an integer goes",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "FP-3": {
+      "price_limit": "1"
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorParams",
+    "rule": "FP-3"
+   },
+   "derivation": "price_limit is an integer."
+  },
+  {
+   "name": "a boolean where an integer goes",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "FP-3": {
+      "price_limit": true
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorParams",
+    "rule": "FP-3"
+   },
+   "derivation": "JSON true is not an integer."
+  },
+  {
+   "name": "a value outside the parameter's set",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "FP-12": {
+      "per_sender": "matcha",
+      "price_bump": 10
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorParams",
+    "rule": "FP-12"
+   },
+   "derivation": "per_sender is one or disjoint-keys."
+  },
+  {
+   "name": "null where a parameter allows it",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "FP-6": {
+      "max_verify_gas": 500000,
+      "max_verify_state_gas": null
+     }
+    }
+   },
+   "expect": {
+    "result": "ok",
+    "config": {
+     "max_verify_gas": 500000,
+     "max_verify_state_gas": null
+    }
+   },
+   "derivation": "max_verify_state_gas is an integer or null for not enforced."
+  },
+  {
+   "name": "two bad modules: the first in byte order is named",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "FP-6": {
+      "max_verify_gas": 1
+     },
+     "FP-12": {
+      "per_sender": "x",
+      "price_bump": 1
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorParams",
+    "rule": "FP-12"
+   },
+   "derivation": "FP-12 sorts before FP-6 in byte order ('1' < '6'), so it is checked first."
+  },
+  {
+   "name": "an unknown module before a bad one in byte order",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "AAA-1": {},
+     "FP-3": {
+      "price_limit": "x"
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorUnknownRule",
+    "rule": "AAA-1"
+   },
+   "derivation": "AAA-1 sorts first."
+  },
+  {
+   "name": "a bound template half named",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/claim-gated.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreigdwjfslxd6hbroctviyyikp2kudifirzznwlbfxouqx56yinjqui",
+    "remove": [],
+    "rules": {
+     "CG-10": {
+      "template_length": 1105,
+      "template_keccak": "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0",
+      "bound_template_length": 32,
+      "bound_template_keccak": null
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorParams",
+    "rule": "CG-10"
+   },
+   "derivation": "CG-10's bound template is named by its length and keccak256 together, or not at all (version 3)."
+  },
+  {
+   "name": "a bound template named",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/claim-gated.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreigdwjfslxd6hbroctviyyikp2kudifirzznwlbfxouqx56yinjqui",
+    "remove": [],
+    "rules": {
+     "CG-10": {
+      "template_length": 1105,
+      "template_keccak": "0xec9f3f855524392a3891f2f2eb554781236d5565520d68388e455be74bdf3fe0",
+      "bound_template_length": 32,
+      "bound_template_keccak": "0xabababababababababababababababababababababababababababababababab"
+     }
+    }
+   },
+   "expect": {
+    "result": "ok"
+   },
+   "derivation": "Both parameters set: a child of claim-gated.json that names a bound template."
+  },
+  {
+   "name": "CG-12 with a parameter",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/claim-gated.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreigdwjfslxd6hbroctviyyikp2kudifirzznwlbfxouqx56yinjqui",
+    "remove": [],
+    "rules": {
+     "CG-12": {
+      "bound_template_length": 32
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorParams",
+    "rule": "CG-12"
+   },
+   "derivation": "CG-12 takes no parameters; the bound template is CG-10's."
+  }
+ ]
+}

@@ -1,0 +1,27 @@
+{
+  "clause": "FP-6",
+  "document": "02-frame-pool.md",
+  "version": 8,
+  "operation": "pool",
+  "distinguishes": "MAX_VERIFY_GAS counts the prefix's execution limits plus signature verification, to the gas, and the two profiles differ exactly where the testnet was measured to differ.",
+  "cases": [
+    {"name": "eip-8141: 97200 + 2800 = 100000 is admitted, one more is not", "profile": "eip-8141",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [{"add": [
+       {"label": "at", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 97200}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "over", "type": 6, "sender": "bob", "frames": [{"mode": 1, "flags": 3, "exec_gas": 97201}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFrameVerifyGas"]}]},
+    {"name": "hegota-testnet: the bisected 497200 / 497201 boundary", "profile": "hegota-testnet",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [{"add": [
+       {"label": "at", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 497200}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "over", "type": 6, "sender": "bob", "frames": [{"mode": 1, "flags": 3, "exec_gas": 497201}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFrameVerifyGas"]}]},
+    {"name": "state gas over MAX_VERIFY_STATE_GAS: refused by the specification, admitted by the testnet profile", "profile": "eip-8141",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "state_gas": 500001}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrFrameVerifyStateGas"]}]},
+    {"name": "the same transaction under hegota-testnet", "profile": "hegota-testnet",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "state_gas": 500001}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]}]}
+  ]
+}

@@ -1,0 +1,1095 @@
+{
+ "clause": "AG-7",
+ "also": [
+  "AG-5"
+ ],
+ "document": "05-aggregation.md",
+ "version": 4,
+ "operation": "pool",
+ "distinguishes": "Under eip-8288-master a node folds the leanSPHINCS dependencies it holds into one mode 1 wrapper, at most max_sig_deps_per_wrapper of them, and accepts another node's fold over the same dependencies; an implementation that cannot build the fold, or refuses an equal one, fails here.",
+ "cases": [
+  {
+   "name": "two signatures, one fold",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-A-0",
+            "pk-alice"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-B-0",
+            "pk-bob"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "A",
+      "B"
+     ],
+     "expect_deps": [
+      [
+       16,
+       "msg-A-0",
+       "pk-alice"
+      ],
+      [
+       16,
+       "msg-B-0",
+       "pk-bob"
+      ]
+     ]
+    }
+   ],
+   "derivation": "Both by tip, equal, then by admission; deps sorted by data_hash."
+  },
+  {
+   "name": "another node's fold over the same dependencies is accepted",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-A-0",
+            "pk-alice"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-B-0",
+            "pk-bob"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "A",
+      "B"
+     ],
+     "expect_deps": [
+      [
+       16,
+       "msg-A-0",
+       "pk-alice"
+      ],
+      [
+       16,
+       "msg-B-0",
+       "pk-bob"
+      ]
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-B-0",
+            "pk-bob"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       },
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-A-0",
+            "pk-alice"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "deps": [
+       [
+        16,
+        "msg-A-0",
+        "pk-alice"
+       ],
+       [
+        16,
+        "msg-B-0",
+        "pk-bob"
+       ]
+      ]
+     },
+     "expect": [
+      "ErrAlreadyKnown",
+      "ErrAlreadyKnown"
+     ]
+    }
+   ],
+   "derivation": "The other node listed them in its own order; its deps are the same union and its STARK verifies, so AG-5 passes and each transaction is one the node holds."
+  },
+  {
+   "name": "a fold that leaves a held transaction's dependency out is refused",
+   "profile": "eip-8288-master",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "A",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-A-0",
+            "pk-alice"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-B-0",
+            "pk-bob"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "hash": {
+         "label": "A",
+         "type": 6,
+         "sender": "alice",
+         "frames": [
+          {
+           "mode": 4,
+           "deps": [
+            [
+             16,
+             "msg-A-0",
+             "pk-alice"
+            ]
+           ],
+           "exec_gas": 3000,
+           "data_size": 96
+          },
+          {
+           "mode": 1,
+           "flags": 3
+          }
+         ]
+        }
+       },
+       {
+        "hash": {
+         "label": "B",
+         "type": 6,
+         "sender": "bob",
+         "frames": [
+          {
+           "mode": 4,
+           "deps": [
+            [
+             16,
+             "msg-B-0",
+             "pk-bob"
+            ]
+           ],
+           "exec_gas": 3000,
+           "data_size": 96
+          },
+          {
+           "mode": 1,
+           "flags": 3
+          }
+         ]
+        }
+       }
+      ],
+      "deps": [
+       [
+        16,
+        "msg-A-0",
+        "pk-alice"
+       ]
+      ]
+     },
+     "expect": "ErrWrapperDeps"
+    }
+   ],
+   "derivation": "The node holds B by its hash, and B's dependency is missing."
+  },
+  {
+   "name": "sixteen of seventeen signatures, by tip",
+   "profile": "eip-8288-master",
+   "state": {
+    "s00": {
+     "balance": 1000000000
+    },
+    "s01": {
+     "balance": 1000000000
+    },
+    "s02": {
+     "balance": 1000000000
+    },
+    "s03": {
+     "balance": 1000000000
+    },
+    "s04": {
+     "balance": 1000000000
+    },
+    "s05": {
+     "balance": 1000000000
+    },
+    "s06": {
+     "balance": 1000000000
+    },
+    "s07": {
+     "balance": 1000000000
+    },
+    "s08": {
+     "balance": 1000000000
+    },
+    "s09": {
+     "balance": 1000000000
+    },
+    "s10": {
+     "balance": 1000000000
+    },
+    "s11": {
+     "balance": 1000000000
+    },
+    "s12": {
+     "balance": 1000000000
+    },
+    "s13": {
+     "balance": 1000000000
+    },
+    "s14": {
+     "balance": 1000000000
+    },
+    "s15": {
+     "balance": 1000000000
+    },
+    "s16": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T00",
+        "type": 6,
+        "sender": "s00",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T00-0",
+            "pk-s00"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 10
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T01",
+        "type": 6,
+        "sender": "s01",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T01-0",
+            "pk-s01"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 11
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T02",
+        "type": 6,
+        "sender": "s02",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T02-0",
+            "pk-s02"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 12
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T03",
+        "type": 6,
+        "sender": "s03",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T03-0",
+            "pk-s03"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 13
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T04",
+        "type": 6,
+        "sender": "s04",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T04-0",
+            "pk-s04"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 14
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T05",
+        "type": 6,
+        "sender": "s05",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T05-0",
+            "pk-s05"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 15
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T06",
+        "type": 6,
+        "sender": "s06",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T06-0",
+            "pk-s06"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 16
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T07",
+        "type": 6,
+        "sender": "s07",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T07-0",
+            "pk-s07"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 17
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T08",
+        "type": 6,
+        "sender": "s08",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T08-0",
+            "pk-s08"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 18
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T09",
+        "type": 6,
+        "sender": "s09",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T09-0",
+            "pk-s09"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 19
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T10",
+        "type": 6,
+        "sender": "s10",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T10-0",
+            "pk-s10"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 20
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T11",
+        "type": 6,
+        "sender": "s11",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T11-0",
+            "pk-s11"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 21
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T12",
+        "type": 6,
+        "sender": "s12",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T12-0",
+            "pk-s12"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 22
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T13",
+        "type": 6,
+        "sender": "s13",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T13-0",
+            "pk-s13"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 23
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T14",
+        "type": 6,
+        "sender": "s14",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T14-0",
+            "pk-s14"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 24
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T15",
+        "type": 6,
+        "sender": "s15",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T15-0",
+            "pk-s15"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 25
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T16",
+        "type": 6,
+        "sender": "s16",
+        "frames": [
+         {
+          "mode": 4,
+          "deps": [
+           [
+            16,
+            "msg-T16-0",
+            "pk-s16"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ],
+        "tip": 26
+       }
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "T16",
+      "T15",
+      "T14",
+      "T13",
+      "T12",
+      "T11",
+      "T10",
+      "T09",
+      "T08",
+      "T07",
+      "T06",
+      "T05",
+      "T04",
+      "T03",
+      "T02",
+      "T01"
+     ]
+    }
+   ],
+   "derivation": "max_sig_deps_per_wrapper is 16 and cap_aggregates true: the highest tips, T16 down to T01; T00, the lowest, does not fit."
+  }
+ ]
+}

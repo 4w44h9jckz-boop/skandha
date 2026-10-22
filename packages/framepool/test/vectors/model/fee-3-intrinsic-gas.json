@@ -1,0 +1,13 @@
+{
+  "clause": "FEE-3",
+  "document": "00-model.md",
+  "version": 12,
+  "operation": "intrinsic_gas",
+  "distinguishes": "The intrinsic and floor gas of an account-nonce transaction: 16 gas per non-zero calldata byte, 32000 for creation, 25000 per authorization, and a floor of 10 gas per token with 4 tokens per non-zero byte.",
+  "cases": [
+    {"name": "plain transfer", "tx": {}, "expect": {"intrinsic": 21000, "floor": 21000}},
+    {"name": "100 bytes of calldata: floor binds", "tx": {"data_size": 100}, "expect": {"intrinsic": 22600, "floor": 25000}},
+    {"name": "creation with 10 bytes of initcode", "tx": {"to": null, "data_size": 10}, "expect": {"intrinsic": 53160, "floor": 21400}},
+    {"name": "set code with two authorizations", "tx": {"type": 4, "authorities": ["alice", "bob"], "delegate": "impl"}, "expect": {"intrinsic": 71000, "floor": 21000}}
+  ]
+}

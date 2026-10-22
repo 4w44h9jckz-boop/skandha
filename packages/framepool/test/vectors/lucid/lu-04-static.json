@@ -1,0 +1,56 @@
+{
+  "clause": "LU-4",
+  "document": "06-lucid.md",
+  "version": 3,
+  "operation": "pool",
+  "distinguishes": "The static checks on a sealed transaction and their order, including the calldata check read as 64 gas a byte with no base (an Interpretation, decision record 0014).",
+  "cases": [
+    {"name": "a default sealed transaction is pending", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "S"}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["S"]}}}
+     ]},
+    {"name": "the same transaction twice", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "S"}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "S"}], "expect": ["ErrAlreadyKnown"]}
+     ]},
+    {"name": "a pool without the sealed profile",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "S"}], "expect": ["ErrTxTypeNotSupported"]},
+       {"expect_pool": {"pending": {}}}
+     ]},
+    {"name": "a signature_id other than 1", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"type": "st", "label": "S", "signature_id": 2}], "expect": ["ErrSTMalformed"]}]},
+    {"name": "a signature that recovers no sender", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"type": "st", "label": "S", "valid_signature": false}], "expect": ["ErrInvalidSender"]}]},
+    {"name": "signature_id is checked before the signature", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"type": "st", "label": "S", "signature_id": 2, "valid_signature": false}], "expect": ["ErrSTMalformed"]}]},
+    {"name": "a ciphertext that does not match its hash", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"type": "st", "label": "S", "ciphertext_ok": false}], "expect": ["ErrSTMalformed"]}]},
+    {"name": "one byte over max_bytes_per_st, checked before the calldata", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"type": "st", "label": "S", "size": 262145}], "expect": ["ErrOversizedData"]}]},
+    {"name": "max_bytes_per_st at max_tx_gas is admitted, under a head whose ToB segment holds it", "sealed": "eip-8184",
+     "head": {"gas_limit": 134217728, "gas_used": 67108864},
+     "state": {"alice": {"balance": 10000000000}},
+     "steps": [{"add": [{"type": "st", "label": "S", "size": 262144, "gas_limit": 16777216}], "expect": ["ok"]}]},
+    {"name": "a gas limit one above max_tx_gas", "sealed": "eip-8184",
+     "head": {"gas_limit": 134217728, "gas_used": 67108864},
+     "state": {"alice": {"balance": 10000000000}},
+     "steps": [{"add": [{"type": "st", "label": "S", "gas_limit": 16777217}], "expect": ["ErrGasLimitTooHigh"]}]},
+    {"name": "a gas limit one below 64 gas a byte", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"type": "st", "label": "S", "gas_limit": 32767}], "expect": ["ErrFloorDataGas"]}]},
+    {"name": "a gas limit of exactly 64 gas a byte, with no 21000 base", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [{"add": [{"type": "st", "label": "S", "gas_limit": 32768}], "expect": ["ok"]}]}
+  ]
+}

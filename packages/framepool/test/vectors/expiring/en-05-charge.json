@@ -1,0 +1,27 @@
+{
+  "clause": "EN-5",
+  "document": "09-expiring-nonces.md",
+  "version": 1,
+  "also": ["FP-8"],
+  "operation": "pool",
+  "distinguishes": "In the mode the frame that approves payment must have 13,000 gas for the APPROVE's charge, whether it is the sender's own frame or a sponsor's; outside the mode it needs no more than it uses.",
+  "cases": [
+    {"name": "the sender's own paying frame needs 13,000", "profile": "eip-8266",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [{"add": [
+       {"label": "short", "type": 6, "sender": "alice", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1030}, {"mode": 1, "flags": 3, "exec_gas": 12999}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "enough", "type": 6, "sender": "bob", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1030}, {"mode": 1, "flags": 3, "exec_gas": 13000}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ErrFramePrefixReverted", "ok"]}]},
+    {"name": "with a sponsor the charge falls on the sponsor's frame, not the sender's", "profile": "eip-8266",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "sponsor": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [{"add": [
+       {"label": "sponsor-enough", "type": 6, "sender": "alice", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1030}, {"mode": 1, "flags": 2, "exec_gas": 5000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 13000}, {"mode": 2, "exec_gas": 50000}]},
+       {"label": "sponsor-short", "type": 6, "sender": "bob", "nonce_keys": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "signatures": [{"scheme": "secp256k1"}, {"scheme": "secp256k1", "signer": "sponsor"}], "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1030}, {"mode": 1, "flags": 2, "exec_gas": 30000}, {"mode": 1, "flags": 1, "target": "sponsor", "exec_gas": 12999}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok", "ErrFramePrefixReverted"]}]},
+    {"name": "outside the mode the same frame passes", "profile": "eip-8266",
+     "state": {"alice": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [{"add": [
+       {"label": "keyed", "type": 6, "sender": "alice", "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 1030}, {"mode": 1, "flags": 3, "exec_gas": 12999}, {"mode": 2, "exec_gas": 50000}]}
+     ], "expect": ["ok"]}]}
+  ]
+}

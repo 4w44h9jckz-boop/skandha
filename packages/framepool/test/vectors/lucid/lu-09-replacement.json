@@ -1,0 +1,58 @@
+{
+  "clause": "LU-9",
+  "document": "06-lucid.md",
+  "version": 3,
+  "operation": "pool",
+  "distinguishes": "Replacement by NP-11's bump on the fee cap and the tip, and a floored, non-strict bump on max_tob_fee (an Interpretation, decision record 0014), before the policy and outside the capacity rule.",
+  "cases": [
+    {"name": "every price bumped by price_bump", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "max_tob_fee": 1000}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "A2", "max_fee": 110, "tip": 11, "max_tob_fee": 1100}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["A2"]}}}
+     ]},
+    {"name": "the ToB fee one wei short", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "max_tob_fee": 1000}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "A2", "max_fee": 110, "tip": 11, "max_tob_fee": 1099}], "expect": ["ErrReplaceUnderpriced"]},
+       {"expect_pool": {"pending": {"alice": ["A"]}}}
+     ]},
+    {"name": "the tip not raised", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "max_tob_fee": 1000}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "A2", "max_fee": 110, "tip": 10, "max_tob_fee": 1100}], "expect": ["ErrReplaceUnderpriced"]}
+     ]},
+    {"name": "the fee cap one short of the bump", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "max_tob_fee": 1000}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "A2", "max_fee": 109, "tip": 11, "max_tob_fee": 1100}], "expect": ["ErrReplaceUnderpriced"]}
+     ]},
+    {"name": "a ToB fee of zero may stay zero", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A"}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "A2", "max_fee": 110, "tip": 11}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["A2"]}}}
+     ]},
+    {"name": "a replacement in a full pool", "sealed": "eip-8184",
+     "config": {"sealed": {"st_slots": 1}},
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A"}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "A2", "max_fee": 110, "tip": 11}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["A2"]}}}
+     ]},
+    {"name": "the bump before the policy", "sealed": "eip-8184",
+     "config": {"sealed": {"policy": "next-block"}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 5000}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 1000}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "A2", "sender": "alice", "max_fee": 110, "tip": 11, "max_tob_fee": 1000, "max_preceding": 0}], "expect": ["ErrReplaceUnderpriced"]}
+     ]}
+  ]
+}

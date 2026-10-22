@@ -1,0 +1,90 @@
+{
+  "clause": "FP-14",
+  "document": "02-frame-pool.md",
+  "version": 8,
+  "operation": "pool",
+  "distinguishes": "Eviction order in a full frame pool: nearest expiry before lowest tip, so an expiring transaction loses to a cheaper one without a deadline, and a newcomer that would be the victim is refused; ties go against the latest received; under evict_first tip the lowest effective tip goes first and a deadline only breaks ties.",
+  "cases": [
+    {"name": "the cheapest of pool and newcomer goes", "config": {"frame": {"max_pending": 2}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+     "steps": [
+       {"add": [
+         {"label": "a", "type": 6, "sender": "alice", "tip": 10, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b", "type": 6, "sender": "bob", "tip": 20, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"add": [{"label": "c5", "type": 6, "sender": "carol", "tip": 5, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrTxPoolOverflow"]},
+       {"add": [{"label": "c30", "type": 6, "sender": "carol", "tip": 30, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"bob": ["b"], "carol": ["c30"]}}}
+     ]},
+    {"name": "a deadline makes a well-paying newcomer the victim", "config": {"frame": {"max_pending": 2}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "dave": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [
+       {"add": [
+         {"label": "a", "type": 6, "sender": "alice", "tip": 10, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b", "type": 6, "sender": "bob", "tip": 20, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"add": [{"label": "d", "type": 6, "sender": "dave", "tip": 50, "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 5000}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrTxPoolOverflow"]},
+       {"expect_pool": {"pending": {"alice": ["a"], "bob": ["b"]}}}
+     ]},
+    {"name": "a held transaction with a deadline goes before a cheaper one without", "config": {"frame": {"max_pending": 2}},
+     "state": {"bob": {"balance": 100000000}, "dave": {"balance": 100000000}, "eve": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [
+       {"add": [
+         {"label": "d", "type": 6, "sender": "dave", "tip": 50, "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 5000}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b", "type": 6, "sender": "bob", "tip": 20, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"add": [{"label": "e", "type": 6, "sender": "eve", "tip": 5, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"bob": ["b"], "eve": ["e"]}}}
+     ]},
+    {"name": "equal tips and no deadline: the newcomer is the latest received and is refused", "config": {"frame": {"max_pending": 2}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [
+       {"add": [
+         {"label": "a", "type": 6, "sender": "alice", "tip": 10, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b", "type": 6, "sender": "bob", "tip": 10, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"add": [{"label": "c", "type": 6, "sender": "carol", "tip": 10, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrTxPoolOverflow"]},
+       {"expect_pool": {"pending": {"alice": ["a"], "bob": ["b"]}}}
+     ]},
+    {"name": "evict_first tip: a well-paying newcomer with a deadline evicts the cheapest", "config": {"frame": {"max_pending": 2, "evict_first": "tip"}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "dave": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [
+       {"add": [
+         {"label": "a", "type": 6, "sender": "alice", "tip": 10, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b", "type": 6, "sender": "bob", "tip": 20, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"add": [{"label": "d", "type": 6, "sender": "dave", "tip": 50, "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 5000}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"bob": ["b"], "dave": ["d"]}}}
+     ]},
+    {"name": "evict_first tip: a cheaper newcomer without a deadline is refused though a held one has one", "config": {"frame": {"max_pending": 2, "evict_first": "tip"}},
+     "state": {"bob": {"balance": 100000000}, "dave": {"balance": 100000000}, "eve": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [
+       {"add": [
+         {"label": "d", "type": 6, "sender": "dave", "tip": 50, "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 5000}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b", "type": 6, "sender": "bob", "tip": 20, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"add": [{"label": "e", "type": 6, "sender": "eve", "tip": 5, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrTxPoolOverflow"]},
+       {"expect_pool": {"pending": {"dave": ["d"], "bob": ["b"]}}}
+     ]},
+    {"name": "evict_first tip: among equal tips the nearest deadline goes", "config": {"frame": {"max_pending": 2, "evict_first": "tip"}},
+     "state": {"alice": {"balance": 100000000}, "carol": {"balance": 100000000}, "dave": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [
+       {"add": [
+         {"label": "a", "type": 6, "sender": "alice", "tip": 10, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "d", "type": 6, "sender": "dave", "tip": 10, "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 5000}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"add": [{"label": "c", "type": 6, "sender": "carol", "tip": 10, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["a"], "carol": ["c"]}}}
+     ]},
+    {"name": "evict_first tip: the effective tip decides, so a fee cap below the pending base fee goes before a deadline", "config": {"frame": {"max_pending": 2, "evict_first": "tip"}},
+     "state": {"xavier": {"balance": 100000000}, "yvonne": {"balance": 100000000}, "zoe": {"balance": 100000000}, "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf": {"code": "expiry-verifier"}},
+     "steps": [
+       {"add": [
+         {"label": "x", "type": 6, "sender": "xavier", "tip": 50, "frames": [{"mode": 1, "target": "0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf", "data_size": 8, "deadline": 5000}, {"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "y", "type": 6, "sender": "yvonne", "tip": 9, "max_fee": 9, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"add": [{"label": "z", "type": 6, "sender": "zoe", "tip": 5, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"xavier": ["x"], "zoe": ["z"]}}}
+     ]}
+  ]
+}

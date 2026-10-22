@@ -1,0 +1,56 @@
+{
+  "clause": "LU-11",
+  "document": "06-lucid.md",
+  "version": 3,
+  "also": ["MD-11"],
+  "operation": "pool",
+  "distinguishes": "What a new head drops from the sealed pool: a used nonce, a balance below the cost, a fee cap below the new pending base fee, a gas limit above the new ToB segment, and under every-head what the selection passes over; and that the sender is released.",
+  "cases": [
+    {"name": "the sender's nonce moved past the ticket", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A"}], "expect": ["ok"]},
+       {"reset": {"head": {"number": 1}, "state": {"alice": {"nonce": 1}}}},
+       {"expect_pool": {"pending": {}}}
+     ]},
+    {"name": "the balance fell below the cost, and the sender is released", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A"}], "expect": ["ok"]},
+       {"reset": {"head": {"number": 1}, "state": {"alice": {"balance": 9999999}}}},
+       {"expect_pool": {"pending": {}}},
+       {"add": [{"label": "P"}], "expect": ["ok"]}
+     ]},
+    {"name": "the pending base fee rose above the fee cap", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "max_fee": 10, "tip": 0}], "expect": ["ok"]},
+       {"reset": {"head": {"number": 1, "gas_used": 30000000}}},
+       {"expect_pool": {"pending": {}}}
+     ]},
+    {"name": "the gas limit fell below eight times the ticket's", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 1000000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "gas_limit": 3750000}], "expect": ["ok"]},
+       {"reset": {"head": {"number": 1, "gas_limit": 29999992}}},
+       {"expect_pool": {"pending": {}}}
+     ]},
+    {"name": "nothing changed, nothing dropped", "sealed": "eip-8184",
+     "state": {"alice": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "max_preceding": 0}], "expect": ["ok"]},
+       {"reset": {"head": {"number": 1}}},
+       {"expect_pool": {"pending": {"alice": ["A"]}}}
+     ]},
+    {"name": "every-head drops what max_st_commits leaves out", "sealed": "eip-8184",
+     "config": {"sealed": {"policy": "every-head", "max_st_commits": 1}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"type": "st", "label": "A", "sender": "alice", "max_tob_fee": 100}], "expect": ["ok"]},
+       {"add": [{"type": "st", "label": "B", "sender": "bob", "max_tob_fee": 200}], "expect": ["ok"]},
+       {"expect_pool": {"pending": {"alice": ["A"], "bob": ["B"]}}},
+       {"reset": {"head": {"number": 1}}},
+       {"expect_pool": {"pending": {"bob": ["B"]}}}
+     ]}
+  ]
+}

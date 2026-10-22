@@ -1,0 +1,34 @@
+{
+  "clause": "NP-2",
+  "document": "01-nonce-pool.md",
+  "version": 1,
+  "operation": "pool",
+  "distinguishes": "Duplicates are refused by hash, including within one batch, and a batch is promoted only after all of it has been admitted.",
+  "cases": [
+    {
+      "name": "a duplicate in the same batch and in a later one",
+      "state": {"alice": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "alice"}, {"label": "a0", "sender": "alice"}], "expect": ["ok", "ErrAlreadyKnown"]},
+        {"add": [{"label": "a0", "sender": "alice"}], "expect": ["ErrAlreadyKnown"]},
+        {"expect_pool": {"pending": {"alice": ["a0"]}}}
+      ]
+    },
+    {
+      "name": "the same fields with another label are another transaction, and compete for the nonce",
+      "state": {"alice": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a0", "sender": "alice"}, {"label": "a0-copy", "sender": "alice"}], "expect": ["ok", "ErrReplaceUnderpriced"]},
+        {"expect_pool": {"pending": {"alice": ["a0"]}}}
+      ]
+    },
+    {
+      "name": "a gap filled later in the same batch is promoted as one run",
+      "state": {"alice": {"balance": 100000000}},
+      "steps": [
+        {"add": [{"label": "a1", "sender": "alice", "nonce": 1}, {"label": "a0", "sender": "alice", "nonce": 0}], "expect": ["ok", "ok"]},
+        {"expect_pool": {"pending": {"alice": ["a0", "a1"]}}}
+      ]
+    }
+  ]
+}

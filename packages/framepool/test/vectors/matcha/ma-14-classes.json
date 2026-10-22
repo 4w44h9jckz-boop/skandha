@@ -1,0 +1,120 @@
+{
+  "clause": "MA-14",
+  "document": "04-matcha.md",
+  "version": 3,
+  "also": ["MA-5", "MA-6", "MA-7", "MA-9", "MA-12"],
+  "operation": "pool",
+  "distinguishes": "Classes: under sender every transaction from a sender shares one; under storage every slot of an account is one element and under slot each slot is one; nonce sequences, balances under reuse_balance, contract code and recent root entries are left out, a delegated sender's code and, without reuse, a balance are not. A transaction that shares no class with a pending one is a baseline and spends nothing; one that shares is additional. A write re-runs free only the baselines whose class it changes. A replacement of a baseline stays a baseline only when its class adds nothing another pending transaction has.",
+  "cases": [
+    {"name": "under slot, transactions that read different slots, or none, are each a baseline; one that reads a slot a pending one reads is additional", "profile": "matcha", "config": {"frame": {"contention": "slot"}}, "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"add": [
+         {"label": "a", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 10, 0]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 11, 0]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "c", "type": 6, "sender": "pool", "nonce_keys": [3], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "d", "type": 6, "sender": "pool", "nonce_keys": [4], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 10, 0]]}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok", "ok", "ErrFrameInsufficientWidth"]},
+       {"expect_baselines": {"pool": ["a", "b", "c"]}},
+       {"expect_width": {"pool": 0}},
+       {"finalize": [{"number": 1, "gas": {"pool": 100000}}]},
+       {"add": [
+         {"label": "d", "type": 6, "sender": "pool", "nonce_keys": [4], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 10, 0]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "e", "type": 6, "sender": "pool", "nonce_keys": [5], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 11, 0], ["pool", 12, 0]]}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFrameInsufficientWidth"]},
+       {"expect_baselines": {"pool": ["a", "b", "c"]}},
+       {"expect_width": {"pool": 6324}},
+       {"expect_load": {"pool": 93676}}
+     ],
+     "derivation": "The pool's code is a contract's and `reuse_balance` is on, so a class holds only the slots read: a {10}, b {11}, c {}, d {10}. a, b and c share nothing with what is pending when they arrive, so each is a baseline and spends nothing. d shares slot 10 with a, so it is additional and, with width 0, refused. After 100000 of width, d is admitted for one charge of 93676 (ma-02): 6324 left. e shares slot 11 with b and cannot pay a second charge."},
+    {"name": "under storage, every two transactions that read their sender's storage share a class, and one that reads none is a baseline", "profile": "matcha", "config": {"frame": {"contention": "storage"}}, "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"add": [
+         {"label": "a", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 10, 0]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 11, 0]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "c", "type": 6, "sender": "pool", "nonce_keys": [3], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "d", "type": 6, "sender": "pool", "nonce_keys": [4], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFrameInsufficientWidth", "ok", "ok"]},
+       {"expect_baselines": {"pool": ["a", "c", "d"]}},
+       {"expect_baseline": {"pool": "a"}}
+     ],
+     "derivation": "Under storage a's class and b's are both {the pool's storage}, so b is additional and has no width. c and d read no storage; their classes are empty and share nothing, so both are baselines. baseline(sender) is the first baseline admitted."},
+    {"name": "under sender, the post's, every further transaction is additional whatever it reads", "profile": "matcha", "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"add": [
+         {"label": "a", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 10, 0]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 11, 0]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "c", "type": 6, "sender": "pool", "nonce_keys": [3], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFrameInsufficientWidth", "ErrFrameInsufficientWidth"]},
+       {"expect_baselines": {"pool": ["a"]}}
+     ],
+     "derivation": "The matcha profile's contention is sender: every class is {pool}, so b and c share a's and are additional."},
+    {"name": "a delegated sender's code is in every class", "profile": "matcha", "config": {"frame": {"contention": "slot"}}, "state": {"eoa": {"balance": 1000000000000000000, "code": "0xef0100cafe"}},
+     "steps": [
+       {"add": [
+         {"label": "a", "type": 6, "sender": "eoa", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b", "type": 6, "sender": "eoa", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFrameInsufficientWidth"]},
+       {"expect_baselines": {"eoa": ["a"]}}
+     ],
+     "derivation": "The code of eoa is a delegation (MD-2), which EIP-7702 can change, so the code dependency stays in both classes and b shares a's."},
+    {"name": "without balance reuse the payer's balance is in every class", "profile": "matcha", "config": {"frame": {"contention": "slot", "reuse_balance": false}}, "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"add": [
+         {"label": "a", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFrameInsufficientWidth"]}
+     ],
+     "derivation": "With reuse_balance false a change to the pool's balance re-runs both prefixes (MA-9, step 2 or 3), so the balance dependency stays in both classes and b shares a's."},
+    {"name": "recent root entries are in no class, even under storage", "profile": "matcha", "config": {"frame": {"contention": "storage", "recent_roots": true}}, "head": {"slot": 10}, "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}, "0x0000000000000000000000000000000000008272": {"code": "recent-root"}}, "roots": [["pool", "0", 9, "r9"]],
+     "steps": [
+       {"add": [
+         {"label": "a", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "target": "0x0000000000000000000000000000000000008272", "data_size": 72, "exec_gas": 8000, "roots": [["pool/0", 9, "r9"]]}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "target": "0x0000000000000000000000000000000000008272", "data_size": 72, "exec_gas": 8000, "roots": [["pool/0", 9, "r9"]]}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"expect_baselines": {"pool": ["a", "b"]}}
+     ],
+     "derivation": "Both reference the same entry of the recent root contract (RR-6), which item 4 leaves out, and its code, which is a contract's; neither reads the pool's storage. Both classes are empty, so both are baselines."},
+    {"name": "the same two under sender", "profile": "matcha", "config": {"frame": {"recent_roots": true}}, "head": {"slot": 10}, "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}, "0x0000000000000000000000000000000000008272": {"code": "recent-root"}}, "roots": [["pool", "0", 9, "r9"]],
+     "steps": [
+       {"add": [
+         {"label": "a", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "target": "0x0000000000000000000000000000000000008272", "data_size": 72, "exec_gas": 8000, "roots": [["pool/0", 9, "r9"]]}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "target": "0x0000000000000000000000000000000000008272", "data_size": 72, "exec_gas": 8000, "roots": [["pool/0", 9, "r9"]]}, {"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFrameInsufficientWidth"]}
+     ],
+     "derivation": "Under sender b shares a's class whatever it reads."},
+    {"name": "a write to a slot re-runs, free, the baseline that reads it and, at a charge, the additional one; the others are not re-run", "profile": "matcha", "config": {"frame": {"contention": "slot"}}, "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 300000}}]},
+       {"add": [
+         {"label": "a", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 10, null]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 11, null]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [3], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 10, null]]}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok", "ok"]},
+       {"expect_width": {"pool": 206324}},
+       {"reset": {"head": {"number": 1, "timestamp": 1012}, "state": {"pool": {"storage": {"10": 7}}}}},
+       {"expect_resimulated": ["a", "x"]},
+       {"expect_width": {"pool": 112648}},
+       {"expect_pool": {"pending": {"pool": ["a", "b", "x"]}}}
+     ],
+     "derivation": "a and b are baselines; x shares slot 10 with a and pays 93676: 300000 - 93676 = 206324. The write to slot 10 changes a dependency of a and x, which accept any value and pass again: a is re-run free (MA-9, step 2), x pays another charge first (step 3): 206324 - 93676 = 112648. b's slot did not change."},
+    {"name": "a replacement of a baseline is a baseline only if its class adds nothing another pending transaction has", "profile": "matcha", "config": {"frame": {"contention": "slot"}}, "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 100000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 10, 0]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 10, 0]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "c", "type": 6, "sender": "pool", "nonce_keys": [3], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 11, 0]]}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok", "ok"]},
+       {"expect_width": {"pool": 6324}},
+       {"add": [
+         {"label": "bR", "type": 6, "sender": "pool", "nonce_keys": [1], "max_fee": 110, "tip": 11, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 10, 0]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "cR", "type": 6, "sender": "pool", "nonce_keys": [3], "max_fee": 110, "tip": 11, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 10, 0]]}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "cR2", "type": 6, "sender": "pool", "nonce_keys": [3], "max_fee": 110, "tip": 11, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3, "reads": [["pool", 12, 0]]}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFrameInsufficientWidth", "ok"]},
+       {"expect_width": {"pool": 6324}},
+       {"expect_baselines": {"pool": ["bR", "cR2"]}},
+       {"expect_pool": {"pending": {"pool": ["x", "bR", "cR2"]}}}
+     ],
+     "derivation": "b and c are baselines; x shares slot 10 with b and pays 93676: 6324 left. bR replaces b and reads only slot 10, which is in b's class, so it is a baseline and free. cR would replace c, but slot 10 is in neither c's class nor free of others (x and bR read it), so it is additional and cannot pay. cR2 replaces c with slot 12, which no other pending transaction reads, so it is a baseline and free."}
+  ]
+}

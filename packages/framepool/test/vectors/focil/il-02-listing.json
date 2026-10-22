@@ -1,0 +1,83 @@
+{
+  "clause": "IL-2",
+  "document": "07-focil.md",
+  "version": 2,
+  "also": ["IL-1"],
+  "operation": "pool",
+  "distinguishes": "What an includer lists and in what order: senders by their next transaction's tip under fee and by its arrival under age, each sender in nonce order, a transaction over the byte limit left out with the rest of its sender's, nothing the next block's base fee rules out, no frame transaction under eip-7805, and under eip-8369 only what the IL's verify budget still holds.",
+  "cases": [
+    {"name": "fee: senders by the tip of their next transaction, each in nonce order",
+     "focil": "eip-7805",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "b0", "sender": "bob", "tip": 20},
+                {"label": "a0", "sender": "alice", "nonce": 0, "tip": 10},
+                {"label": "a1", "sender": "alice", "nonce": 1, "tip": 50},
+                {"label": "c0", "sender": "carol", "tip": 30}],
+        "expect": ["ok", "ok", "ok", "ok"]},
+       {"il": {}, "expect": ["c0", "b0", "a0", "a1"]}
+     ]},
+    {"name": "age: senders by the arrival of their next transaction",
+     "focil": "eip-7805",
+     "config": {"focil": {"policy": "age"}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "b0", "sender": "bob", "tip": 20},
+                {"label": "a0", "sender": "alice", "nonce": 0, "tip": 10},
+                {"label": "a1", "sender": "alice", "nonce": 1, "tip": 50},
+                {"label": "c0", "sender": "carol", "tip": 30}],
+        "expect": ["ok", "ok", "ok", "ok"]},
+       {"il": {}, "expect": ["b0", "a0", "a1", "c0"]}
+     ]},
+    {"name": "a transaction over 8192 bytes in all is left out with its sender's later ones, and a smaller one after it is listed",
+     "focil": "eip-7805",
+     "state": {"x": {"balance": 100000000}, "y": {"balance": 100000000}, "z": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "x0", "sender": "x", "tip": 50, "size": 8000},
+                {"label": "y0", "sender": "y", "nonce": 0, "tip": 40, "size": 300},
+                {"label": "y1", "sender": "y", "nonce": 1, "tip": 40, "size": 100},
+                {"label": "z0", "sender": "z", "tip": 30, "size": 150}],
+        "expect": ["ok", "ok", "ok", "ok"]},
+       {"il": {}, "expect": ["x0", "z0"]}
+     ]},
+    {"name": "a fee cap below the next block's base fee of 11 is not listed",
+     "focil": "eip-7805",
+     "head": {"gas_used": 30000000},
+     "state": {"d": {"balance": 100000000}, "e": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "d0", "sender": "d", "max_fee": 10, "tip": 1},
+                {"label": "e0", "sender": "e"}],
+        "expect": ["ok", "ok"]},
+       {"il": {}, "expect": ["e0"]}
+     ]},
+    {"name": "eip-7805 lists no frame transaction",
+     "focil": "eip-7805",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 20000}, {"mode": 2, "exec_gas": 50000}]},
+                {"label": "b0", "sender": "bob", "tip": 20}],
+        "expect": ["ok", "ok"]},
+       {"il": {}, "expect": ["b0"]}
+     ]},
+    {"name": "eip-8369 lists a Profile 2 candidate by the same order",
+     "focil": "eip-8369",
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "f", "type": 6, "sender": "alice", "frames": [{"mode": 1, "flags": 3, "exec_gas": 20000}, {"mode": 2, "exec_gas": 50000}]},
+                {"label": "b0", "sender": "bob", "tip": 20}],
+        "expect": ["ok", "ok"]},
+       {"il": {}, "expect": ["b0", "f"]}
+     ]},
+    {"name": "a frame transaction the IL's verify budget can no longer hold is not listed, and what follows still is",
+     "focil": "eip-8369",
+     "config": {"focil": {"max_verify_gas_per_il": 100000}},
+     "state": {"alice": {"balance": 100000000}, "bob": {"balance": 100000000}, "carol": {"balance": 100000000}},
+     "steps": [
+       {"add": [{"label": "f1", "type": 6, "sender": "alice", "tip": 30, "frames": [{"mode": 1, "flags": 3, "exec_gas": 60000}, {"mode": 2, "exec_gas": 50000}]},
+                {"label": "f2", "type": 6, "sender": "bob", "tip": 20, "frames": [{"mode": 1, "flags": 3, "exec_gas": 60000}, {"mode": 2, "exec_gas": 50000}]},
+                {"label": "c0", "sender": "carol", "tip": 10}],
+        "expect": ["ok", "ok", "ok"]},
+       {"il": {}, "expect": ["f1", "c0"]}
+     ]}
+  ]
+}

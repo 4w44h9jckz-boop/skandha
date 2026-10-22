@@ -1,0 +1,62 @@
+{
+  "clause": "MA-7",
+  "document": "04-matcha.md",
+  "version": 3,
+  "also": ["MA-6", "MA-12"],
+  "operation": "pool",
+  "distinguishes": "Duplicates spend nothing; a replacement of the baseline is the baseline and spends nothing; a replacement of an additional transaction passes the fee rule first and then MA-6's checks 2 to 4, and spends another charge.",
+  "cases": [
+    {"name": "replacing the baseline is free, replacing an additional transaction is charged again", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 300000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"expect_width": {"pool": 206324}},
+       {"add": [{"label": "bR", "type": 6, "sender": "pool", "nonce_keys": [1], "max_fee": 110, "tip": 11, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_width": {"pool": 206324}},
+       {"expect_baseline": {"pool": "bR"}},
+       {"add": [{"label": "xR", "type": 6, "sender": "pool", "nonce_keys": [2], "max_fee": 110, "tip": 11, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ok"]},
+       {"expect_width": {"pool": 112648}},
+       {"add": [{"label": "xR", "type": 6, "sender": "pool", "nonce_keys": [2], "max_fee": 110, "tip": 11, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}], "expect": ["ErrAlreadyKnown"]},
+       {"expect_width": {"pool": 112648}},
+       {"expect_pool": {"pending": {"pool": ["bR", "xR"]}}}
+     ],
+     "derivation": "300000 - 93676 = 206324 for x; bR costs nothing; xR's charge equals x's (the fee fields do not enter a): 206324 - 93676 = 112648. The duplicate of xR costs nothing."},
+    {"name": "a replacement that fails the fee rule or the width check spends nothing and replaces nothing", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 100000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"add": [
+         {"label": "x105", "type": 6, "sender": "pool", "nonce_keys": [2], "max_fee": 105, "tip": 11, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x110", "type": 6, "sender": "pool", "nonce_keys": [2], "max_fee": 110, "tip": 11, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ErrReplaceUnderpriced", "ErrFrameInsufficientWidth"]},
+       {"expect_pool": {"pending": {"pool": ["b", "x"]}}},
+       {"expect_width": {"pool": 6324}}
+     ],
+     "derivation": "100000 - 93676 = 6324, short of a second charge."},
+    {"name": "a replacement of an additional transaction must cover the pending base fee, one of the baseline need not", "profile": "matcha",
+     "state": {"pool": {"balance": 1000000000000000000, "code": "privacy-pool"}},
+     "steps": [
+       {"finalize": [{"number": 1, "gas": {"pool": 300000}}]},
+       {"add": [
+         {"label": "b", "type": 6, "sender": "pool", "nonce_keys": [1], "max_fee": 10, "tip": 1, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "x", "type": 6, "sender": "pool", "nonce_keys": [2], "max_fee": 10, "tip": 1, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ok"]},
+       {"reset": {"head": {"number": 1, "timestamp": 1012, "base_fee": 100}}},
+       {"add": [
+         {"label": "bR", "type": 6, "sender": "pool", "nonce_keys": [1], "max_fee": 11, "tip": 2, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]},
+         {"label": "xR", "type": 6, "sender": "pool", "nonce_keys": [2], "max_fee": 11, "tip": 2, "frames": [{"mode": 1, "flags": 3, "exec_gas": 30000, "approves": 3}, {"mode": 2, "exec_gas": 50000}]}
+       ], "expect": ["ok", "ErrFeeCapTooLow"]},
+       {"expect_pool": {"pending": {"pool": ["x", "bR"]}}},
+       {"expect_width": {"pool": 206324}}
+     ],
+     "derivation": "After the reset the pending base fee is 100 (gas_used is still at the target). Both replacements pass NP-11 (11 >= 110% of 10 floored, 2 >= 110% of 1 floored). The pool keeps x although its fee cap no longer covers the base fee: nothing removes it."}
+  ]
+}
