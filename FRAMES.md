@@ -199,6 +199,13 @@ Two flags turn it on, beside `--frames.claims`:
   version 5 paymasters do not. With `--frames.binding` and no template,
   every ticket is unbound.
 
+Under `binding`, a replacement under the same bound ticket is its holder's
+re-pricing, and version 8 of the clause no longer counts it as a removal
+(CG-6): the holder may re-price at each 10 percent bump, while the client's
+simulation accepts its `max_cost`, which a bound paymaster caps at its
+denomination. A transaction with a proof dependency still re-prices only
+under a new ticket (CG-5).
+
 The `start` line logs `binding` and the template. Each transaction's `claim`
 logs its `binder` and `bound`.
 

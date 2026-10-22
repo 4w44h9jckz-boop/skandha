@@ -648,7 +648,16 @@ export class FramePool {
         if (victim === null) throw new TxError(E.ErrTxPoolOverflow);
         this.remove(victim, "capacity");
       }
-      if (oldHash !== null) this.remove(oldHash, "replaced", false);
+      if (oldHash !== null) {
+        // CG-6 under `binding`: the holder's re-pricing under the same claim is no removal
+        const prior = (this.entries.get(oldHash) as Entry).tx.claim;
+        const same =
+          cfg.binding &&
+          tx.claim !== null &&
+          prior !== null &&
+          claimId(tx.claim) === claimId(prior);
+        this.remove(oldHash, "replaced", false, true, same);
+      }
       if (this.matcha) {
         if (baseline) this.bases.add(tx.hash);
         else
@@ -959,7 +968,8 @@ export class FramePool {
     txHash: string,
     reason: string,
     release = true,
-    account = true
+    account = true,
+    keepClaim = false
   ): void {
     const e = this.entries.get(txHash) as Entry;
     this.entries.delete(txHash);
@@ -994,7 +1004,12 @@ export class FramePool {
     this.index(e, -1);
     if (reason === "stale_nonce" && this.counted.has(tx.hash))
       this.bump(this.ticketPaymaster(tx) as string, 0, 1); // CG-11: included
-    if (this.config.claims && tx.claim !== null && reason !== "stale_nonce") {
+    if (
+      this.config.claims &&
+      tx.claim !== null &&
+      reason !== "stale_nonce" &&
+      !keepClaim
+    ) {
       // CG-6
       const id = claimId(tx.claim);
       this.expiredClaims.set(
