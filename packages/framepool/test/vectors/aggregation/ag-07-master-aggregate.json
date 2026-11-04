@@ -4,7 +4,7 @@
   "AG-5"
  ],
  "document": "05-aggregation.md",
- "version": 4,
+ "version": 5,
  "operation": "pool",
  "distinguishes": "Under eip-8288-master a node folds the leanSPHINCS dependencies it holds into one mode 1 wrapper, at most max_sig_deps_per_wrapper of them, and accepts another node's fold over the same dependencies; an implementation that cannot build the fold, or refuses an equal one, fails here.",
  "cases": [

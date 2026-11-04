@@ -56,7 +56,7 @@ fold (below).
 | `00-model.md` | MD-2 to MD-4, version 13: an account's stake, and MD-6 with `zero_bytes`, `verdict`, a slot's association and a claim's `binder` and `bound`, MD-7, MD-8 with `reset`'s verdicts and the blocks' access lists, FEE-1 to FEE-4 |
 | `02-frame-pool.md` | FP-2 to FP-16, profiles `eip-8141` and `hegota-testnet`, with the `reuse_balance`, `evict_first`, `expiry_margin` and `static_first` variants, and FP-8 to FP-10 and FP-15 through a client's verdict |
 | `04-matcha.md` | MA-2 to MA-14, profile `matcha` (a proposal) |
-| `05-aggregation.md` | AG-2 to AG-7, AG-9 and AG-10, version 4, profiles `eip-8288` and `eip-8288-master`: dependency frames, receiving a wrapper and admitting its transactions, and the aggregator's fold with its proving time and memory (`src/aggregation.ts`); not AG-8's charge to a block, which is block building |
+| `05-aggregation.md` | AG-2 to AG-7 and AG-9 to AG-11, version 5, profiles `eip-8288` and `eip-8288-master`: dependency frames, receiving a wrapper and admitting its transactions, and the aggregator's fold with its proving time and memory (`src/aggregation.ts`); not AG-8's charge to a block, which is block building; and AG-11's real prover, a command with the contract of exp-e2e-frames experiment 19's prover, in place of the flags (`Prover` in `src/aggregation.ts`) |
 | `08-recent-roots.md` | RR-3 to RR-7, profiles `eip-8272` and, since its version 2, `hegota-testnet` |
 | `09-expiring-nonces.md` | EN-2 to EN-6, profile `eip-8266` |
 | `11-surface.md` | SF-1 to SF-9, version 4: decoding, the model transaction, the verdict, `eth_sendRawTransaction`, relay, what is taken from peers, head changes and hand-off (`src/surface.ts`, `src/keccak.ts`); the signature hash of the bytes received, for CG-12 |
@@ -172,6 +172,30 @@ The two nodes are two pools in one process. Two running nodes cannot
 exchange a fold yet: `AGGREGATED_VK` and `DEPS_HASH` are still to be chosen
 in EIP-8288, so no recursive STARK can be made or checked to it. The
 model's recursive STARK is the list of dependencies it covers.
+
+### Under a real prover
+
+`bun test/run-two-folds.ts --prover <command>` plays the exchange under
+exp-mempool-l2s AG-11 (`05-aggregation.md` version 5). `<command>` is a
+prover with the contract of `exp-e2e-frames` experiment 19's prover at
+`47f5496`:
+- **`aggregate <claims> <out>`** folds leanSPHINCS signatures with leanVM's
+  own aggregation;
+- **`verify-aggregate <proof> <claims>`** checks the bytes;
+- **`sphincs <seed> <message>`** makes a key and a signature, so that the
+  six users' spends carry signatures the prover accepts.
+
+Each node folds only the signatures it holds: leanVM at `3cbac04` recurses
+over its own bytecode only, and the prover passes no earlier aggregate as an
+input. So each round's two folds differ, and each node admits the other's
+spends without folding them. Round 4 changes one byte of a fold, and the
+other node refuses it with `ErrWrapperProof`. Each line gives the proof's
+bytes and the prover's measured time and peak memory.
+
+`test/prover-stub.ts` keeps that contract with stand-in hashes, not leanVM's
+cryptography. `test/unit/two-folds.test.ts` runs the exchange on it, and
+`--prover ./test/prover-stub.ts` prints it. A real prover is built outside
+this repository, by `exp-e2e-frames`.
 
 ## Running
 

@@ -587,6 +587,10 @@ function makeWrapper(d: Json, cfg: FramePoolConfig | null = null): Wrapper {
           covers:
             d.stark?.covers !== undefined ? makeDeps(d.stark.covers) : deps,
           valid: d.stark?.valid ?? true,
+          proof:
+            d.stark?.proof !== undefined
+              ? new Uint8Array(Buffer.from(d.stark.proof.slice(2), "hex"))
+              : null, // AG-11
         };
   return {
     txs: entries,
@@ -595,6 +599,7 @@ function makeWrapper(d: Json, cfg: FramePoolConfig | null = null): Wrapper {
     proofs: d.mode === 0 ? d.proofs ?? deps.map(() => true) : [],
     stark,
     signed: d.signed ?? [],
+    witnesses: d.witnesses ?? [], // AG-11
   };
 }
 
@@ -673,10 +678,14 @@ function frameConfig(
       ? new Set(value)
       : key === "declarations"
       ? declarations(value)
+      : key === "prover" && value === "stub"
+      ? PROVER_STUB // AG-11: the stub of the prover's contract (exp-mempool-l2s decision record 0083)
       : value;
   }
   return withChanges(profile, changes);
 }
+
+const PROVER_STUB = new URL("./prover-stub.ts", import.meta.url).pathname;
 
 /** The IL-1 profile a case names, with its `focil` overrides, written with IL-1's parameter names. */
 function focilConfig(c: Json): FocilConfig {
@@ -890,6 +899,21 @@ function runPool(c: Json): void {
           step.expect_memory,
           aggregator.memory,
           `${where} aggregate memory`
+        );
+      if ("expect_proof" in step) {
+        // AG-11
+        const proof = w.stark?.proof ?? null;
+        same(
+          step.expect_proof,
+          proof === null ? null : "0x" + Buffer.from(proof).toString("hex"),
+          `${where} aggregate proof`
+        );
+      }
+      if ("expect_measured" in step)
+        same(
+          step.expect_measured,
+          aggregator.measured ?? [],
+          `${where} aggregate measured`
         );
     } else if ("reset" in step) {
       now = step.now ?? now;

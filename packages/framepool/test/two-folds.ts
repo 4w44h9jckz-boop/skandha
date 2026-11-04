@@ -16,8 +16,13 @@
  * `prove_sig` 3.4 ms a leanSPHINCS triple, `prove_recursive` 178.0 ms a
  * recursive input, within a budget of one aggregation interval, 1,000 ms.
  *
- * Usage: bun test/run-two-folds.ts
+ * `proverFolds` runs the exchange under a real prover instead (AG-11,
+ * version 5), or under `test/prover-stub.ts`, its contract's stub.
+ *
+ * Usage: bun test/run-two-folds.ts [--prover <command>]
  */
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { Aggregator, Wrapper } from "../src/aggregation.js";
 import { EIP_8288_MASTER, FramePoolConfig } from "../src/config.js";
 import { ZERO_HASH, union } from "../src/dependencies.js";
@@ -166,5 +171,128 @@ export function twoFolds(users = 12, config = LAPTOP): Outcome[] {
       stark: { covers: short, valid: true },
     }),
   });
+  return out;
+}
+
+/** A fold under a real prover (AG-11): what the node listed, the bytes, what its prover measured, and the answer. */
+export interface ProverOutcome {
+  round: number;
+  node: string;
+  listed: number;
+  deps: number;
+  proofBytes: number;
+  measured: [number, number] | null; // the prover's ms and peak bytes
+  answer: string | string[]; // the other node's answer to this fold
+}
+
+/** The prover's own mode for a key and a signature, `sphincs <seed> <message>` (AG-11's command). */
+function sphincs(
+  prover: string,
+  seed: string,
+  message: string
+): [string, string] {
+  const out = spawnSync(prover, ["sphincs", seed, message], {
+    encoding: "utf8",
+  });
+  const lines = (out.stdout ?? "").trim().split("\n");
+  const answer = JSON.parse(lines[lines.length - 1]);
+  if (
+    out.status !== 0 ||
+    answer.error !== undefined ||
+    answer.verified !== true
+  )
+    throw new Error(`no signature from ${prover}: ${out.stdout}${out.stderr}`);
+  return [answer.publicKey, answer.signature];
+}
+
+const hex32 = (tag: string, i: number): string =>
+  "0x" + createHash("sha256").update(`${tag}-${i}`).digest("hex");
+
+/**
+ * The exchange under a real prover, `prover` a command with AG-11's contract
+ * (exp-mempool-l2s `05-aggregation.md` version 5): `users` spends, each with
+ * one leanSPHINCS dependency signed by the prover's `sphincs` mode, even users
+ * to A and odd to B. Each node folds only the signatures it holds, so each
+ * round's folds differ and each admits the other's transactions without
+ * folding them. Round 3 drops two included spends; last, a fold whose bytes
+ * are changed is refused.
+ */
+export function proverFolds(prover: string, users = 6): ProverOutcome[] {
+  const config: FramePoolConfig = { ...LAPTOP, prover };
+  const a = new Node("A", users, config);
+  const b = new Node("B", users, config);
+  for (let i = 0; i < users; i++) {
+    const message = hex32("message", i);
+    const [key, signature] = sphincs(prover, hex32("seed", i), message);
+    const tx = new FrameTx({
+      sender: `u${i}`,
+      label: `S${i}`,
+      tip: BigInt(10 + i),
+      frames: [
+        frame({
+          mode: config.depFrameMode,
+          deps: [{ scheme: 16, dataHash: message, vkHash: key }],
+          execGas: 3000n,
+          dataSize: 96,
+        }),
+        frame({ mode: 1, flags: 3 }),
+      ],
+    });
+    const deps = union([tx], config);
+    const answer = (i % 2 === 0 ? a : b).aggregator.receive({
+      txs: [tx],
+      mode: 0,
+      deps,
+      proofs: deps.map(() => true),
+      stark: null,
+      signed: [],
+      witnesses: [signature],
+    });
+    if (typeof answer === "string" || answer[0] !== "ok")
+      throw new Error(`u${i}'s wrapper was refused: ${answer}`);
+  }
+  const out: ProverOutcome[] = [];
+  const record = (
+    round: number,
+    n: Node,
+    fold: Wrapper,
+    measured: [number, number] | null,
+    answer: string | string[]
+  ): void => {
+    out.push({
+      round,
+      node: n.name,
+      listed: fold.txs.length,
+      deps: fold.deps.length,
+      proofBytes: fold.stark?.proof?.length ?? 0,
+      measured,
+      answer,
+    });
+  };
+  for (let round = 1; round <= 3; round++) {
+    if (round === 3) for (const n of [a, b]) n.include([0, 1]);
+    const foldA = a.aggregator.aggregate();
+    const measuredA = a.aggregator.measured;
+    const foldB = b.aggregator.aggregate();
+    const measuredB = b.aggregator.measured;
+    if (foldA === null || foldB === null)
+      throw new Error(`round ${round}: a node's prover made no fold`);
+    record(round, a, foldA, measuredA, b.aggregator.receive(foldA));
+    record(round, b, foldB, measuredB, a.aggregator.receive(foldB));
+  }
+  const fold = a.aggregator.aggregate() as Wrapper;
+  const proof = new Uint8Array(fold.stark?.proof ?? []);
+  proof[proof.length - 1] ^= 1;
+  record(
+    4,
+    a,
+    fold,
+    a.aggregator.measured,
+    b.aggregator.receive({
+      ...fold,
+      stark: { covers: fold.deps, valid: true, proof },
+    })
+  );
+  out[out.length - 1].node = "A, one byte changed";
   return out;
 }

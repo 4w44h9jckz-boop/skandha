@@ -2,7 +2,7 @@
  "clause": "AG-2",
  "also": [],
  "document": "05-aggregation.md",
- "version": 4,
+ "version": 5,
  "operation": "pool",
  "distinguishes": "Under eip-8288-master a dependency frame is of mode 4, holds leanSPHINCS triples only, and may not follow a frame with ATOMIC_BATCH_FLAG: an implementation that keeps mode 3, accepts a leanSTARK triple, or lets a dependency frame end an atomic batch fails here.",
  "cases": [

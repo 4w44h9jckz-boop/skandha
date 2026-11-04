@@ -1,0 +1,732 @@
+{
+ "clause": "AG-11",
+ "document": "05-aggregation.md",
+ "version": 5,
+ "also": [
+  "AG-5",
+  "AG-6",
+  "AG-7"
+ ],
+ "operation": "pool",
+ "distinguishes": "Under a node's prover, a mode 0 wrapper's leanSPHINCS signatures are kept as witnesses, a received aggregate is checked by verify-aggregate and refused when the bytes cover other claims, are missing, or are over a leanSTARK triple or a triple not of 32-byte form, and the node's own aggregate is the bytes aggregate writes over the leanSPHINCS triples it holds witnesses for, none when the prover refuses. Without a prover the flags stand. Run against conformance/prover-stub.py, which keeps the contract of exp-e2e-frames experiment 19's prover and not its cryptography (decision record 0083).",
+ "cases": [
+  {
+   "name": "a node folds the signatures it verified into a real aggregate",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "0x1111111111111111111111111111111111111111111111111111111111111111"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "witnesses": [
+       "0xa39683098123d82d1942cc97dd0667378d770f97c62a444a612bf227213fa625"
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "T"
+     ],
+     "expect_deps": [
+      [
+       16,
+       "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+       "0x1111111111111111111111111111111111111111111111111111111111111111"
+      ]
+     ],
+     "expect_proof": "0x737475622d61676772656761746537a15edb4b9426c1472e12919a2f9d0860d70e8486c538f5e4fc0f6211de606b",
+     "expect_measured": [
+      0.0,
+      0
+     ]
+    }
+   ],
+   "derivation": "T's one leanSPHINCS triple is proven in mode 0 and its witness kept (AG-11 item 2). The aggregate lists T and runs `aggregate` over its triple with that witness; the recursive STARK is the bytes the stub writes, b\"stub-aggregate\" and SHA-256 over K1 || M1, and the stub reports 0.0 ms and 0 bytes (items 4 and 5).",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   }
+  },
+  {
+   "name": "a received aggregate is checked by the prover",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "label": "T",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "0x1111111111111111111111111111111111111111111111111111111111111111"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "stark": {
+       "proof": "0x737475622d61676772656761746537a15edb4b9426c1472e12919a2f9d0860d70e8486c538f5e4fc0f6211de606b"
+      }
+     },
+     "expect": [
+      "ok"
+     ]
+    }
+   ],
+   "derivation": "verify-aggregate over the wrapper's deps, K1 and M1, answers verified, so the STARK verifies (item 3).",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   }
+  },
+  {
+   "name": "an aggregate over other claims is refused",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "label": "T",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "0x1111111111111111111111111111111111111111111111111111111111111111"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "stark": {
+       "proof": "0x737475622d616767726567617465bf6a0e661d54597ba2d501e6b54515b56d2fb79e4aa9dd23eaf0914465e543b6"
+      }
+     },
+     "expect": "ErrWrapperProof"
+    }
+   ],
+   "derivation": "The bytes cover K2 and M2, not the wrapper's deps; the stub refuses with exit status 2 (item 3).",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   }
+  },
+  {
+   "name": "an aggregate without bytes is refused",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "label": "T",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "0x1111111111111111111111111111111111111111111111111111111111111111"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ]
+     },
+     "expect": "ErrWrapperProof"
+    }
+   ],
+   "derivation": "A recursive STARK with no bytes cannot be checked (item 3).",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   }
+  },
+  {
+   "name": "an aggregate over a leanSTARK triple is refused",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "label": "S",
+        "type": 6,
+        "sender": "carol",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "0xb3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3",
+            "0x3333333333333333333333333333333333333333333333333333333333333333"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "stark": {
+       "proof": "0x737475622d616767726567617465e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+     },
+     "expect": "ErrWrapperProof"
+    }
+   ],
+   "derivation": "S's dependency is a leanSTARK triple, which no aggregate of the prover covers (item 3).",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   }
+  },
+  {
+   "name": "an aggregate over a triple not of 32-byte form is refused",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "label": "P",
+        "type": 6,
+        "sender": "dave",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "msg-p",
+            "pk-p"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "stark": {
+       "proof": "0x737475622d616767726567617465e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+     },
+     "expect": "ErrWrapperProof"
+    }
+   ],
+   "derivation": "P's key and message are not 32 bytes of hex (items 1 and 3).",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   }
+  },
+  {
+   "name": "a node folds only the signatures it holds",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "label": "T",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "0x1111111111111111111111111111111111111111111111111111111111111111"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "stark": {
+       "proof": "0x737475622d61676772656761746537a15edb4b9426c1472e12919a2f9d0860d70e8486c538f5e4fc0f6211de606b"
+      }
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "U",
+        "type": 6,
+        "sender": "bob",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2",
+            "0x2222222222222222222222222222222222222222222222222222222222222222"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "witnesses": [
+       "0xafe17c69d179279deb492807d5e6167e72d6a31742b9890cc9e19339a2e4ec48"
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "U"
+     ],
+     "expect_proof": "0x737475622d616767726567617465bf6a0e661d54597ba2d501e6b54515b56d2fb79e4aa9dd23eaf0914465e543b6"
+    }
+   ],
+   "derivation": "T is held by a received aggregate alone, so the node keeps no witness for its triple and does not list it; U's witness came in mode 0 (item 4).",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   }
+  },
+  {
+   "name": "a transaction with a leanSTARK dependency is admitted and not folded",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "S",
+        "type": 6,
+        "sender": "carol",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "0xb3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3",
+            "0x3333333333333333333333333333333333333333333333333333333333333333"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "witnesses": [
+       ""
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "0x1111111111111111111111111111111111111111111111111111111111111111"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "witnesses": [
+       "0xa39683098123d82d1942cc97dd0667378d770f97c62a444a612bf227213fa625"
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "T"
+     ],
+     "expect_proof": "0x737475622d61676772656761746537a15edb4b9426c1472e12919a2f9d0860d70e8486c538f5e4fc0f6211de606b"
+    }
+   ],
+   "derivation": "S's leanSTARK proof verifies in mode 0 and S is admitted (AG-6); its triple is not leanSPHINCS, so the aggregate leaves it out (item 4).",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   }
+  },
+  {
+   "name": "a prover that refuses leaves the node without an aggregate",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "0x1111111111111111111111111111111111111111111111111111111111111111"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "witnesses": [
+       "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": null
+    }
+   ],
+   "derivation": "T's proof verifies by the node's own check, and the witness it kept does not open at its message, so `aggregate` refuses and the node sends nothing that interval (item 4).",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   }
+  },
+  {
+   "name": "without a prover the flags stand",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "0x1111111111111111111111111111111111111111111111111111111111111111"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "witnesses": [
+       "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "T"
+     ]
+    }
+   ],
+   "derivation": "No prover is named, so the witness is not read and the aggregate is the model's (AG-1)."
+  }
+ ]
+}

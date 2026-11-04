@@ -275,7 +275,10 @@ instead of refusing it.
   `@skandha/framepool`, and its two-node exchange runs in one process
   ([`packages/framepool/README.md`](packages/framepool/README.md), "Two
   aggregators"): `AGGREGATED_VK` and `DEPS_HASH` are still to be chosen in
-  the EIP, so no recursive STARK can be made or checked to it.
+  the EIP, so no recursive STARK can be made or checked to it. The exchange
+  can also run under a real leanVM prover, with `--prover`: its folds are
+  then real recursive STARKs over leanSPHINCS signatures, checked by that
+  prover's verifier (exp-mempool-l2s AG-11).
 - The client is asked about every pending transaction at every head, because
   its simulation does not return the sender slots a prefix read. That is one
   simulation per pending transaction per head.

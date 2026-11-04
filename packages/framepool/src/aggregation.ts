@@ -4,13 +4,25 @@
  * `10-claim-gated-admission.md` under `claims`, and AG-7, AG-9 and AG-10 for
  * a node's aggregate, its fold every interval (`Aggregator`).
  *
- * Nothing here proves anything: a proof is a flag, and a recursive STARK is
- * the list of triples whose hash is its public input, with a flag (decision
- * record 0012). Proving time and memory are counted, not spent: AG-9's and
+ * Nothing here proves anything unless the node names a prover (AG-11,
+ * decision record 0083), a command it runs to fold and check leanSPHINCS
+ * signatures. Otherwise a proof is a flag, and a recursive STARK is the list
+ * of triples whose hash is its public input, with a flag (decision record
+ * 0012). Proving time and memory are counted, not spent: AG-9's and
  * AG-10's linear counts of the circuit's inputs, which bound what an
  * aggregate lists when the profile sets a budget (decision records 0034 and
  * 0042).
  */
+import { spawnSync } from "node:child_process";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import * as E from "./errors.js";
 import { TxError } from "./errors.js";
 import { counts, dependencies, union } from "./dependencies.js";
@@ -29,6 +41,7 @@ import {
 export interface Stark {
   readonly covers: readonly Dependency[];
   readonly valid: boolean;
+  readonly proof?: Uint8Array | null; // AG-11: its bytes, under a node's prover
 }
 
 /** AG-5. `txs` holds frame transactions, and the hashes of those sent before. */
@@ -39,6 +52,100 @@ export interface Wrapper {
   readonly proofs: readonly boolean[]; // mode 0: whether each triple's proof verifies
   readonly stark: Stark | null; // mode 1
   readonly signed: readonly boolean[]; // mode 0, CG-3: whether each proof is the one its sender signed; [] if all are
+  readonly witnesses?: readonly string[]; // mode 0, AG-11: each triple's signature as hex, "" for none
+}
+
+const HEX32 = /^0x[0-9a-fA-F]{64}$/;
+
+/**
+ * AG-11: a real prover, run as a command with the contract of
+ * `exp-e2e-frames` experiment 19's prover at `47f5496`: one JSON line
+ * printed, a refusal as `{"error": ...}` with exit status 2.
+ */
+export class Prover {
+  constructor(readonly command: string) {}
+
+  /** Item 1: a leanSPHINCS triple whose key and message are 32 bytes of hex. */
+  static foldable(d: Dependency): boolean {
+    return (
+      d.scheme === LEANSPHINCS && HEX32.test(d.vkHash) && HEX32.test(d.dataHash)
+    );
+  }
+
+  private run(args: string[]): Record<string, unknown> | null {
+    const out = spawnSync(this.command, args, { encoding: "utf8" });
+    const lines = (out.stdout ?? "")
+      .trim()
+      .split("\n")
+      .filter((l) => l !== "");
+    let answer: unknown;
+    try {
+      answer = lines.length > 0 ? JSON.parse(lines[lines.length - 1]) : {};
+    } catch {
+      return null;
+    }
+    if (
+      out.status !== 0 ||
+      typeof answer !== "object" ||
+      answer === null ||
+      "error" in answer
+    )
+      return null;
+    return answer as Record<string, unknown>;
+  }
+
+  private withDir<T>(f: (dir: string) => T): T {
+    const dir = mkdtempSync(join(tmpdir(), "prover-"));
+    try {
+      return f(dir);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  /** `aggregate`: the recursive STARK's bytes, its measured ms and peak memory, or null for a refusal. */
+  aggregate(
+    claims: readonly [Dependency, string][]
+  ): [Uint8Array, number, number] | null {
+    return this.withDir((dir) => {
+      const path = join(dir, "claims.json");
+      const out = join(dir, "out.bin");
+      writeFileSync(
+        path,
+        JSON.stringify(
+          claims.map(([d, w]) => ({
+            publicKey: d.vkHash,
+            message: d.dataHash,
+            signature: w,
+          }))
+        )
+      );
+      const answer = this.run(["aggregate", path, out]);
+      if (answer === null || !existsSync(out)) return null;
+      return [
+        new Uint8Array(readFileSync(out)),
+        Number(answer.aggregateMs ?? 0),
+        Number(answer.peakRssBytes ?? 0),
+      ];
+    });
+  }
+
+  /** `verify-aggregate`: whether the bytes cover exactly these triples. */
+  verify(proof: Uint8Array, deps: readonly Dependency[]): boolean {
+    return this.withDir((dir) => {
+      const path = join(dir, "proof.bin");
+      const claims = join(dir, "claims.json");
+      writeFileSync(path, proof);
+      writeFileSync(
+        claims,
+        JSON.stringify(
+          deps.map((d) => ({ publicKey: d.vkHash, message: d.dataHash }))
+        )
+      );
+      const answer = this.run(["verify-aggregate", path, claims]);
+      return answer !== null && answer.verified === true;
+    });
+  }
 }
 
 const sameDeps = (
@@ -125,6 +232,15 @@ export function receive(
           );
       }
       if (!wrapper.proofs.every((x) => x)) throw new TxError(E.ErrWrapperProof);
+    } else if (cfg.prover !== null) {
+      // AG-11 item 3
+      const proof = (wrapper.stark as Stark).proof ?? null;
+      if (
+        proof === null ||
+        !wrapper.deps.every((d) => Prover.foldable(d)) ||
+        !new Prover(cfg.prover).verify(proof, wrapper.deps)
+      )
+        throw new TxError(E.ErrWrapperProof);
     } else if (!(wrapper.stark as Stark).valid) {
       throw new TxError(E.ErrWrapperProof);
     }
@@ -167,6 +283,8 @@ export class Aggregator {
   private readonly firstCover = new Map<string, Wrapper>(); // AG-9 rule 4: the first aggregate covering each triple
   provingTime = 0; // AG-9: the last aggregate's, in ms, 0 when it listed nothing
   memory = 0; // AG-10: the last aggregate's, in MiB, 0 when it listed nothing
+  readonly witnesses = new Map<string, string>(); // AG-11: each leanSPHINCS triple's signature, from mode 0
+  measured: [number, number] | null = null; // AG-11: the last aggregate's ms and peak bytes, by its prover
 
   constructor(readonly pool: FramePool) {}
 
@@ -184,6 +302,13 @@ export class Aggregator {
         if (wrapper.mode === 0) this.direct.add(id);
         else if (!this.firstCover.has(id)) this.firstCover.set(id, wrapper);
       }
+      if (wrapper.mode === 0)
+        wrapper.deps.forEach((d, i) => {
+          // AG-11 item 2
+          const w = wrapper.witnesses?.[i] ?? "";
+          if (w !== "" && d.scheme === LEANSPHINCS)
+            this.witnesses.set(dependencyId(d), w);
+        });
     }
     if (wrapper.mode === 1)
       this.received.push([
@@ -208,6 +333,8 @@ export class Aggregator {
     this.received = [];
     this.provingTime = 0;
     this.memory = 0;
+    this.measured = null;
+    const prover = cfg.prover !== null ? new Prover(cfg.prover) : null;
     if (owned.size === 0 || isRelay(cfg)) {
       // CG-7 step 5, RM-8: a relay builds none
       this.previous = [];
@@ -230,6 +357,13 @@ export class Aggregator {
     const consider = (h: string, source: Wrapper | null = null): void => {
       if (chosen.has(h) || !owned.has(h)) return;
       const mine = owned.get(h) as readonly Dependency[];
+      if (
+        prover !== null &&
+        !mine.every(
+          (d) => Prover.foldable(d) && this.witnesses.has(dependencyId(d))
+        )
+      )
+        return; // AG-11 item 4: only the signatures it holds
       const more = new Map(deps);
       for (const d of mine) more.set(dependencyId(d), d);
       if (cfg.capAggregates) {
@@ -253,6 +387,10 @@ export class Aggregator {
           )
         )
           continue;
+        if (prover !== null) {
+          verify.set(id, d); // AG-11 item 4: every triple verified directly
+          continue;
+        }
         let key: Wrapper | "previous";
         let cover: readonly Dependency[];
         if (previousCover.has(id)) {
@@ -329,6 +467,28 @@ export class Aggregator {
       this.previousDeps = [];
       return null;
     }
+    let proof: Uint8Array | null = null;
+    if (prover !== null) {
+      // AG-11 item 4
+      const made = prover.aggregate(
+        [...deps.values()]
+          .sort(compareDependencies)
+          .map(
+            (d) =>
+              [d, this.witnesses.get(dependencyId(d)) as string] as [
+                Dependency,
+                string
+              ]
+          )
+      );
+      if (made === null) {
+        this.previous = [];
+        this.previousDeps = [];
+        return null;
+      }
+      proof = made[0];
+      this.measured = [made[1], made[2]];
+    }
     const entries = listed.map((h) =>
       this.sent.has(h) ? h : (pool.entries.get(h) as { tx: FrameTx }).tx
     );
@@ -343,7 +503,7 @@ export class Aggregator {
       mode: 1,
       deps: coveredDeps,
       proofs: [],
-      stark: { covers: coveredDeps, valid: true },
+      stark: { covers: coveredDeps, valid: true, proof },
       signed: [],
     };
   }

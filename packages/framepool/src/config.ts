@@ -129,6 +129,8 @@ export interface FramePoolConfig {
   readonly throttledCount: number; // RM-6
   readonly declarationRefreshSeconds: number; // RM-6
   readonly tier: "relay" | "verifier" | "aggregator"; // RM-8: a node's setting
+  // 05-aggregation.md, AG-11
+  readonly prover: string | null; // a node's setting: the command of a real prover, or null for the model's flags
 }
 
 export const EIP_8141: FramePoolConfig = Object.freeze({
@@ -223,6 +225,7 @@ export const EIP_8141: FramePoolConfig = Object.freeze({
   throttledCount: 4,
   declarationRefreshSeconds: 3600,
   tier: "verifier",
+  prover: null,
 });
 
 export function withChanges(
