@@ -107,6 +107,7 @@ export async function nodeHandler(args: IGlobalArgs): Promise<void> {
           logFile: args["frames.log"],
           name: args["frames.name"],
           descriptor: args["frames.descriptor"],
+          tier: args["frames.tier"] as "relay" | "verifier" | "aggregator",
         }
       : undefined,
   });

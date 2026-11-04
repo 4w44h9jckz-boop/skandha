@@ -15,7 +15,7 @@ import { FramePoolConfig } from "./config.js";
 import { Deps, depKey } from "./deps.js";
 import { admissionGas } from "./matcha.js";
 import { Head, State } from "./model.js";
-import { Entry, FramePool, isStaked } from "./pool.js";
+import { AccessList, Entry, FramePool, isStaked } from "./pool.js";
 import {
   BANNED_OPCODES,
   DEPLOY,
@@ -688,12 +688,13 @@ export class StandardPool extends FramePool {
     head: Head,
     state: State,
     now = 0,
-    verdicts: ReadonlyMap<string, string> = new Map()
+    verdicts: ReadonlyMap<string, string> = new Map(),
+    accessLists: readonly AccessList[] = []
   ): void {
     const senders = new Map(
       [...this.entries].map(([h, e]) => [h, e.tx.sender])
     );
-    super.reset(head, state, now, verdicts);
+    super.reset(head, state, now, verdicts, accessLists);
     for (const [h, e] of [...this.entries]) {
       const ent = ents(e);
       if (

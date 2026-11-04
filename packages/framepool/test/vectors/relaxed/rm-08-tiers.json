@@ -1,0 +1,1364 @@
+{
+ "clause": "RM-8",
+ "document": "15-relaxed-mempool.md",
+ "version": 1,
+ "also": [
+  "CG-2",
+  "CG-4",
+  "CG-7",
+  "FP-14"
+ ],
+ "operation": "pool",
+ "distinguishes": "A relay admits a prefix of protocol-defined frames, which it evaluates, and a transaction with a claim the claim-gated checks accept, whose prefix it does not run; it refuses everything else with ErrRelayUnchecked, forwards one transaction under each claim and a replacement of it at the bump, and forwards a junk proof that a verifier refuses at the cost of the claim. A verifier runs every prefix.",
+ "cases": [
+  {
+   "name": "a relay evaluates a protocol-defined prefix",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ],
+     "tier": "relay"
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "E",
+       "type": 6,
+       "sender": "eoa",
+       "signatures": [
+        {
+         "scheme": "secp256k1"
+        }
+       ],
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    }
+   ],
+   "derivation": "Default code and a signature: FP-8 evaluates it directly."
+  },
+  {
+   "name": "a relay leaves a prefix that runs code to verifiers",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ],
+     "tier": "relay"
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrRelayUnchecked"
+     ]
+    }
+   ],
+   "derivation": "alice's code would have to run, and A carries no claim."
+  },
+  {
+   "name": "a verifier runs that prefix",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ],
+     "tier": "verifier"
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    }
+   ],
+   "derivation": "The canonical modules admit it."
+  },
+  {
+   "name": "a relay carries a claimed transaction whose prefix it does not run",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ],
+     "tier": "relay"
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       }
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "The claim is for A's slot in the head's epoch, valid and bound (CG-2, CG-12)."
+  },
+  {
+   "name": "a relay refuses a claim that does not verify",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ],
+     "tier": "relay"
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1",
+        "valid": false
+       }
+      }
+     ],
+     "expect": [
+      "ErrClaimInvalid"
+     ]
+    }
+   ],
+   "derivation": "CG-2 step 2."
+  },
+  {
+   "name": "a relay forwards a replacement at the bump under the same claim",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ],
+     "tier": "relay"
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       }
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A1",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "max_fee": 105,
+       "tip": 10
+      }
+     ],
+     "expect": [
+      "ErrReplaceUnderpriced"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A2",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "max_fee": 110,
+       "tip": 11
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A2"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "One transaction under each claim, and a replacement of it at FP-12's price bump."
+  },
+  {
+   "name": "a relay forwards one transaction under each claim",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ],
+     "tier": "relay",
+     "max_pending": 1
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       }
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "claim": {
+        "sender": "bob",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       },
+       "tip": 20,
+       "max_fee": 200
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "bob": [
+        "B"
+       ]
+      }
+     }
+    },
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1"
+       }
+      }
+     ],
+     "expect": [
+      "ErrClaimUsed"
+     ]
+    }
+   ],
+   "derivation": "With max_pending 1, B's higher tip evicts A (FP-14). A sent again carries a claim the relay has forwarded, and is not a replacement of a pending transaction."
+  },
+  {
+   "name": "a relay forwards a junk proof that a verifier refuses, and the claim pays",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ],
+     "tier": "relay"
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "D",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3,
+          "approves": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1",
+         "binder": "b1"
+        }
+       }
+      ],
+      "proofs": [
+       false
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    }
+   ],
+   "derivation": "The relay checks the claim and no proof (CG-7 item 2), and runs no prefix."
+  },
+  {
+   "name": "the verifier refuses the junk proof and records its slot",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ],
+     "tier": "verifier"
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "D",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3,
+          "approves": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1",
+         "binder": "b1"
+        }
+       }
+      ],
+      "proofs": [
+       false
+      ]
+     },
+     "expect": "ErrWrapperProof"
+    },
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "D",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            17,
+            "pub-a",
+            "vk-1"
+           ]
+          ],
+          "exec_gas": 30000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3,
+          "approves": 3
+         }
+        ],
+        "claim": {
+         "sender": "alice",
+         "nonce_seq": 0,
+         "epoch": 2,
+         "salt": "t1",
+         "binder": "b1"
+        }
+       }
+      ]
+     },
+     "expect": "ErrSlotRefused"
+    }
+   ],
+   "derivation": "AG-5 step 5 fails, and CG-4 under slot refuses the slot for the epoch: the claim bought one junk proof and no more."
+  }
+ ]
+}

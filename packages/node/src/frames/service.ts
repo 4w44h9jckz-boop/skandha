@@ -28,6 +28,14 @@
  * version 5, CG-11), which needs a ticket paymaster's stake from ERC-8421's
  * staking registry, which the surface does not read. `claims` runs version
  * 4's admission, without the bond.
+ *
+ * A descriptor with the relaxed alternative mempool's modules
+ * (`15-relaxed-mempool.md`, RM-2 to RM-8) is refused at start too, before
+ * the bond it inherits: RM-3 reads the storage a prefix reads outside its
+ * sender, and the client's simulation returns no reads and refuses any such
+ * read (exp-mempool-l2s decision record 0081). `tier` is RM-8's node setting,
+ * relay, verifier or aggregator; it means something only under that
+ * descriptor, so any tier but `verifier` is refused at start as well.
  */
 import { appendFileSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -75,6 +83,7 @@ export interface FrameServiceOptions {
   pollMs?: number;
   name?: string; // how this node names itself in its log
   descriptor?: string; // a descriptor file (13-descriptors.md), whose ruleset replaces the profile's frame pool rules
+  tier?: "relay" | "verifier" | "aggregator"; // RM-8, a node's setting under the relaxed alternative mempool
 }
 
 export interface SendResult {
@@ -165,6 +174,14 @@ export class FrameService {
     )
       throw new Error(
         `${opts.descriptor} is ERC-8421's ruleset, whose trace and storage rules need a tracer; the surface runs the canonical mempool's (14-erc-8421.md, AM-15)`
+      );
+    if (this.ruleset !== null && compileConfig(this.ruleset).relaxed)
+      throw new Error(
+        `${opts.descriptor} relaxes the canonical rules with write-once reads outside the sender, which need the prefix's storage reads; the client's simulation returns none and refuses any read outside the sender (15-relaxed-mempool.md, RM-3; exp-mempool-l2s decision record 0081)`
+      );
+    if ((opts.tier ?? "verifier") !== "verifier")
+      throw new Error(
+        `tier ${opts.tier} is the relaxed alternative mempool's (15-relaxed-mempool.md, RM-8), and a node refuses that descriptor; the surface runs as a verifier`
       );
     if (this.ruleset !== null && compileConfig(this.ruleset).bond)
       throw new Error(

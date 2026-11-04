@@ -1,0 +1,296 @@
+{
+ "clause": "RM-7",
+ "document": "15-relaxed-mempool.md",
+ "version": 1,
+ "also": [
+  "RM-3",
+  "RM-4",
+  "RM-5"
+ ],
+ "operation": "pool",
+ "distinguishes": "Pending transactions are grouped by the keys the pool knows they touch: a nonce key with its sender, the payer, and a declared slot read; groups are listed by their earliest transaction, each in the order received.",
+ "cases": [
+  {
+   "name": "groups by declared slot, by payer and by sender",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "pool",
+           7,
+           42
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "pool",
+           7,
+           42
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "C",
+       "type": 6,
+       "sender": "carol",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "D",
+       "type": 6,
+       "sender": "dave",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "tpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "E",
+       "type": 6,
+       "sender": "erin",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "tpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "N1",
+       "type": 6,
+       "sender": "np",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "nonce_keys": [
+        1
+       ]
+      },
+      {
+       "label": "N2",
+       "type": 6,
+       "sender": "np",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "nonce_keys": [
+        2
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ok",
+      "ok",
+      "ok",
+      "ok",
+      "ok",
+      "ok"
+     ]
+    },
+    {
+     "expect_groups": [
+      [
+       "A",
+       "B"
+      ],
+      [
+       "C"
+      ],
+      [
+       "D",
+       "E"
+      ],
+      [
+       "N1",
+       "N2"
+      ]
+     ]
+    }
+   ],
+   "derivation": "A and B both read pool's slot 7; C shares nothing; D and E have one payer, tpm; N1 and N2 have disjoint keys and one payer, np."
+  }
+ ]
+}

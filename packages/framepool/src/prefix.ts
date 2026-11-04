@@ -16,6 +16,7 @@ import { checkFrame, checkLimits } from "./dependencies.js";
 import { FramePoolConfig } from "./config.js";
 import { Deps, depKey } from "./deps.js";
 import { Head, State, isDelegation } from "./model.js";
+import { declares } from "./relaxed.js";
 import {
   APPROVE_EXECUTION,
   APPROVE_PAYMENT,
@@ -294,13 +295,14 @@ export function checkStatic(
   return prefix;
 }
 
-/** FP-9, in the order the clause lists the rules. */
+/** FP-9, in the order the clause lists the rules; with `relax`, RM-3's declared reads outside the sender. */
 export function checkTrace(
   frame: Frame,
   sender: string,
   deploy: boolean,
   state: State,
-  cfg: FramePoolConfig
+  cfg: FramePoolConfig,
+  relax = false
 ): void {
   for (const op of frame.opcodes) {
     if (BANNED_OPCODES.has(op) && !(deploy && ALLOWED_IN_DEPLOY.has(op)))
@@ -309,8 +311,12 @@ export function checkTrace(
   for (const [addr] of frame.writes) {
     if (!(deploy && addr === sender)) fail(E.ErrFrameStateWrite);
   }
-  for (const [addr] of frame.reads) {
-    if (addr !== sender) fail(E.ErrFrameStorageReadNonSender);
+  for (const [addr, readSlot] of frame.reads) {
+    if (
+      addr !== sender &&
+      !(relax && declares(cfg, state.code(addr), readSlot))
+    )
+      fail(E.ErrFrameStorageReadNonSender);
   }
   for (const addr of frame.calls) {
     if (addr === sender || cfg.precompiles.has(addr)) continue;
@@ -455,7 +461,8 @@ function byVerdict(
  * FP-7 to FP-10, with RR-5. A pool passes its `expiryMargin` (FP-8), its
  * current slot, which is its head's plus one, and its `rootMargin` (RR-2,
  * RR-5); a block being built passes none, and its own slot is the current
- * one (RR-8).
+ * one (RR-8). With `relax`, RM-3 allows declared reads outside the sender
+ * and records them as dependencies.
  */
 export function simulate(
   tx: FrameTx,
@@ -465,7 +472,8 @@ export function simulate(
   cfg: FramePoolConfig,
   expiryMargin = 0,
   slot: number | null = null,
-  rootMargin = 0
+  rootMargin = 0,
+  relax = false
 ): Simulation {
   const sender = tx.sender;
   const mode = expiring(tx, cfg);
@@ -527,6 +535,12 @@ export function simulate(
           depKey("storage", sender, readSlot),
           state.storage(sender, readSlot)
         );
+      else if (relax && declares(cfg, state.code(addr), readSlot))
+        // RM-3
+        deps.set(
+          depKey("storage", addr, readSlot),
+          state.storage(addr, readSlot)
+        );
     }
     if (kind === DEPLOY) {
       deps.set(depKey("code", target), code);
@@ -545,7 +559,7 @@ export function simulate(
         fail(E.ErrFramePrefixReverted);
     } else {
       if (!(kind === PAY && code === cfg.canonicalPaymasterCode))
-        checkTrace(frame, sender, false, state, cfg);
+        checkTrace(frame, sender, false, state, cfg, relax);
       for (const [addr, readSlot, expected] of frame.reads) {
         const value =
           addr === sender && deployedStorage.has(readSlot)

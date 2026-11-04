@@ -11,6 +11,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  AccessList,
   Dependency,
   EIP_8141,
   FOCIL_PROFILES,
@@ -63,6 +64,7 @@ import {
   ticketMessage,
   ticketValid,
   union,
+  declarations,
   withChanges,
   SEALED_PROFILES,
   headNextBaseFee,
@@ -669,6 +671,8 @@ function frameConfig(
       ? bigOrNull(value)
       : key === "precompiles"
       ? new Set(value)
+      : key === "declarations"
+      ? declarations(value)
       : value;
   }
   return withChanges(profile, changes);
@@ -902,7 +906,28 @@ function runPool(c: Json): void {
           v as string,
         ])
       ); // MD-8
-      pool.reset(head, state, now, verdicts);
+      const accessLists: AccessList[] = (step.reset.access_lists ?? []).map(
+        (block: Json) =>
+          new Map(
+            Object.entries(block).map(([addr, a]: [string, Json]) => [
+              addr,
+              {
+                storageChanges: new Map(
+                  Object.entries(a.storage_changes ?? {}).map(
+                    ([slot, writes]: [string, Json]) => [
+                      BigInt(slot),
+                      writes.map((w: Json) => [num(w[0]), big(w[1])] as const),
+                    ]
+                  )
+                ),
+                balanceChanges: (a.balance_changes ?? []).map(
+                  (b: Json) => [num(b[0]), big(b[1])] as const
+                ),
+              },
+            ])
+          )
+      ); // MD-8, RM-6
+      pool.reset(head, state, now, verdicts, accessLists);
       sealed.reset(head, state);
     } else if ("expect_selection" in step) {
       const sel = step.expect_selection; // LU-7
@@ -934,6 +959,22 @@ function runPool(c: Json): void {
         ]
       );
       pool.finalize(blocks, now);
+    } else if ("expect_declarations" in step) {
+      // RM-6
+      const got = Object.fromEntries(
+        Object.keys(step.expect_declarations).map((code) => [
+          code,
+          pool.declarationStatus(code),
+        ])
+      );
+      same(step.expect_declarations, got, `${where} declarations`);
+    } else if ("expect_groups" in step) {
+      // RM-7
+      same(
+        step.expect_groups,
+        pool.groups().map((g) => g.map(label)),
+        `${where} groups`
+      );
     } else if ("expect_width" in step) {
       const got = Object.fromEntries(
         Object.keys(step.expect_width).map((s) => [s, pool.width(s)])

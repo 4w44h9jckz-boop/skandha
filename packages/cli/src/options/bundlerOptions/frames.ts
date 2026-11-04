@@ -12,6 +12,7 @@ export interface IFramesArgs {
   "frames.log"?: string;
   "frames.name"?: string;
   "frames.descriptor"?: string;
+  "frames.tier": string;
 }
 
 export const options: ICliCommandOptions<IFramesArgs> = {
@@ -77,6 +78,14 @@ export const options: ICliCommandOptions<IFramesArgs> = {
     type: "string",
     description:
       "A descriptor file (exp-mempool-l2s docs/spec/13-descriptors.md) whose ruleset the frame pool runs in place of the profile's, loaded with the parents beside it; refusals name the descriptor and the rule",
+    group: "frames",
+  },
+  "frames.tier": {
+    type: "string",
+    choices: ["relay", "verifier", "aggregator"],
+    default: "verifier",
+    description:
+      "The node's tier under the relaxed alternative mempool (exp-mempool-l2s docs/spec/15-relaxed-mempool.md, RM-8); a node refuses that descriptor at start, since the client returns no reads, and so refuses any tier but verifier",
     group: "frames",
   },
 };

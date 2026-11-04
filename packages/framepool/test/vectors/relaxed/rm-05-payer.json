@@ -1,0 +1,1031 @@
+{
+ "clause": "RM-5",
+ "document": "15-relaxed-mempool.md",
+ "version": 1,
+ "also": [
+  "FP-11",
+  "RM-6"
+ ],
+ "operation": "pool",
+ "distinguishes": "A non-canonical payer whose code declares an outflow bound pays for several pending transactions, each reserving the bound, under FP-11's exposure sum; a reserve below the bound is ErrRelaxedReserve; an undeclared payer, or one whose declaration names no bound, keeps FP-11's count. Without outflow_bound, the sum alone.",
+ "cases": [
+  {
+   "name": "a declared paymaster pays for several, each reserving its bound",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "tpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "tpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "C",
+       "type": 6,
+       "sender": "carol",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "tpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ok",
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A"
+       ],
+       "bob": [
+        "B"
+       ],
+       "carol": [
+        "C"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "Each max_cost is 12731300, ticket-pm's max_outflow. A is canonical; B and C are refused by FP-11's count and admitted by RM-5. tpm's 40,000,000 covers 3 * 12731300 = 38,193,900."
+  },
+  {
+   "name": "the exposure sum still binds",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "tpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "tpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "C",
+       "type": 6,
+       "sender": "carol",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "tpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "D",
+       "type": 6,
+       "sender": "dave",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "tpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ok",
+      "ok",
+      "ErrFramePayerExposure"
+     ]
+    }
+   ],
+   "derivation": "A fourth would reserve 50,925,200, above tpm's 40,000,000 (FP-11)."
+  },
+  {
+   "name": "a reserve below the bound",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "tpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "max_fee": 90
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "tpm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "max_fee": 90
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrRelaxedReserve"
+     ]
+    }
+   ],
+   "derivation": "At max_fee 90, max_cost is 127313 * 90 = 11,458,170, below 12731300. A is canonical; B is relaxed."
+  },
+  {
+   "name": "an undeclared paymaster keeps one",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "upm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "upm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrFramePaymasterBusy"
+     ]
+    }
+   ],
+   "derivation": "upm's code, plain-pm, has no declaration."
+  },
+  {
+   "name": "a declaration without an outflow bound keeps one",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "pool",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "pool",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ErrFramePaymasterBusy"
+     ]
+    }
+   ],
+   "derivation": "root-pool's declaration has max_outflow null."
+  },
+  {
+   "name": "without outflow_bound, the sum alone",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ],
+     "outflow_bound": false
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "upm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "upm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "C",
+       "type": 6,
+       "sender": "carol",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 2,
+         "exec_gas": 30000,
+         "approves": 2
+        },
+        {
+         "mode": 1,
+         "flags": 1,
+         "target": "upm",
+         "exec_gas": 30000,
+         "approves": 1
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ok",
+      "ok"
+     ]
+    }
+   ],
+   "derivation": "FP-11's exposure sum alone: 38,193,900 within upm's 40,000,000."
+  }
+ ]
+}

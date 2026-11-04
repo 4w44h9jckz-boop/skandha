@@ -215,14 +215,15 @@ logs its `binder` and `bound`.
 descriptor file names (exp-mempool-l2s `docs/spec/13-descriptors.md`), in
 place of the profile's; `--frames.profile` still picks the chain the surface
 speaks for. The node loads the file's parents from the descriptor files
-beside it, each found by its identifier. Copies of exp-mempool-l2s's three
+beside it, each found by its identifier. Copies of exp-mempool-l2s's four
 descriptors are in `packages/framepool/test/descriptors/`:
 
 | File | Identifier | Runs on the node |
 | --- | --- | --- |
 | `eip-8141.json` | `bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4` | yes |
-| `claim-gated.json` | `bafkreifhtepzdwqnimltyd573ba7wsmln556axhbbxhqez6be547llopxe` | no: refused at start |
+| `claim-gated.json` | `bafkreigdwjfslxd6hbroctviyyikp2kudifirzznwlbfxouqx56yinjqui` | no: refused at start |
 | `erc-8421.json` | `bafkreieanbgdpq22vtfsa4rz4zll2lhf4qofoi75hbubqqhlqzepvyvjsy` | no: refused at start |
+| `relaxed.json` | `bafkreihtmp7crppkivpr3rb4nmivfhniecsw6xhqj5n2ysxdobssj4k54i` | no: refused at start |
 
 The `start` line says `descriptor`, the loaded identifier, and `ruleset`,
 the profile it compiled to. Every refused `rpc` and `gossip` line has
@@ -241,6 +242,26 @@ the bond on the ticket paymaster (CG-11), which reads each paymaster's stake
 from ERC-8421's staking registry. The surface reads no registry, so the node
 refuses that descriptor too, and `--frames.claims` runs claim-gated
 admission without the bond.
+
+`relaxed.json` (`15-relaxed-mempool.md`) is an alternative mempool behind
+the canonical rules: a transaction they refuse for a read outside its
+sender, a busy payer or a busy sender is judged again under write-once
+reads declared per code, several pending transactions per declared
+contract, and a payer's count lifted against a reserve, with reputation per
+declared code from each block's access list. Its write-once reads need the
+storage a prefix read outside its sender, with each value. The client's
+simulation returns no reads, and its validation refuses any read outside
+the sender (exp-mempool-l2s decision record 0081). So the node refuses that
+descriptor at start, with that reason, before the bond it inherits from
+`claim-gated.json`, and `@skandha/framepool`'s vectors play it instead.
+
+`--frames.tier` is that descriptor's node setting (RM-8): `relay`, which
+runs no prefix and checks no proof, `verifier`, the default, or
+`aggregator`. Since the node refuses the descriptor, it refuses any tier but
+`verifier` at start too. What the client would need for both is the
+prefix's storage reads, each with its address, slot and value, in its
+simulation's answer, and a mode that records a read outside the sender
+instead of refusing it.
 
 ## What it does not do
 

@@ -14,6 +14,7 @@
 import * as E from "./errors.js";
 import { TxError } from "./errors.js";
 import { counts, dependencies, union } from "./dependencies.js";
+import { FramePoolConfig } from "./config.js";
 import { headNextBaseFee } from "./model.js";
 import { FramePool } from "./pool.js";
 import {
@@ -47,6 +48,11 @@ const sameDeps = (
   a.length === b.length &&
   a.every((d, i) => dependencyId(d) === dependencyId(b[i]));
 
+/** CG-7 and RM-8: whether the node is a relay, which verifies no proof. */
+export function isRelay(cfg: FramePoolConfig): boolean {
+  return cfg.claims && (!cfg.verifies || (cfg.relaxed && cfg.tier === "relay"));
+}
+
 /** AG-5 and AG-6: a code refusing the whole wrapper, or one answer per transaction. */
 export function receive(
   pool: FramePool,
@@ -57,7 +63,7 @@ export function receive(
   const resolved = wrapper.txs.map((entry) =>
     typeof entry === "string" ? pool.entries.get(entry)?.tx ?? null : entry
   );
-  const relay = cfg.claims && !cfg.verifies; // CG-7
+  const relay = isRelay(cfg); // CG-7, RM-8
   try {
     if (relay && wrapper.mode === 1) throw new TxError(E.ErrRelayAggregate); // CG-7 step 1
     if (
@@ -172,7 +178,7 @@ export class Aggregator {
     );
     const out = receive(pool, wrapper, now);
     if (typeof out === "string") return out;
-    if (!(pool.config.claims && !pool.config.verifies)) {
+    if (!isRelay(pool.config)) {
       for (const d of wrapper.deps) {
         const id = dependencyId(d);
         if (wrapper.mode === 0) this.direct.add(id);
@@ -202,8 +208,8 @@ export class Aggregator {
     this.received = [];
     this.provingTime = 0;
     this.memory = 0;
-    if (owned.size === 0 || (cfg.claims && !cfg.verifies)) {
-      // CG-7 step 5: a relay builds none
+    if (owned.size === 0 || isRelay(cfg)) {
+      // CG-7 step 5, RM-8: a relay builds none
       this.previous = [];
       this.previousDeps = [];
       return null;

@@ -1,18 +1,22 @@
 /**
  * The frame transaction pool: exp-mempool-l2s `docs/spec/02-frame-pool.md`, the MATCHA
  * proposal of `04-matcha.md`, the recent roots of `08-recent-roots.md`, the
- * expiring nonces of `09-expiring-nonces.md`, and AG-6's admission rule of
- * `05-aggregation.md`.
+ * expiring nonces of `09-expiring-nonces.md`, AG-6's admission rule of
+ * `05-aggregation.md`, and the relaxed alternative mempool of
+ * `15-relaxed-mempool.md`.
  */
 import * as E from "./errors.js";
 import { TxError } from "./errors.js";
-import { EIP_8141, FramePoolConfig } from "./config.js";
-import { DepKey, DepValue, depValue } from "./deps.js";
+import { EIP_8141, FramePoolConfig, withChanges } from "./config.js";
+import { DepKey, DepValue, Deps, depKey, depValue } from "./deps.js";
 import { dependencies } from "./dependencies.js";
 import { admissionGas, charge } from "./matcha.js";
 import { Head, State, headNextBaseFee, isDelegation } from "./model.js";
 import {
+  EXPIRY,
+  PAY,
   Prefix,
+  ROOT,
   Simulation,
   analyse,
   checkExpiring,
@@ -23,11 +27,33 @@ import {
   simulate,
   staticPayer,
 } from "./prefix.js";
+import {
+  DeclarationState,
+  RELAXABLE,
+  declaration,
+  declares,
+  stateOf as declarationState,
+} from "./relaxed.js";
 import { Reserver } from "./reserver.js";
 import { FrameTx, claimId, dependencyId, replaces, slotId } from "./tx.js";
 
 /** AM-13's states. */
 export type Reputation = "ACTIVE" | "THROTTLED" | "BANNED";
+
+/**
+ * MD-8: one block's EIP-7928 access list, as RM-6 reads it: by address, each
+ * storage slot's writes and the balance's changes, as [index, value after].
+ */
+export type AccessList = ReadonlyMap<
+  string,
+  {
+    readonly storageChanges?: ReadonlyMap<
+      bigint,
+      readonly (readonly [number, bigint])[]
+    >;
+    readonly balanceChanges?: readonly (readonly [number, bigint])[];
+  }
+>;
 
 /** AM-3 [STAKING-010], and CG-11's bonded: never a default-code account. */
 export function isStaked(
@@ -54,7 +80,12 @@ export interface Entry {
   readonly charge: bigint; // MA-2, kept for the re-runs of MA-9
   reads: ReadonlySet<string>; // the addresses it is indexed under (FP-15)
   readonly cls: ReadonlySet<string>; // MA-14, fixed at admission
+  readonly relaxed?: ReadonlySet<string>; // RM-2: the relaxations that admitted it, of `reads`, `sender` and `payer`
+  readonly declared?: readonly (readonly [string, bigint])[]; // RM-3: the declared slots it reads, as [address, slot]
+  readonly relies?: ReadonlySet<string>; // RM-6: the declared codes it relies on
 }
+
+const NONE: ReadonlySet<string> = new Set();
 
 type EvictKey =
   | [bigint | number, bigint, number]
@@ -72,13 +103,18 @@ function identity(tx: FrameTx): string {
   return `${tx.sender}|${tx.nonceKeys.join(",")}|${tx.nonceSeq}`;
 }
 
+/** RM-3: a declared slot's key. */
+function slotKey(addr: string, slot: bigint): string {
+  return `${addr}|${slot}`;
+}
+
 function counter(): () => number {
   let n = 0;
   return () => n++;
 }
 
 export class FramePool {
-  readonly config: FramePoolConfig;
+  config: FramePoolConfig; // the canonical modules' while RM-2's first judgement runs
   head: Head;
   state: State;
   readonly reserver: Reserver;
@@ -111,6 +147,18 @@ export class FramePool {
   protected readonly counters = new Map<string, [number, number]>(); // by address, [seen, included]
   private refreshed = 0; // how many refreshes the pool's time has passed
   private readonly counted = new Set<string>(); // CG-11: the transactions counted in a ticket paymaster's `seen`
+  // 15-relaxed-mempool.md, under `relaxed`
+  private readonly canon: FramePoolConfig; // RM-2: the canonical modules alone
+  private readonly full: FramePoolConfig; // the descriptor's whole configuration
+  private readonly slotReaders = new Map<string, Set<string>>(); // RM-3: by declared slot, the pending transactions reading it
+  private readonly violations = new Map<string, number>(); // RM-6: by declared code
+  private declarationsRefreshed = 0; // RM-6: how many refreshes the pool's time has passed
+  private readonly forwarded = new Set<string>(); // RM-8: the claims a relay has forwarded
+  private relaxing = false; // RM-2: the second judgement is running
+  private judged = false; // RM-2: and the first ran, and counted the prefix's work
+  private marks = new Set<string>(); // RM-2: the relaxations the running judgement has used
+  private reliesOn = new Set<string>(); // RM-6: the declared codes it has relied on
+  private running: Simulation | null = null; // the running judgement's simulation, for RM-4
 
   constructor(
     head: Head,
@@ -120,6 +168,14 @@ export class FramePool {
     sequence: () => number = counter()
   ) {
     this.config = config;
+    this.full = config;
+    this.canon = withChanges(config, {
+      relaxed: false,
+      dependencyFrames: false,
+      claims: false,
+      bond: false,
+      binding: false,
+    });
     this.head = head;
     this.state = state;
     this.reserver = reserver;
@@ -137,7 +193,8 @@ export class FramePool {
   }
 
   /**
-   * FP-15, with MA-8 to MA-10 under `matcha`. Only a transaction indexed under
+   * FP-15, with MA-8 to MA-10 under `matcha`, and RM-6's reading of the
+   * blocks' access lists under `relaxed`. Only a transaction indexed under
    * an address the new state may have changed can fail step 1, 3 or 4, so
    * only those are looked at, in the order received.
    */
@@ -145,9 +202,12 @@ export class FramePool {
     head: Head,
     state: State,
     now = 0,
-    verdicts: ReadonlyMap<string, string> = new Map()
+    verdicts: ReadonlyMap<string, string> = new Map(),
+    accessLists: readonly AccessList[] = []
   ): void {
     this.expire(now);
+    if (this.config.relaxed && accessLists.length > 0)
+      this.readViolations(accessLists);
     const touched = state.changedSince(this.state);
     this.head = head;
     this.state = state;
@@ -236,7 +296,13 @@ export class FramePool {
       this.addWork(e.tx.sender, admissionGas(e.tx, e.prefix));
       let sim: Simulation;
       try {
-        sim = this.simulate(e.tx, e.prefix, head, state);
+        sim = this.simulate(
+          e.tx,
+          e.prefix,
+          head,
+          state,
+          (e.relaxed ?? NONE).size > 0
+        );
       } catch (err) {
         if (!(err instanceof TxError)) throw err;
         this.invalidated(h, err);
@@ -272,7 +338,13 @@ export class FramePool {
     for (const h of again) {
       const e = this.entries.get(h) as Entry;
       try {
-        this.checkPayer(e.tx, e.sim.payer, e.sim.payerClass, null);
+        this.checkPayer(
+          e.tx,
+          e.sim.payer,
+          e.sim.payerClass,
+          null,
+          (e.relaxed ?? NONE).has("payer")
+        );
       } catch (err) {
         if (!(err instanceof TxError)) throw err;
         this.remove(h, "payer:" + err.code, true, false);
@@ -438,14 +510,18 @@ export class FramePool {
   /**
    * CG-3 step 2 for one transaction: FP-2 to FP-10 with CG-2, CG-4 and CG-6,
    * without AG-6, then CG-5. Throws the first failure and changes nothing but
-   * the work counted.
+   * the work counted. A relay of RM-8 runs no prefix.
    */
   precheck(tx: FrameTx): void {
     if (this.entries.has(tx.hash)) throw new TxError(E.ErrAlreadyKnown); // FP-2
     const prefix = checkStatic(tx, this.head, this.config); // FP-3 to FP-6, AG-2 to AG-4
     this.checkClaim(tx);
-    this.addWork(tx.sender, admissionGas(tx, prefix));
-    this.simulate(tx, prefix, this.head, this.state); // FP-7 to FP-10
+    if (this.config.relaxed && this.config.tier === "relay") {
+      checkNonce(tx, this.state); // FP-7, the relay's state
+    } else {
+      this.addWork(tx.sender, admissionGas(tx, prefix));
+      this.simulate(tx, prefix, this.head, this.state, this.config.relaxed); // FP-7 to FP-10
+    }
     if (tx.claim !== null && this.usedClaims.has(claimId(tx.claim)))
       throw new TxError(E.ErrClaimUsed); // CG-5
   }
@@ -577,7 +653,39 @@ export class FramePool {
 
   // --- admission ------------------------------------------------------------
 
+  /**
+   * RM-2 under `relaxed`: the canonical modules first, and the whole
+   * descriptor only for a transaction they refuse with a code a relaxation
+   * answers, or one with a dependency; RM-8's relay apart.
+   */
   protected addOne(tx: FrameTx, now: number): string {
+    if (!this.config.relaxed) return this.admit(tx, now);
+    if (this.config.tier === "relay") return this.relay(tx, now);
+    const judged = !tx.frames.some((f) => f.mode === this.config.depFrameMode);
+    if (judged) {
+      this.config = this.canon;
+      let code: string;
+      try {
+        code = this.admit(tx, now);
+      } finally {
+        this.config = this.full;
+      }
+      if (!RELAXABLE.has(code)) return code;
+    }
+    this.relaxing = true;
+    this.judged = judged;
+    try {
+      return this.admit(tx, now);
+    } finally {
+      this.relaxing = false;
+      this.judged = false;
+    }
+  }
+
+  private admit(tx: FrameTx, now: number): string {
+    this.marks = new Set();
+    this.reliesOn = new Set();
+    this.running = null;
     try {
       const cfg = this.config;
       if (this.entries.has(tx.hash)) throw new TxError(E.ErrAlreadyKnown); // FP-2
@@ -592,7 +700,7 @@ export class FramePool {
       ) {
         throw new TxError(E.ErrFrameDepsUnproven); // AG-6, CG-7 step 3
       }
-      this.addWork(tx.sender, admissionGas(tx, prefix));
+      if (!this.judged) this.addWork(tx.sender, admissionGas(tx, prefix)); // RM-2: a prefix the first judgement ran is counted once
       const oldHash = this.many(tx)
         ? null
         : this.byIdentity.get(identity(tx)) ?? null;
@@ -614,7 +722,14 @@ export class FramePool {
         this.checkPayer(tx, payer, payerClass, old);
         this.checkIdentity(tx, old);
       }
-      const sim = this.simulate(tx, prefix, this.head, this.state); // FP-7 to FP-10
+      const sim = this.simulate(
+        tx,
+        prefix,
+        this.head,
+        this.state,
+        this.relaxing
+      ); // FP-7 to FP-10
+      this.running = sim;
       if (!early) this.checkPayer(tx, sim.payer, sim.payerClass, old); // FP-11
       const txCharge = this.matcha ? charge(tx, prefix, cfg.safetyFactor) : 0n;
       const cls = this.matcha
@@ -639,6 +754,8 @@ export class FramePool {
       } else if (!early) {
         this.checkSender(tx);
       }
+      const declared = this.declaredSlots(sim);
+      if (this.relaxing) this.checkRelaxed(tx, declared, oldHash); // RM-3's unset slots, then RM-6
       if (this.reserver.heldByOther(tx.sender, this))
         throw new TxError(E.ErrAlreadyReserved); // FP-13
       const seq = this.sequence();
@@ -675,6 +792,9 @@ export class FramePool {
         charge: txCharge,
         reads: new Set(),
         cls,
+        relaxed: new Set(this.marks),
+        declared,
+        relies: new Set(this.reliesOn),
       });
       return E.OK;
     } catch (err) {
@@ -683,12 +803,17 @@ export class FramePool {
     }
   }
 
-  /** FP-7 to FP-10 as a pool runs them: with its `expiryMargin`, and its head's slot plus one and its `rootMargin`. */
+  /**
+   * FP-7 to FP-10 as a pool runs them: with its `expiryMargin`, and its
+   * head's slot plus one and its `rootMargin`; with `relax`, RM-3's declared
+   * reads.
+   */
   protected simulate(
     tx: FrameTx,
     prefix: Prefix,
     head: Head,
-    state: State
+    state: State,
+    relax = false
   ): Simulation {
     const cfg = this.config;
     return simulate(
@@ -699,16 +824,22 @@ export class FramePool {
       cfg,
       cfg.expiryMargin,
       head.slot + 1,
-      cfg.rootMargin
+      cfg.rootMargin,
+      relax
     );
   }
 
-  /** FP-11. */
+  /**
+   * FP-11, with RM-5 in the second judgement of RM-2; `lifted` for a
+   * transaction RM-5 admitted, which FP-15 step 4 counts again without the
+   * count.
+   */
   protected checkPayer(
     tx: FrameTx,
     payer: string,
     payerClass: string,
-    old: Entry | null
+    old: Entry | null,
+    lifted = false
   ): void {
     const cfg = this.config;
     let reserved = this.reserved.get(payer) ?? 0n;
@@ -724,8 +855,14 @@ export class FramePool {
     const capped =
       payerClass === "noncanonical" ||
       (payerClass === "default" && cfg.capCodelessPayers);
-    if (capped && count >= cfg.maxPendingNoncanonical)
+    if (capped && count >= cfg.maxPendingNoncanonical && !lifted) {
+      if (this.relaxing && this.rm5(tx, payer)) {
+        // RM-5
+        this.marks.add("payer");
+        return;
+      }
       throw new TxError(E.ErrFramePaymasterBusy);
+    }
   }
 
   /** FP-12 as a whole: the price bump over the pending transaction with the same identity, else the sender. */
@@ -749,6 +886,11 @@ export class FramePool {
       pending > 0 &&
       !(this.config.perSender === "disjoint-keys" && this.disjoint(tx))
     ) {
+      if (this.relaxing && this.rm4(tx)) {
+        // RM-4
+        this.marks.add("sender");
+        return;
+      }
       throw new TxError(E.ErrFrameSenderBusy);
     }
   }
@@ -846,9 +988,10 @@ export class FramePool {
     }
   }
 
-  /** AM-13's refresh, then MA-8, oldest first. */
+  /** AM-13's refresh and RM-6's, then MA-8, oldest first. */
   protected expire(now: number): void {
     this.refresh(now);
+    if (this.full.relaxed) this.refreshDeclarations(now);
     if (!this.matcha) return;
     const oldest = [...this.entries.values()].sort(
       (a, b) => a.admitted - b.admitted || a.seq - b.seq
@@ -895,6 +1038,307 @@ export class FramePool {
     )
       return best[1];
     return null;
+  }
+
+  // --- 15-relaxed-mempool.md ------------------------------------------------
+
+  /** RM-3: the declared slots a prefix reads, its sender's included, as [address, slot], in a fixed order. */
+  private declaredSlots(sim: Simulation): [string, bigint][] {
+    const cfg = this.full;
+    if (!cfg.relaxed) return [];
+    const out: [string, bigint][] = [];
+    for (const k of sim.deps.keys())
+      if (
+        k.kind === "storage" &&
+        declares(cfg, this.state.code(k.addr), k.n as bigint)
+      )
+        out.push([k.addr, k.n as bigint]);
+    return out.sort((a, b) =>
+      a[0] !== b[0]
+        ? a[0] < b[0]
+          ? -1
+          : 1
+        : a[1] < b[1]
+        ? -1
+        : a[1] > b[1]
+        ? 1
+        : 0
+    );
+  }
+
+  /** RM-3's unset slots, then RM-6, for a transaction RM-2's second judgement admits. */
+  private checkRelaxed(
+    tx: FrameTx,
+    declared: readonly (readonly [string, bigint])[],
+    oldHash: string | null
+  ): void {
+    const cfg = this.full;
+    if (declared.some(([a]) => a !== tx.sender)) this.marks.add("reads");
+    for (const [a, slot] of declared) {
+      if (a !== tx.sender || this.marks.has("sender"))
+        this.reliesOn.add(this.state.code(a));
+      if (
+        this.state.storage(a, slot) === 0n &&
+        [...(this.slotReaders.get(slotKey(a, slot)) ?? [])].some(
+          (h) => h !== oldHash
+        )
+      )
+        throw new TxError(E.ErrWriteOnceBusy);
+    }
+    for (const code of [...this.reliesOn].sort()) {
+      const state = declarationState(this.violations.get(code) ?? 0, cfg);
+      if (state === "BANNED") throw new TxError(E.ErrDeclarationBanned);
+      if (state !== "ACTIVE") {
+        let n = 0;
+        for (const [h, e] of this.entries)
+          if ((e.relies ?? NONE).has(code) && h !== oldHash) n++;
+        if (n >= cfg.throttledCount)
+          throw new TxError(E.ErrDeclarationThrottled);
+      }
+    }
+  }
+
+  /** RM-4: items 1 to 3, for a transaction FP-12 refuses under `one`. */
+  private rm4(tx: FrameTx): boolean {
+    const cfg = this.full;
+    const sim = this.running as Simulation;
+    if (!this.disjoint(tx)) return false;
+    if (cfg.senderBound) {
+      const code = this.state.code(tx.sender);
+      if (declaration(cfg, code) === null) return false;
+      for (const k of sim.deps.keys())
+        if (
+          k.kind === "storage" &&
+          k.addr === tx.sender &&
+          !declares(cfg, code, k.n as bigint)
+        )
+          return false;
+      this.reliesOn.add(code);
+    }
+    if (cfg.outflowBound && sim.payerClass !== "canonical")
+      return this.reserve(tx, sim.payer);
+    return true;
+  }
+
+  /** RM-5: the count lifted, under `outflowBound` for a payer that passes the reserve. */
+  private rm5(tx: FrameTx, payer: string): boolean {
+    return !this.full.outflowBound || this.reserve(tx, payer);
+  }
+
+  /** RM-5's reserve: a declared payer with a bound X, and a max_cost of at least X. */
+  private reserve(tx: FrameTx, payer: string): boolean {
+    const code = this.state.code(payer);
+    const d = declaration(this.full, code);
+    if (d === null || d.maxOutflow === null) return false;
+    if (tx.maxCost < d.maxOutflow) throw new TxError(E.ErrRelaxedReserve);
+    this.reliesOn.add(code);
+    return true;
+  }
+
+  /** RM-6: each block's access list, read against the old head's codes and values, oldest block first. */
+  private readViolations(accessLists: readonly AccessList[]): void {
+    const cfg = this.full;
+    const state = this.state;
+    const storage = new Map<string, bigint>();
+    const balance = new Map<string, bigint>();
+    const byIndex = (
+      a: readonly [number, bigint],
+      b: readonly [number, bigint]
+    ): number => a[0] - b[0] || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0);
+    const count = (code: string): void => {
+      this.violations.set(code, (this.violations.get(code) ?? 0) + 1);
+    };
+    for (const block of accessLists) {
+      for (const [addr, changes] of block) {
+        const code = state.code(addr);
+        const d = declaration(cfg, code);
+        if (d === null) continue;
+        for (const [slot, writes] of changes.storageChanges ?? new Map()) {
+          for (const [, post] of [...writes].sort(byIndex)) {
+            const key = slotKey(addr, slot);
+            const pre = storage.has(key)
+              ? (storage.get(key) as bigint)
+              : state.storage(addr, slot);
+            if (pre !== 0n && declares(cfg, code, slot)) count(code);
+            storage.set(key, post);
+          }
+        }
+        for (const [, post] of [...(changes.balanceChanges ?? [])].sort(
+          byIndex
+        )) {
+          const pre = balance.has(addr)
+            ? (balance.get(addr) as bigint)
+            : state.balance(addr);
+          if (d.maxOutflow !== null && pre - post > d.maxOutflow) count(code);
+          balance.set(addr, post);
+        }
+      }
+    }
+  }
+
+  /** RM-6: violations decay every `declarationRefreshSeconds` of the pool's time, counted from 0. */
+  private refreshDeclarations(now: number): void {
+    const due = Math.floor(now / this.full.declarationRefreshSeconds);
+    for (; this.declarationsRefreshed < due; this.declarationsRefreshed++)
+      for (const [code, v] of this.violations)
+        this.violations.set(code, Math.floor((v * 23) / 24));
+  }
+
+  /** RM-6: a declared code's count of violations and its state (MD-9). */
+  declarationStatus(code: string): {
+    violations: number;
+    state: DeclarationState;
+  } {
+    const v = this.violations.get(code) ?? 0;
+    return { violations: v, state: declarationState(v, this.full) };
+  }
+
+  /** RM-7: the pending transactions joined by shared keys, listed by their earliest received. */
+  groups(): FrameTx[][] {
+    const order = [...this.entries.values()].sort((a, b) => a.seq - b.seq);
+    const parent = new Map(order.map((e) => [e.tx.hash, e.tx.hash]));
+    const find = (h: string): string => {
+      while (parent.get(h) !== h) {
+        const up = parent.get(parent.get(h) as string) as string;
+        parent.set(h, up);
+        h = up;
+      }
+      return h;
+    };
+    const owner = new Map<string, string>();
+    for (const e of order) {
+      const keys = [
+        ...e.tx.nonceKeys.map((k) => `nonce|${e.tx.sender}|${k}`),
+        `payer|${e.sim.payer}`,
+        ...(e.declared ?? []).map(([a, slot]) => `slot|${slotKey(a, slot)}`),
+      ];
+      for (const key of keys) {
+        const held = owner.get(key);
+        if (held === undefined) {
+          owner.set(key, e.tx.hash);
+          continue;
+        }
+        const a = find(held);
+        const b = find(e.tx.hash);
+        if (a === b) continue;
+        const [first, second] =
+          (this.entries.get(a) as Entry).seq <
+          (this.entries.get(b) as Entry).seq
+            ? [a, b]
+            : [b, a];
+        parent.set(second, first);
+      }
+    }
+    const groups = new Map<string, FrameTx[]>();
+    for (const e of order) {
+      const root = find(e.tx.hash);
+      if (!groups.has(root)) groups.set(root, []);
+      (groups.get(root) as FrameTx[]).push(e.tx);
+    }
+    return [...groups.values()];
+  }
+
+  /** RM-8 item 1: every prefix frame is one the EIP evaluates directly. */
+  private protocolDefined(tx: FrameTx, prefix: Prefix): boolean {
+    for (let i = 0; i < prefix.frames.length; i++) {
+      const kind = prefix.kinds[i];
+      if (kind === ROOT || kind === EXPIRY) continue;
+      const frame = prefix.frames[i];
+      const target = frame.target !== null ? frame.target : tx.sender;
+      const code = this.state.code(target);
+      if (
+        code === "" ||
+        (kind === PAY && code === this.config.canonicalPaymasterCode)
+      )
+        continue;
+      return false;
+    }
+    return true;
+  }
+
+  /** RM-8: a relay's admission. It runs no prefix and checks no proof. */
+  private relay(tx: FrameTx, now: number): string {
+    const cfg = this.config;
+    try {
+      if (this.entries.has(tx.hash)) throw new TxError(E.ErrAlreadyKnown); // FP-2
+      const prefix = checkStatic(tx, this.head, cfg); // FP-3 to FP-6, AG-2 to AG-4
+      if (
+        cfg.dependencyFrames &&
+        dependencies(tx, cfg).some((d) => {
+          const id = dependencyId(d);
+          return !this.proven.has(id) && !this.relayed.has(id);
+        })
+      )
+        throw new TxError(E.ErrFrameDepsUnproven); // AG-6, CG-7 step 3
+      const oldHash = this.byIdentity.get(identity(tx)) ?? null;
+      const old =
+        oldHash !== null ? (this.entries.get(oldHash) as Entry) : null;
+      let sim: Simulation;
+      if (this.protocolDefined(tx, prefix)) {
+        // item 1, evaluated as FP-8 does
+        sim = this.simulate(tx, prefix, this.head, this.state);
+      } else if (tx.claim !== null) {
+        // item 2: the claim, and not the prefix
+        const seqs = checkNonce(tx, this.state); // FP-7
+        this.checkClaim(tx);
+        const id = claimId(tx.claim);
+        if (
+          this.forwarded.has(id) &&
+          (old === null ||
+            old.tx.claim === null ||
+            claimId(old.tx.claim) !== id)
+        )
+          throw new TxError(E.ErrClaimUsed);
+        const [payer, payerClass] = staticPayer(tx, prefix, this.state, cfg);
+        const deps = new Deps();
+        tx.nonceKeys.forEach((k, i) =>
+          deps.set(depKey("nonce_seq", tx.sender, k), seqs[i])
+        );
+        deps.set(depKey("balance", payer), this.state.balance(payer));
+        sim = { payer, payerClass, deps, deadline: null, roots: null };
+      } else {
+        throw new TxError(E.ErrRelayUnchecked);
+      }
+      const reserved =
+        (this.reserved.get(sim.payer) ?? 0n) -
+        (old !== null && old.sim.payer === sim.payer ? old.tx.maxCost : 0n);
+      const withdrawal =
+        sim.payerClass === "canonical" ? this.state.withdrawal(sim.payer) : 0n;
+      if (this.state.balance(sim.payer) - reserved - withdrawal < tx.maxCost)
+        throw new TxError(E.ErrFramePayerExposure); // FP-11's exposure check
+      if (old !== null) {
+        // FP-12
+        if (!replaces(old.tx, tx, cfg.priceBump))
+          throw new TxError(E.ErrReplaceUnderpriced);
+      } else if (this.bySender.has(tx.sender) && !this.disjoint(tx)) {
+        throw new TxError(E.ErrFrameSenderBusy); // RM-4 item 1
+      }
+      if (this.reserver.heldByOther(tx.sender, this))
+        throw new TxError(E.ErrAlreadyReserved); // FP-13
+      const seq = this.sequence();
+      if (old === null && this.entries.size >= cfg.maxPending) {
+        // FP-14
+        const victim = this.victim(tx, seq, sim.deadline);
+        if (victim === null) throw new TxError(E.ErrTxPoolOverflow);
+        this.remove(victim, "capacity");
+      }
+      if (oldHash !== null) this.remove(oldHash, "replaced", false, true, true);
+      this.insert({
+        tx,
+        seq,
+        prefix,
+        sim,
+        admitted: now,
+        charge: 0n,
+        reads: new Set(),
+        cls: new Set(),
+      });
+      if (tx.claim !== null) this.forwarded.add(claimId(tx.claim));
+      return E.OK;
+    } catch (err) {
+      if (err instanceof TxError) return err.code;
+      throw err;
+    }
   }
 
   // --- bookkeeping ----------------------------------------------------------
@@ -955,6 +1399,12 @@ export class FramePool {
     for (const k of tx.nonceKeys) used.set(k, (used.get(k) ?? 0) + 1);
     this.account(e, +1);
     this.index(e, +1);
+    for (const [a, slot] of e.declared ?? []) {
+      // RM-3
+      const key = slotKey(a, slot);
+      if (!this.slotReaders.has(key)) this.slotReaders.set(key, new Set());
+      (this.slotReaders.get(key) as Set<string>).add(tx.hash);
+    }
     if (this.matcha && e.cls.size > 0) {
       if (!this.claims.has(tx.sender)) this.claims.set(tx.sender, new Map());
       const claims = this.claims.get(tx.sender) as Map<string, number>;
@@ -1002,13 +1452,25 @@ export class FramePool {
     }
     if (account) this.account(e, -1);
     this.index(e, -1);
+    for (const [a, slot] of e.declared ?? []) {
+      // RM-3
+      const key = slotKey(a, slot);
+      const readers = this.slotReaders.get(key) as Set<string>;
+      readers.delete(txHash);
+      if (readers.size === 0) this.slotReaders.delete(key);
+    }
     if (reason === "stale_nonce" && this.counted.has(tx.hash))
       this.bump(this.ticketPaymaster(tx) as string, 0, 1); // CG-11: included
+    const canonical =
+      this.config.relaxed &&
+      (e.relaxed ?? NONE).size === 0 &&
+      dependencies(tx, this.config).length === 0; // RM-2
     if (
       this.config.claims &&
       tx.claim !== null &&
       reason !== "stale_nonce" &&
-      !keepClaim
+      !keepClaim &&
+      !canonical
     ) {
       // CG-6
       const id = claimId(tx.claim);
