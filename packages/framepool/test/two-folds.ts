@@ -185,7 +185,7 @@ export interface ProverOutcome {
   answer: string | string[]; // the other node's answer to this fold
 }
 
-/** The prover's own mode for a key and a signature, `sphincs <seed> <message>` (AG-11's command). */
+/** The prover's own mode for a key and a signature, `sphincs <seed> <message>`, which prints bare hex. */
 function sphincs(
   prover: string,
   seed: string,
@@ -202,7 +202,9 @@ function sphincs(
     answer.verified !== true
   )
     throw new Error(`no signature from ${prover}: ${out.stdout}${out.stderr}`);
-  return [answer.publicKey, answer.signature];
+  // the prover prints bare hex; a triple's key is 0x and 64 digits (AG-11 item 1)
+  const ox = (h: string): string => (h.startsWith("0x") ? h : "0x" + h);
+  return [ox(answer.publicKey), ox(answer.signature)];
 }
 
 const hex32 = (tag: string, i: number): string =>

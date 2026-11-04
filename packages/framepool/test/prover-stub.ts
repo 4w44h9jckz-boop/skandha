@@ -10,6 +10,8 @@
  *   prover-stub.ts sphincs <seed hex> <message hex>
  *
  * Each prints one JSON line; a refusal is `{"error": ...}` and exit status 2.
+ * Like the prover, it reads hex with or without 0x, and `sphincs` prints its
+ * key and signature as bare hex.
  * A claim's `publicKey` and `message` are 32 bytes of hex. Its stand-in
  * signature is SHA-256 over "stub-leanSPHINCS", the key and the message; the
  * stand-in aggregate is "stub-aggregate" followed by SHA-256 over the sorted,
@@ -101,8 +103,8 @@ if (args.length === 3 && args[0] === "aggregate") {
   const signature = sha(Buffer.from("stub-leanSPHINCS"), key, message);
   console.log(
     JSON.stringify({
-      publicKey: "0x" + key.toString("hex"),
-      signature: "0x" + signature.toString("hex"),
+      publicKey: key.toString("hex"),
+      signature: signature.toString("hex"),
       signatureBytes: signature.length,
       verified: true,
     })

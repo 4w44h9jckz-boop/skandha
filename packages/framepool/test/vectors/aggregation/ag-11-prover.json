@@ -25,6 +25,9 @@
     },
     "dave": {
      "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
     }
    },
    "steps": [
@@ -105,6 +108,9 @@
     },
     "dave": {
      "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
     }
    },
    "steps": [
@@ -167,6 +173,9 @@
     },
     "dave": {
      "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
     }
    },
    "steps": [
@@ -227,6 +236,9 @@
     },
     "dave": {
      "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
     }
    },
    "steps": [
@@ -283,6 +295,9 @@
      "balance": 1000000000
     },
     "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
      "balance": 1000000000
     }
    },
@@ -344,6 +359,9 @@
     },
     "dave": {
      "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
     }
    },
    "steps": [
@@ -403,6 +421,9 @@
      "balance": 1000000000
     },
     "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
      "balance": 1000000000
     }
    },
@@ -509,6 +530,9 @@
     },
     "dave": {
      "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
     }
    },
    "steps": [
@@ -614,6 +638,9 @@
     },
     "dave": {
      "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
     }
    },
    "steps": [
@@ -666,6 +693,141 @@
    }
   },
   {
+   "name": "a key in bare hex is not of item 1's form",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 1,
+      "txs": [
+       {
+        "label": "B",
+        "type": 6,
+        "sender": "erin",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "1111111111111111111111111111111111111111111111111111111111111111"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "stark": {
+       "proof": "0x737475622d61676772656761746537a15edb4b9426c1472e12919a2f9d0860d70e8486c538f5e4fc0f6211de606b"
+      }
+     },
+     "expect": "ErrWrapperProof"
+    }
+   ],
+   "derivation": "The key is K1's 64 hex digits without 0x, as the prover's own sphincs mode prints a key. Item 1 reads a triple's key as 0x and 64 digits, so the node cannot check the aggregate, though the bytes cover K1 and M1 (item 3).",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   }
+  },
+  {
+   "name": "a witness in bare hex folds as one with 0x",
+   "profile": "eip-8288",
+   "state": {
+    "alice": {
+     "balance": 1000000000
+    },
+    "bob": {
+     "balance": 1000000000
+    },
+    "carol": {
+     "balance": 1000000000
+    },
+    "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
+     "balance": 1000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "mode": 0,
+      "txs": [
+       {
+        "label": "T",
+        "type": 6,
+        "sender": "alice",
+        "frames": [
+         {
+          "mode": 3,
+          "deps": [
+           [
+            16,
+            "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "0x1111111111111111111111111111111111111111111111111111111111111111"
+           ]
+          ],
+          "exec_gas": 3000,
+          "data_size": 96
+         },
+         {
+          "mode": 1,
+          "flags": 3
+         }
+        ]
+       }
+      ],
+      "witnesses": [
+       "a39683098123d82d1942cc97dd0667378d770f97c62a444a612bf227213fa625"
+      ]
+     },
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "aggregate": {},
+     "expect": [
+      "T"
+     ],
+     "expect_proof": "0x737475622d61676772656761746537a15edb4b9426c1472e12919a2f9d0860d70e8486c538f5e4fc0f6211de606b"
+    }
+   ],
+   "derivation": "The node passes the witness on as received, and the prover reads hex with or without 0x, so the aggregate is the same as from a witness written with 0x.",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   }
+  },
+  {
    "name": "without a prover the flags stand",
    "profile": "eip-8288",
    "state": {
@@ -679,6 +841,9 @@
      "balance": 1000000000
     },
     "dave": {
+     "balance": 1000000000
+    },
+    "erin": {
      "balance": 1000000000
     }
    },

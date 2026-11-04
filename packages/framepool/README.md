@@ -193,9 +193,20 @@ other node refuses it with `ErrWrapperProof`. Each line gives the proof's
 bytes and the prover's measured time and peak memory.
 
 `test/prover-stub.ts` keeps that contract with stand-in hashes, not leanVM's
-cryptography. `test/unit/two-folds.test.ts` runs the exchange on it, and
+cryptography, and prints `sphincs`'s key and signature as bare hex, as the
+prover does. `test/unit/two-folds.test.ts` runs the exchange on it, and
 `--prover ./test/prover-stub.ts` prints it. A real prover is built outside
 this repository, by `exp-e2e-frames`.
+
+On experiment 19's prover built natively, the exchange ran as on the stub
+(`exp-e2e-frames` experiment 22, `992094b`):
+- **size:** each fold of two or three signatures was 268,409 to 274,905
+  bytes;
+- **time and memory:** each took 2.7 to 3.4 s with the prover started for
+  the call, at about 413 to 417 MB at peak.
+
+That is over AG-7's 1,000 ms interval. A node that folds every interval
+needs its prover resident, which a command run for each call is not.
 
 ## Running
 
