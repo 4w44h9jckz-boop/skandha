@@ -83,6 +83,12 @@ export interface Entry {
   readonly relaxed?: ReadonlySet<string>; // RM-2: the relaxations that admitted it, of `reads`, `sender` and `payer`
   readonly declared?: readonly (readonly [string, bigint])[]; // RM-3: the declared slots it reads, as [address, slot]
   readonly relies?: ReadonlySet<string>; // RM-6: the declared codes it relies on
+  readonly reserve?: bigint; // RM-5: what it reserves of its payer's balance, when not its max_cost
+}
+
+/** FP-11's share of its payer's balance: its max_cost, or RM-5's reserve. */
+function reservedBy(e: Entry): bigint {
+  return e.reserve ?? e.tx.maxCost;
 }
 
 const NONE: ReadonlySet<string> = new Set();
@@ -159,6 +165,8 @@ export class FramePool {
   private marks = new Set<string>(); // RM-2: the relaxations the running judgement has used
   private reliesOn = new Set<string>(); // RM-6: the declared codes it has relied on
   private running: Simulation | null = null; // the running judgement's simulation, for RM-4
+  private replacing: Entry | null = null; // the pending transaction the running judgement replaces, for RM-5
+  private reserving: bigint | null = null; // RM-5: what the running judgement reserves
 
   constructor(
     head: Head,
@@ -343,7 +351,8 @@ export class FramePool {
           e.sim.payer,
           e.sim.payerClass,
           null,
-          (e.relaxed ?? NONE).has("payer")
+          (e.relaxed ?? NONE).has("payer"),
+          reservedBy(e)
         );
       } catch (err) {
         if (!(err instanceof TxError)) throw err;
@@ -686,6 +695,8 @@ export class FramePool {
     this.marks = new Set();
     this.reliesOn = new Set();
     this.running = null;
+    this.replacing = null;
+    this.reserving = null;
     try {
       const cfg = this.config;
       if (this.entries.has(tx.hash)) throw new TxError(E.ErrAlreadyKnown); // FP-2
@@ -706,6 +717,7 @@ export class FramePool {
         : this.byIdentity.get(identity(tx)) ?? null;
       const old =
         oldHash !== null ? (this.entries.get(oldHash) as Entry) : null;
+      this.replacing = old;
       const early = cfg.staticFirst && !this.matcha;
       if (early) {
         // Admission under `staticFirst`: FP-7, then FP-11 and FP-12, before the prefix runs
@@ -795,6 +807,7 @@ export class FramePool {
         relaxed: new Set(this.marks),
         declared,
         relies: new Set(this.reliesOn),
+        ...(this.reserving !== null ? { reserve: this.reserving } : {}),
       });
       return E.OK;
     } catch (err) {
@@ -832,25 +845,29 @@ export class FramePool {
   /**
    * FP-11, with RM-5 in the second judgement of RM-2; `lifted` for a
    * transaction RM-5 admitted, which FP-15 step 4 counts again without the
-   * count.
+   * count, and `amount` for one that reserves more than its max_cost.
    */
   protected checkPayer(
     tx: FrameTx,
     payer: string,
     payerClass: string,
     old: Entry | null,
-    lifted = false
+    lifted = false,
+    amount: bigint | null = null
   ): void {
     const cfg = this.config;
     let reserved = this.reserved.get(payer) ?? 0n;
     let count = this.payerCount.get(payer) ?? 0;
     if (old !== null && old.sim.payer === payer) {
-      reserved -= old.tx.maxCost;
+      reserved -= reservedBy(old);
       count -= 1;
     }
     const withdrawal =
       payerClass === "canonical" ? this.state.withdrawal(payer) : 0n;
-    if (this.state.balance(payer) - reserved - withdrawal < tx.maxCost)
+    if (
+      this.state.balance(payer) - reserved - withdrawal <
+      (amount ?? tx.maxCost)
+    )
       throw new TxError(E.ErrFramePayerExposure);
     const capped =
       payerClass === "noncanonical" ||
@@ -1125,12 +1142,24 @@ export class FramePool {
     return !this.full.outflowBound || this.reserve(tx, payer);
   }
 
-  /** RM-5's reserve: a declared payer with a bound X, and a max_cost of at least X. */
+  /**
+   * RM-5's reserve: a declared payer with a bound X, of whose balance the
+   * transaction reserves the larger of its max_cost and X, which FP-11's
+   * exposure check must cover.
+   */
   private reserve(tx: FrameTx, payer: string): boolean {
     const code = this.state.code(payer);
     const d = declaration(this.full, code);
     if (d === null || d.maxOutflow === null) return false;
-    if (tx.maxCost < d.maxOutflow) throw new TxError(E.ErrRelaxedReserve);
+    const r = tx.maxCost > d.maxOutflow ? tx.maxCost : d.maxOutflow;
+    const old = this.replacing;
+    const reserved =
+      (this.reserved.get(payer) ?? 0n) -
+      (old !== null && old.sim.payer === payer ? reservedBy(old) : 0n);
+    // a payer under the reserve is never the canonical paymaster
+    if (this.state.balance(payer) - reserved < r)
+      throw new TxError(E.ErrFramePayerExposure);
+    this.reserving = r;
     this.reliesOn.add(code);
     return true;
   }
@@ -1301,7 +1330,7 @@ export class FramePool {
       }
       const reserved =
         (this.reserved.get(sim.payer) ?? 0n) -
-        (old !== null && old.sim.payer === sim.payer ? old.tx.maxCost : 0n);
+        (old !== null && old.sim.payer === sim.payer ? reservedBy(old) : 0n);
       const withdrawal =
         sim.payerClass === "canonical" ? this.state.withdrawal(sim.payer) : 0n;
       if (this.state.balance(sim.payer) - reserved - withdrawal < tx.maxCost)
@@ -1378,7 +1407,7 @@ export class FramePool {
     const payer = e.sim.payer;
     this.reserved.set(
       payer,
-      (this.reserved.get(payer) ?? 0n) + BigInt(sign) * e.tx.maxCost
+      (this.reserved.get(payer) ?? 0n) + BigInt(sign) * reservedBy(e)
     );
     const count = (this.payerCount.get(payer) ?? 0) + sign;
     this.payerCount.set(payer, count);

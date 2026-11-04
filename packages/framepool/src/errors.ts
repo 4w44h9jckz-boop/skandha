@@ -100,7 +100,6 @@ export const ErrClaimUnbound = "ErrClaimUnbound"; // CG-12
 
 // This repository's, for the relaxed alternative mempool (`docs/spec/15-relaxed-mempool.md`)
 export const ErrWriteOnceBusy = "ErrWriteOnceBusy"; // RM-3
-export const ErrRelaxedReserve = "ErrRelaxedReserve"; // RM-5
 export const ErrDeclarationThrottled = "ErrDeclarationThrottled"; // RM-6
 export const ErrDeclarationBanned = "ErrDeclarationBanned"; // RM-6
 export const ErrRelayUnchecked = "ErrRelayUnchecked"; // RM-8

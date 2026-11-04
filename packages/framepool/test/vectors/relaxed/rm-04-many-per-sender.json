@@ -1249,7 +1249,7 @@
      }
     },
     "np": {
-     "balance": 1000000000,
+     "balance": 18000000,
      "code": "note-pool",
      "storage": {
       "1": 5,
@@ -1322,11 +1322,11 @@
      ],
      "expect": [
       "ok",
-      "ErrRelaxedReserve"
+      "ErrFramePayerExposure"
      ]
     }
    ],
-   "derivation": "At max_fee 90, max_cost is 96838 * 90 = 8,715,420, below note-pool's max_outflow 9683800. K1 is canonical and reserves nothing; K2 is relaxed and its payer, np, is not the canonical paymaster (RM-4 item 3, RM-5)."
+   "derivation": "At max_fee 90, max_cost is 96838 * 90 = 8,715,420, below note-pool's max_outflow 9683800. K1 is canonical and reserves its max_cost. K2 is relaxed, and its payer, np, is not the canonical paymaster, so it reserves max(8,715,420, 9683800) = 9683800 (RM-4 item 3, RM-5): 8,715,420 + 9683800 = 18,399,220 is above np's 18,000,000. Reserving its max_cost, 17,430,840, would fit."
   },
   {
    "name": "without sender_bound and outflow_bound, disjoint keys alone suffice",

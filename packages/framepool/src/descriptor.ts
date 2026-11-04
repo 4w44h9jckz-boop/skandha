@@ -506,7 +506,7 @@ export const RELAXATIONS: Readonly<Record<string, Module>> = {
   "RM-2": m("rule"),
   "RM-3": m("rule", ["ErrWriteOnceBusy"], { declarations: "declarations" }),
   "RM-4": m("rule", [], { sender_bound: "bool" }),
-  "RM-5": m("rule", ["ErrRelaxedReserve"], { outflow_bound: "bool" }),
+  "RM-5": m("rule", [], { outflow_bound: "bool" }),
   "RM-6": m("rule", ["ErrDeclarationThrottled", "ErrDeclarationBanned"], {
     ban_violations: "int",
     throttled_count: "int",
