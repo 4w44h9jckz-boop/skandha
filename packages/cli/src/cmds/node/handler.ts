@@ -108,6 +108,11 @@ export async function nodeHandler(args: IGlobalArgs): Promise<void> {
           name: args["frames.name"],
           descriptor: args["frames.descriptor"],
           tier: args["frames.tier"] as "relay" | "verifier" | "aggregator",
+          chainId:
+            args["frames.chainId"] !== undefined
+              ? BigInt(args["frames.chainId"])
+              : undefined,
+          prover: args["frames.prover"],
         }
       : undefined,
   });

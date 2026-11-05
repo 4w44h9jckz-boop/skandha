@@ -8,6 +8,7 @@
  *   prover-stub.ts aggregate <claims.json> <out.bin>
  *   prover-stub.ts verify-aggregate <proof.bin> <claims.json>
  *   prover-stub.ts sphincs <seed hex> <message hex>
+ *   prover-stub.ts verify-sphincs <publicKey hex> <message hex> <signature hex>
  *
  * Each prints one JSON line; a refusal is `{"error": ...}` and exit status 2.
  * Like the prover, it reads hex with or without 0x, and `sphincs` prints its
@@ -96,6 +97,18 @@ if (args.length === 3 && args[0] === "aggregate") {
   if (!proof.equals(aggregateOf(pairs)))
     refuse("the proof does not cover these claims");
   console.log(JSON.stringify({ verified: true, verifyMs: 0 }));
+} else if (args.length === 4 && args[0] === "verify-sphincs") {
+  // exp-mempool-l2s `11-surface.md`, SF-10
+  const key = raw({ publicKey: args[1] }, "publicKey", 32);
+  const message = raw({ message: args[2] }, "message", 32);
+  const signature = raw({ signature: args[3] }, "signature");
+  console.log(
+    JSON.stringify({
+      verified: signature.equals(
+        sha(Buffer.from("stub-leanSPHINCS"), key, message)
+      ),
+    })
+  );
 } else if (args.length === 3 && args[0] === "sphincs") {
   const seed = raw({ seed: args[1] }, "seed", 32);
   const message = raw({ message: args[2] }, "message", 32);
@@ -111,7 +124,7 @@ if (args.length === 3 && args[0] === "aggregate") {
   );
 } else {
   console.error(
-    "usage: prover-stub.ts aggregate <claims.json> <out.bin> | verify-aggregate <proof.bin> <claims.json>"
+    "usage: prover-stub.ts aggregate <claims.json> <out.bin> | verify-aggregate <proof.bin> <claims.json> | sphincs <seed> <message> | verify-sphincs <publicKey> <message> <signature>"
   );
   process.exit(1);
 }

@@ -9,7 +9,7 @@
   "CG-10"
  ],
  "document": "11-surface.md",
- "version": 4,
+ "version": 5,
  "operation": "surface",
  "distinguishes": "A transaction a chain mined decodes to the model transaction its fields give, its hash is the chain's, and its max gas and max cost are the client's: a decoder that reads a field wrongly, hashes anything but the bytes, miscounts zero bytes or prices them as non-zero fails here. Under claims, a decoder that reads a ticket without its paymaster's code, or under a profile without claims, or calls a ticket that does not verify valid, fails here too.",
  "provenance": "Each raw transaction is exp-frames' encoding of a mined fixture at exp-frames 85ee60d, kept only because its keccak256 is the hash the chain gives it, so the bytes are the chain's. The expected fields are those of the transaction so encoded, written in the model's names; zero_bytes counts the zero bytes among them; max_cost is the client's. Nothing here was produced by this repository's reference (decision record 0051). The claim cases are a ticket spend the Hegota testnet mined and a transaction it refused, from kohaku-rs eea02a3's record of experiment 36's re-run, with the paymaster's code as eth_getCode returned it; each claim's epoch and salt were read from the bytes by a parser outside this repository, and its valid is the testnet's EIP-2537 pairing precompile on the message CG-8 builds.",

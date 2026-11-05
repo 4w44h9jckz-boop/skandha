@@ -22,7 +22,9 @@ A node does what the clauses say, in this order:
 5. Publishes what it admitted on `/frame-transactions/<chain id>/raw`, and
    accepts, ignores or rejects what peers publish there by the same steps
    (SF-6, SF-7): bytes that are not a frame transaction are rejected, any
-   other refusal is ignored and not forwarded.
+   other refusal is ignored and not forwarded. A transaction with
+   dependencies is never published, and is ignored when a peer sends it
+   (below).
 6. At every new head, re-reads the accounts of what it holds, asks the client
    about each transaction still pending, and resets the pool (SF-8).
 7. With `--frames.handoff`, sends what it admits to the client's own
@@ -121,6 +123,56 @@ budget over all of them, in the order they arrive (IL-4). Which of the two
 lets one committee member's never-valid entries deny honest ones is what the
 inclusion-list vectors of `@skandha/framepool` test, on exp-frames
 experiment 25's transactions.
+
+## Dependency frames: a client's wrapper
+
+Under `--frames.profile eip-8288-master`, EIP-8288 as ethereum/EIPs master
+writes it, a dependency frame is mode 4, and each 96 bytes of its data are a
+triple: a scheme, a data hash and a key. leanSPHINCS is the defined scheme
+and leanSTARK is reserved; a zero data hash stands for the transaction's
+signature hash (exp-mempool-l2s `11-surface.md` version 5, SF-1 and SF-3).
+The pool admits a transaction with dependencies only once a wrapper has
+proved them (AG-6), and a client sends that wrapper with `frames_sendWrapper`
+(SF-10):
+
+```sh
+curl -s -X POST -H 'content-type: application/json' http://127.0.0.1:14337/rpc/ \
+  --data '{"jsonrpc":"2.0","id":1,"method":"frames_sendWrapper","params":[{"transactions":["0x06..."],"mode":0,"deps":[[16,"0x<message>","0x<key>"]],"proofs":["0x<signature>"]}]}'
+```
+
+The parameter has exactly those four members, `mode` 0 and one proof for
+each triple of `deps`; anything else is invalid params, -32602. The node
+decodes every transaction, refusing the whole wrapper at the first that does
+not decode; reads each sender's accounts and asks the client about each
+transaction FP-2 to FP-7 pass, as `eth_sendRawTransaction` does; checks each
+leanSPHINCS proof with its prover's `verify-sphincs <key> <message>
+<signature>`; and judges the wrapper by AG-5 and AG-6. A refusal of the
+whole wrapper is an error, -32000, whose message is the code
+(`ErrWrapperProof`, `ErrWrapperDeps`, ...). Otherwise the answer is a list,
+one entry for each transaction in order: its hash when admitted, its code
+when not. The node logs a `wrapper` line.
+
+Nothing a wrapper admits is published, and neither is a transaction with
+dependencies sent later over `eth_sendRawTransaction` (SF-6): a peer could not
+admit it without the proofs, and no wrapper travels between nodes. A peer's
+copy is admitted if its dependencies are proven here, and then ignored on
+the topic rather than accepted, which would forward it (SF-7). A client that
+wants several nodes to hold a transaction sends its wrapper to each.
+
+Two settings go with the profile:
+
+- `--frames.prover <command>` names a prover with the contract of
+  exp-e2e-frames experiment 19's (AG-11). `frames_sendWrapper` checks proofs
+  with it, and the aggregator folds with it. A node with no prover cannot
+  check a proof, so it refuses every wrapper with a dependency with
+  `ErrWrapperProof` (exp-mempool-l2s decision record 0084). Experiment 19's
+  prover has no `verify-sphincs` mode at `47f5496`, so until it does, a node
+  naming it refuses those wrappers too. `packages/framepool/test/prover-stub.ts`
+  has the mode, for tests only: it checks a stand-in signature, not a real
+  one.
+- `--frames.chainId <n>` sets the node's own chain id in place of the
+  profile's, which is 1 under `eip-8288-master`, for a chain the profile does
+  not name, such as a local one (SF-1). The gossip topic follows it.
 
 ## Tickets: claim-gated admission
 
@@ -265,13 +317,15 @@ instead of refusing it.
 
 ## What it does not do
 
-- Blob-carrying frame transactions and EIP-8288's dependency frames are not
-  decoded beyond their bytes. EIP-8272's recent-root verifier frame is: the
+- Blob-carrying frame transactions are not decoded beyond their bytes, nor
+  are EIP-8288's dependency frames under any profile but `eip-8288-master`
+  (above). EIP-8272's recent-root verifier frame is: the
   `hegota-testnet` profile models it, its tuples give the slots the pool
   evicts by, and the client's verdict stands for their check against the
   contract. A node's slot is the header's `slotNumber`, not its block
   number.
-- A node neither takes EIP-8288 wrappers nor folds them. The aggregator is in
+- A node takes a client's mode 0 wrapper (above), but no wrapper from a
+  peer, no mode 1 wrapper, and it does not fold. The aggregator is in
   `@skandha/framepool`, and its two-node exchange runs in one process
   ([`packages/framepool/README.md`](packages/framepool/README.md), "Two
   aggregators"): `AGGREGATED_VK` and `DEPS_HASH` are still to be chosen in

@@ -2,7 +2,8 @@
  * Frame transactions over this node's JSON-RPC and gossip, admitted by
  * `@skandha/framepool` under exp-mempool-l2s `docs/spec/11-surface.md`: SF-5 for
  * `eth_sendRawTransaction`, SF-6 and SF-7 for the gossip topic, SF-8 for a new
- * head and SF-9 for hand-off. The prefix's outcome is the execution client's
+ * head, SF-9 for hand-off and SF-10 for `frames_sendWrapper`, a client's
+ * mode 0 wrapper under `eip-8288-master`. The prefix's outcome is the execution client's
  * verdict (SF-4); everything else the pool decides itself. As an includer it
  * answers with the inclusion list it would publish (`07-focil.md`, IL-2).
  *
@@ -74,7 +75,9 @@ import { ClientHead, FrameClient } from "./client.js";
 
 export interface FrameServiceOptions {
   rpcUrl: string;
-  profile: string; // a frame pool profile with a surface (SF-1): eip-8141 or hegota-testnet
+  profile: string; // a frame pool profile with a surface (SF-1): eip-8141, hegota-testnet or eip-8288-master
+  chainId?: bigint; // SF-1: the node's own chain id, in place of the profile's
+  prover?: string; // AG-11: the command of a real prover, which SF-10 checks a wrapper's proofs with
   handoff: boolean; // SF-9
   claims?: boolean; // CG-1: claim-gated admission, the ticket checked before the client is asked
   binding?: boolean; // CG-12: a claim counts only if its binder signed the transaction
@@ -165,7 +168,12 @@ export class FrameService {
     const base = SURFACE_PROFILES.get(opts.profile);
     if (base === undefined || !PROFILES.has(opts.profile))
       throw new Error(`no surface profile ${opts.profile}`);
-    this.surfaceConfig = { ...base, relay: "gossipsub", handoff: opts.handoff };
+    this.surfaceConfig = {
+      ...base,
+      chainId: opts.chainId ?? base.chainId,
+      relay: "gossipsub",
+      handoff: opts.handoff,
+    };
     this.ruleset =
       opts.descriptor !== undefined ? loadDescriptor(opts.descriptor) : null;
     if (
@@ -237,9 +245,10 @@ export class FrameService {
     if (profile === undefined)
       throw new Error(`no frame pool profile ${this.opts.profile}`);
     const cfg = addressForm(
-      this.opts.claims
-        ? withChanges(profile, { claims: true, ...this.binding() })
-        : profile
+      withChanges(profile, {
+        ...(this.opts.claims ? { claims: true, ...this.binding() } : {}),
+        ...(this.opts.prover !== undefined ? { prover: this.opts.prover } : {}),
+      })
     );
     this.pool = new FramePool(
       FrameService.toHead(this.head),
@@ -254,6 +263,8 @@ export class FrameService {
       descriptor: this.ruleset?.id,
       ruleset: this.ruleset !== null ? profile.name : undefined,
       head: this.head.number,
+      chainId: this.surfaceConfig.chainId,
+      prover: cfg.prover,
       handoff: this.opts.handoff,
       claims: cfg.claims,
       binding: cfg.binding,
@@ -436,7 +447,8 @@ export class FrameService {
     const hash = out.hash as string;
     let peers = 0;
     try {
-      peers = await this.publish(Buffer.from(param.slice(2), "hex")); // SF-6
+      if (this.surface.relays(hash))
+        peers = await this.publish(Buffer.from(param.slice(2), "hex")); // SF-6
     } catch (err) {
       this.log({
         event: "relay",
@@ -444,9 +456,78 @@ export class FrameService {
         error: err instanceof Error ? err.message : String(err),
       });
     }
-    this.log({ event: "relay", hash, peers });
+    this.log({ event: "relay", hash, peers, held: !this.surface.relays(hash) });
     void this.handOff(hash, param.toLowerCase());
     return { result: hash };
+  }
+
+  /**
+   * SF-10: `frames_sendWrapper`, a client's mode 0 wrapper. Its transactions
+   * are decoded, each one FP-2 to FP-7 pass is simulated by the client, each
+   * leanSPHINCS proof is checked by the node's prover, and AG-5 and AG-6
+   * judge the wrapper. The answer is one entry per transaction, its hash or
+   * its code; nothing is relayed.
+   */
+  async sendWrapper(
+    param: unknown
+  ): Promise<{ result?: string[]; error?: SendResult["error"] }> {
+    return this.serial(async () => {
+      const block = this.block();
+      const codes = new Map<string, Uint8Array>();
+      const raws =
+        param !== null && typeof param === "object" && "transactions" in param
+          ? (param as { transactions: unknown }).transactions
+          : null;
+      if (this.pool.config.claims && Array.isArray(raws))
+        for (const raw of raws)
+          if (typeof raw === "string" && /^0x(?:[0-9a-fA-F]{2})*$/.test(raw))
+            for (const [a, code] of await this.codes(
+              Buffer.from(raw.slice(2), "hex"),
+              block
+            ))
+              codes.set(a, code);
+      const read = this.surface.readWrapper(param, codes);
+      if ("answer" in read) {
+        const a = read.answer;
+        this.log({ event: "wrapper", result: a.result ?? "invalid params" });
+        return {
+          error:
+            a.error_code === -32602
+              ? {
+                  code: -32602,
+                  message:
+                    "invalid params: a wrapper is {transactions, mode: 0, deps, proofs}, one proof for each triple",
+                }
+              : { code: -32000, message: String(a.result) },
+        };
+      }
+      const w = read.wrapper;
+      for (const tx of w.txs) await this.load(tx, this.pool.state, block);
+      const ask = this.surface.wrapperToAsk(w);
+      const answers = await Promise.all(
+        w.raws.map((raw, i) =>
+          ask[i] ? this.client.simulate(raw, block) : undefined
+        )
+      );
+      const out = this.surface.admitWrapper(w, ask, answers, Date.now() / 1000);
+      this.log({
+        event: "wrapper",
+        hashes: w.txs.map((tx) => tx.label),
+        deps: w.deps.length,
+        result: out.result,
+        client: answers.map((a) => a?.text),
+        head: this.head.number,
+      });
+      if (!Array.isArray(out.result))
+        return { error: { code: -32000, message: String(out.result) } };
+      const results = out.result as string[];
+      results.forEach((r, i) => {
+        if (r !== w.txs[i].label) return;
+        this.raws.set(r, w.raws[i]);
+        void this.handOff(r, w.raws[i]);
+      });
+      return { result: results };
+    });
   }
 
   /**
@@ -508,7 +589,10 @@ export class FrameService {
     peer: string
   ): Promise<"accept" | "reject" | "ignore"> {
     const out = await this.admit(raw);
-    const outcome = gossipOutcome(out.result);
+    const outcome =
+      out.result === OK && !this.surface.relays(out.hash as string)
+        ? "ignore" // SF-6 and SF-7: admitted, and not forwarded
+        : gossipOutcome(out.result);
     this.log({
       event: "gossip",
       from: peer,

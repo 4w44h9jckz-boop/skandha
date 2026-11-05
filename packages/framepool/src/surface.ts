@@ -1,8 +1,9 @@
 /**
  * The surface around the frame pool: exp-mempool-l2s `docs/spec/11-surface.md`, SF-1 to
- * SF-9. Bytes in (SF-2, SF-3), a client's verdict on the prefix (SF-4),
+ * SF-10. Bytes in (SF-2, SF-3), a client's verdict on the prefix (SF-4),
  * answers over JSON-RPC (SF-5), relay to peers and what is taken from them
- * (SF-6, SF-7), head changes (SF-8) and hand-off to a client (SF-9).
+ * (SF-6, SF-7), head changes (SF-8), hand-off to a client (SF-9) and a
+ * client's mode 0 wrapper under `eip-8288-master` (SF-10).
  *
  * The client and the network are not here. `prepare` decodes and runs FP-2
  * to FP-7; a caller that gets past it asks its client, then `admit` takes the
@@ -15,9 +16,13 @@ import { FramePoolConfig, withChanges } from "./config.js";
 import { keccak256 } from "./keccak.js";
 import { Head, State } from "./model.js";
 import { FramePool } from "./pool.js";
+import { Aggregator, Prover } from "./aggregation.js";
+import { dependencies } from "./dependencies.js";
 import {
   Claim,
+  Dependency,
   Frame,
+  LEANSPHINCS,
   FrameTx,
   RootReference,
   Signature,
@@ -67,6 +72,7 @@ const BASE: SurfaceConfig = {
 export const SURFACE_PROFILES: ReadonlyMap<string, SurfaceConfig> = new Map([
   ["eip-8141", BASE],
   ["hegota-testnet", { ...BASE, chainId: 8141n }],
+  ["eip-8288-master", BASE], // version 5: AG-1's pool profile of that name
 ]);
 
 /** SF-3: the profile's distinguished address in the form the surface writes addresses in. */
@@ -435,6 +441,33 @@ export function verifyTargets(raw: Uint8Array, cfg: SurfaceConfig): string[] {
   return [...new Set(targets)];
 }
 
+const ZERO32 = "0x" + "00".repeat(32);
+
+/**
+ * SF-3, version 5: a dependency frame's triples, one for each whole 96 bytes;
+ * under `sig_hash`, a zero data_hash is written as the transaction's
+ * signature hash.
+ */
+function depsOf(
+  data: Uint8Array,
+  raw: Uint8Array,
+  frameCfg: FramePoolConfig,
+  envelope: string
+): Dependency[] {
+  const out: Dependency[] = [];
+  for (let i = 0; i + 96 <= data.length; i += 96) {
+    let dataHash = hex(data.subarray(i + 32, i + 64));
+    if (frameCfg.zeroDataHash === "sig_hash" && dataHash === ZERO32)
+      dataHash = hex(sigHash(raw, envelope));
+    out.push({
+      scheme: Number(BigInt(hex(data.subarray(i, i + 32)))),
+      dataHash,
+      vkHash: hex(data.subarray(i + 64, i + 96)),
+    });
+  }
+  return out;
+}
+
 /**
  * SF-2 and SF-3: the model transaction, or a TxError with the first failure.
  * `codes` is the code the client answers at the pool's head for the
@@ -477,6 +510,10 @@ export function decode(
       value: f.value,
       dataSize: f.data.length,
       roots: target !== null && target === rootVerifier ? rootsOf(f.data) : [],
+      deps:
+        frameCfg.dependencyFrames && Number(f.mode) === frameCfg.depFrameMode
+          ? depsOf(f.data, raw, frameCfg, cfg.envelope)
+          : [],
       deadline:
         target === expiry && f.data.length === 8
           ? Buffer.from(f.data).readBigUInt64BE(0)
@@ -552,6 +589,14 @@ export interface Prepared {
   readonly result?: string; // set when SF-2, FP-2 to FP-7 or CG-2, CG-4 and CG-6 refused it
 }
 
+/** SF-10: a client's mode 0 wrapper, read. */
+export interface ClientWrapper {
+  readonly raws: readonly string[]; // each transaction's bytes, as 0x and lowercase hexadecimal
+  readonly txs: readonly FrameTx[];
+  readonly deps: readonly Dependency[];
+  readonly proofs: readonly string[]; // one for each triple of deps, as 0x hexadecimal
+}
+
 export interface Outcome {
   readonly result: string;
   readonly hash?: string;
@@ -568,6 +613,8 @@ export class Surface {
   readonly byHash = new Map<string, FrameTx>();
   /** SF-9: the hashes handed to the client, in order. */
   readonly handed: string[] = [];
+  /** SF-10: AG-5 and AG-6 for a client's wrapper. */
+  readonly aggregator: Aggregator;
 
   constructor(
     readonly pool: FramePool,
@@ -575,7 +622,9 @@ export class Surface {
     readonly peers: string[] = [],
     /** SF-3's `claim`: the client's code at the head, by address. */
     public codes: Codes = NO_CODES
-  ) {}
+  ) {
+    this.aggregator = new Aggregator(pool);
+  }
 
   /**
    * SF-2, SF-3, then FP-2 to FP-7, and CG-2, CG-4 and CG-6 under `claims`:
@@ -618,8 +667,19 @@ export class Surface {
     known.add(peer);
   }
 
-  /** SF-6: every peer not known to have it, never the one it came from. */
+  /** SF-6: whether a transaction it admitted is one it relays, which it is unless it has dependencies. */
+  relays(hash: string): boolean {
+    const tx = this.byHash.get(hash);
+    return tx === undefined || dependencies(tx, this.pool.config).length === 0;
+  }
+
+  /**
+   * SF-6: every peer not known to have it, never the one it came from; none
+   * for a transaction with dependencies, which a peer could not admit
+   * without their proofs.
+   */
   relay(hash: string, source: string | null): string[] {
+    if (!this.relays(hash)) return [];
     if (source !== null) this.markKnown(hash, source);
     const known = this.known.get(hash) ?? new Set<string>();
     const out = this.peers.filter((p) => !known.has(p)).sort();
@@ -688,14 +748,172 @@ export class Surface {
   ): Record<string, unknown> {
     const o = this.step(Buffer.from(raw.slice(2), "hex"), source, answer, now);
     const atFault = gossipOutcome(o.result) === "reject";
+    const held = o.result === E.OK && !this.relays(o.hash as string); // SF-6
     return {
       result: o.result,
-      gossip: gossipOutcome(o.result),
+      gossip: held ? "ignore" : gossipOutcome(o.result),
       disconnect: atFault,
       asked_client: o.asked,
       relay_to: o.relayTo,
       handed: o.handed,
     };
+  }
+
+  /**
+   * SF-10's shape and item 1: the wrapper's transactions decoded, or the
+   * answer that refuses it whole. `codes`, when given, replaces the
+   * surface's for its transactions.
+   */
+  readWrapper(
+    param: unknown,
+    codes: Codes = this.codes
+  ): { wrapper: ClientWrapper } | { answer: Record<string, unknown> } {
+    const fail = {
+      answer: { error_code: INVALID_PARAMS, asked_client: [], relay_to: [] },
+    };
+    const hexes = (xs: unknown): xs is string[] =>
+      Array.isArray(xs) &&
+      xs.every(
+        (x) => typeof x === "string" && /^0x(?:[0-9a-fA-F]{2})*$/.test(x)
+      );
+    const triple = (d: unknown): d is [number, string, string] =>
+      Array.isArray(d) &&
+      d.length === 3 &&
+      Number.isInteger(d[0]) &&
+      d[0] >= 0 &&
+      d
+        .slice(1)
+        .every((x) => typeof x === "string" && /^0x[0-9a-fA-F]{64}$/.test(x));
+    if (typeof param !== "object" || param === null || Array.isArray(param))
+      return fail;
+    const p = param as Record<string, unknown>;
+    if (
+      Object.keys(p).sort().join(",") !== "deps,mode,proofs,transactions" ||
+      p.mode !== 0 ||
+      !hexes(p.transactions) ||
+      !hexes(p.proofs) ||
+      !Array.isArray(p.deps) ||
+      !p.deps.every(triple) ||
+      p.proofs.length !== p.deps.length
+    )
+      return fail;
+    const txs: FrameTx[] = [];
+    for (const raw of p.transactions) {
+      try {
+        txs.push(
+          decode(
+            Buffer.from(raw.slice(2), "hex"),
+            this.pool.config,
+            this.cfg,
+            codes
+          )
+        );
+      } catch (err) {
+        if (!(err instanceof TxError)) throw err;
+        return {
+          answer: {
+            result: err.code,
+            error_code: SERVER_ERROR,
+            asked_client: [],
+            relay_to: [],
+          },
+        };
+      }
+    }
+    return {
+      wrapper: {
+        raws: p.transactions.map((x) => x.toLowerCase()),
+        txs,
+        deps: (p.deps as [number, string, string][]).map(
+          ([scheme, dataHash, vkHash]) => ({
+            scheme,
+            dataHash: dataHash.toLowerCase(),
+            vkHash: vkHash.toLowerCase(),
+          })
+        ),
+        proofs: p.proofs,
+      },
+    };
+  }
+
+  /** SF-10 item 2, before the client: whether each transaction passes FP-2 to FP-7, so that it is asked about. */
+  wrapperToAsk(wrapper: ClientWrapper): boolean[] {
+    return wrapper.txs.map((tx) => {
+      try {
+        this.pool.beforePrefix(tx);
+        return true;
+      } catch (err) {
+        if (!(err instanceof TxError)) throw err;
+        return false;
+      }
+    });
+  }
+
+  /**
+   * SF-10 items 2 to 4, with the client's answer for each transaction it was
+   * asked about: SF-4, each proof's verdict from the node's prover, then
+   * AG-5 and AG-6. Nothing is relayed.
+   */
+  admitWrapper(
+    wrapper: ClientWrapper,
+    asked: readonly boolean[],
+    answers: readonly (ClientAnswer | undefined)[] | undefined,
+    now = 0
+  ): Record<string, unknown> {
+    const txs = wrapper.txs.map((tx, i) => {
+      if (!asked[i]) return tx;
+      const answer = answers?.[i];
+      if (answer === undefined)
+        throw new Error(
+          `the client would be asked about ${tx.label} and no answer was given`
+        );
+      return tx.withVerdict(verdict(answer));
+    });
+    const cfg = this.pool.config;
+    const prover = cfg.prover !== null ? new Prover(cfg.prover) : null;
+    const { deps } = wrapper;
+    const proofs = deps.map(
+      (d, i) =>
+        prover !== null &&
+        d.scheme === LEANSPHINCS &&
+        prover.verifySphincs(d, wrapper.proofs[i])
+    ); // item 3
+    const witnesses = deps.map((d, i) =>
+      d.scheme === LEANSPHINCS ? wrapper.proofs[i] : ""
+    );
+    const out = this.aggregator.receive(
+      { txs, mode: 0, deps, proofs, stark: null, signed: [], witnesses },
+      now
+    ); // item 4
+    if (typeof out === "string")
+      return {
+        result: out,
+        error_code: SERVER_ERROR,
+        asked_client: [...asked],
+        relay_to: [],
+      };
+    const results = txs.map((tx, i) => {
+      if (out[i] !== E.OK) return out[i];
+      this.byHash.set(tx.label, tx);
+      if (this.cfg.handoff) this.handed.push(tx.label);
+      return tx.label;
+    });
+    return { result: results, asked_client: [...asked], relay_to: [] };
+  }
+
+  /**
+   * SF-10: `frames_sendWrapper`, a client's mode 0 wrapper; `answers` are
+   * the client's, one for each transaction, for those it is asked about.
+   */
+  sendWrapper(
+    param: unknown,
+    answers?: readonly (ClientAnswer | undefined)[],
+    now = 0
+  ): Record<string, unknown> {
+    const read = this.readWrapper(param);
+    if ("answer" in read) return read.answer;
+    const asked = this.wrapperToAsk(read.wrapper);
+    return this.admitWrapper(read.wrapper, asked, answers, now);
   }
 
   /** The chain's hashes of what the pool holds, in the order admitted. */

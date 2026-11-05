@@ -25,10 +25,15 @@ export interface RpcHandlerOptions {
   config: Config;
 }
 
-/** Frame transactions over `eth_sendRawTransaction` (exp-mempool-l2s `docs/spec/11-surface.md`, SF-5). */
+/** Frame transactions over `eth_sendRawTransaction` and `frames_sendWrapper` (exp-mempool-l2s `docs/spec/11-surface.md`, SF-5 and SF-10). */
 export interface FrameRpc {
   sendRawTransaction(param: unknown): Promise<{
     result?: string;
+    error?: { code: number; message: string; data?: unknown };
+  }>;
+  /** SF-10: a client's mode 0 wrapper, one answer for each transaction. */
+  sendWrapper(param: unknown): Promise<{
+    result?: string[];
     error?: { code: number; message: string; data?: unknown };
   }>;
   /** IL-2 of `07-focil.md`: the inclusion list this node would publish from its pool. */
@@ -214,6 +219,13 @@ export class ApiApp {
     if (this.frames && method === "eth_sendRawTransaction") {
       // SF-5: with frames on, this node takes type 0x06 and refuses the rest (SF-2)
       const out = await this.frames.sendRawTransaction(params?.[0]);
+      return (out.error !== undefined
+        ? { jsonrpc, id, error: out.error }
+        : { jsonrpc, id, result: out.result }) as unknown as JsonRpcResponse;
+    }
+    if (this.frames && method === "frames_sendWrapper") {
+      // SF-10: a client's mode 0 wrapper, judged by AG-5 and AG-6 and relayed to no one
+      const out = await this.frames.sendWrapper(params?.[0]);
       return (out.error !== undefined
         ? { jsonrpc, id, error: out.error }
         : { jsonrpc, id, result: out.result }) as unknown as JsonRpcResponse;

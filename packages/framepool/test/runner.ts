@@ -1095,6 +1095,7 @@ function modelJson(tx: FrameTx): Json {
       data_size: f.dataSize,
       deadline: f.deadline,
       roots: f.roots.map((r) => [...r]),
+      deps: f.deps.map((d) => [d.scheme, d.dataHash, d.vkHash]),
     })),
     signatures: tx.signatures.map((s) => ({
       scheme: s.scheme,
@@ -1207,6 +1208,21 @@ function runSurface(c: Json): void {
         alias.set(
           step.as,
           (got.hash as string) ?? decode(raw, cfg, scfg).label
+        );
+      }
+      partial(step.expect, got, where);
+    } else if ("wrapper" in step) {
+      // SF-10
+      let got: Json;
+      try {
+        got = node.sendWrapper(
+          step.wrapper,
+          step.client === undefined ? undefined : step.client.map(answerOf),
+          now
+        );
+      } catch (err) {
+        throw new Mismatch(
+          `${where} ${err instanceof Error ? err.message : err}`
         );
       }
       partial(step.expect, got, where);

@@ -130,6 +130,22 @@ export class Prover {
     });
   }
 
+  /**
+   * `verify-sphincs`: whether `signature` is a leanSPHINCS signature of the
+   * triple's key over its message (exp-mempool-l2s `11-surface.md`, SF-10);
+   * a refusal is no.
+   */
+  verifySphincs(d: Dependency, signature: string): boolean {
+    if (!Prover.foldable(d)) return false;
+    const answer = this.run([
+      "verify-sphincs",
+      d.vkHash,
+      d.dataHash,
+      signature,
+    ]);
+    return answer !== null && answer.verified === true;
+  }
+
   /** `verify-aggregate`: whether the bytes cover exactly these triples. */
   verify(proof: Uint8Array, deps: readonly Dependency[]): boolean {
     return this.withDir((dir) => {

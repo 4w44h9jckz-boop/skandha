@@ -1,0 +1,165 @@
+{
+ "clause": "SF-3",
+ "document": "11-surface.md",
+ "version": 5,
+ "also": [
+  "SF-1",
+  "AG-2",
+  "AG-4"
+ ],
+ "operation": "surface",
+ "distinguishes": "Under eip-8288-master a dependency frame's data is decoded into deps, one triple for each 96 bytes, and a zero data_hash is written as the transaction's signature hash; under a profile without dependency frames the frame is an ordinary frame with no deps; a node may set its own chain id.",
+ "cases": [
+  {
+   "name": "a dependency frame's triple is decoded into deps",
+   "profile": "eip-8288-master",
+   "steps": [
+    {
+     "decode": "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3026480c0",
+     "expect": {
+      "result": "ok",
+      "hash": "0x58aee773302c15b0187c03513691ba452f7ede35726c119ba20cffe1f4d5ce6e",
+      "tx": {
+       "sender": "0x5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e",
+       "signatures": [],
+       "frames": [
+        {
+         "mode": 4,
+         "flags": 0,
+         "target": null,
+         "exec_gas": 3000,
+         "state_gas": 0,
+         "value": 0,
+         "data_size": 96,
+         "deps": [
+          [
+           16,
+           "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+           "0x1111111111111111111111111111111111111111111111111111111111111111"
+          ]
+         ]
+        },
+        {
+         "mode": 1,
+         "flags": 3,
+         "target": null,
+         "exec_gas": 30000,
+         "data_size": 0
+        },
+        {
+         "mode": 2,
+         "flags": 0,
+         "target": null,
+         "exec_gas": 21000,
+         "data_size": 0
+        }
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "Mode 4 is dep_frame_mode under eip-8288-master (AG-1); its 96 bytes are scheme 0x10, the message and the key (SF-3)."
+  },
+  {
+   "name": "a zero data_hash is written as the signature hash",
+   "profile": "eip-8288-master",
+   "steps": [
+    {
+     "decode": "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b860000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3036480c0",
+     "expect": {
+      "result": "ok",
+      "hash": "0xe668119dcc1c10cfbeebb6e33b7499bd4b4001f4630351fbb931926c0cd0e4c5",
+      "tx": {
+       "frames": [
+        {
+         "mode": 4,
+         "flags": 0,
+         "target": null,
+         "exec_gas": 3000,
+         "state_gas": 0,
+         "value": 0,
+         "data_size": 96,
+         "deps": [
+          [
+           16,
+           "0xe668119dcc1c10cfbeebb6e33b7499bd4b4001f4630351fbb931926c0cd0e4c5",
+           "0x1111111111111111111111111111111111111111111111111111111111111111"
+          ]
+         ]
+        },
+        {
+         "mode": 1,
+         "flags": 3,
+         "target": null,
+         "exec_gas": 30000,
+         "data_size": 0
+        },
+        {
+         "mode": 2,
+         "flags": 0,
+         "target": null,
+         "exec_gas": 21000,
+         "data_size": 0
+        }
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "zero_data_hash is sig_hash under eip-8288-master. The transaction has no signature, so compute_sig_hash empties nothing and is the keccak256 of the bytes, which is also its hash."
+  },
+  {
+   "name": "under eip-8141 the frame has no deps",
+   "profile": "eip-8141",
+   "steps": [
+    {
+     "decode": "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3026480c0",
+     "expect": {
+      "result": "ok",
+      "hash": "0x58aee773302c15b0187c03513691ba452f7ede35726c119ba20cffe1f4d5ce6e",
+      "tx": {
+       "frames": [
+        {
+         "mode": 4,
+         "deps": []
+        },
+        {
+         "mode": 1
+        },
+        {
+         "mode": 2
+        }
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "No dependency frames under eip-8141: the frame is decoded as an ordinary one, which FP-3 refuses."
+  },
+  {
+   "name": "a node sets its own chain id",
+   "profile": "eip-8288-master",
+   "config": {
+    "surface": {
+     "chain_id": 8141
+    }
+   },
+   "steps": [
+    {
+     "decode": "0x06f8a6821fcdc18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3026480c0",
+     "expect": {
+      "result": "ok",
+      "hash": "0xd0f5702fe7089118b2b02986574c6f343c1c6645120516c917158e9beb9965ff"
+     }
+    },
+    {
+     "decode": "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3026480c0",
+     "expect": {
+      "result": "ErrInvalidChainId"
+     }
+    }
+   ],
+   "derivation": "The node's chain id is 8141 (SF-1), so a transaction for chain 1 is refused at SF-2 step 6."
+  }
+ ]
+}
