@@ -1,0 +1,1292 @@
+{
+ "clause": "RM-6",
+ "document": "15-relaxed-mempool.md",
+ "version": 1,
+ "also": [
+  "RM-3",
+  "RM-5"
+ ],
+ "operation": "pool",
+ "distinguishes": "Each block's access list is read for violations of the declared codes: a write to a set declared slot, a second write in one block to an unset one, which the state alone does not show, and a balance drop beyond max_outflow; a first write and a drop within the bound are none. One violation throttles the code at once, ban_violations ban it, and violations decay every declaration_refresh_seconds. A throttled code is relied on by throttled_count relaxed transactions, a banned one by none, and canonical transactions are not counted.",
+ "cases": [
+  {
+   "name": "a write to a set slot is one violation, and throttles",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "reset": {
+      "head": {
+       "number": 1,
+       "timestamp": 1012
+      },
+      "state": {
+       "pool": {
+        "storage": {
+         "7": 43
+        }
+       }
+      },
+      "access_lists": [
+       {
+        "pool": {
+         "storage_changes": {
+          "7": [
+           [
+            1,
+            43
+           ]
+          ]
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "expect_declarations": {
+      "root-pool": {
+       "violations": 1,
+       "state": "THROTTLED"
+      }
+     }
+    }
+   ],
+   "derivation": "The value before the change was 42 (RM-6 item 1)."
+  },
+  {
+   "name": "a second write in one block to an unset slot is a violation the state does not show",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "reset": {
+      "head": {
+       "number": 1,
+       "timestamp": 1012
+      },
+      "state": {
+       "pool": {
+        "storage": {
+         "8": 6
+        }
+       }
+      },
+      "access_lists": [
+       {
+        "pool": {
+         "storage_changes": {
+          "8": [
+           [
+            1,
+            5
+           ],
+           [
+            2,
+            6
+           ]
+          ]
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "expect_declarations": {
+      "root-pool": {
+       "violations": 1,
+       "state": "THROTTLED"
+      }
+     }
+    }
+   ],
+   "derivation": "The state shows 0 to 6, one change; the access list shows 0 to 5 at index 1 and 5 to 6 at index 2, whose value before it is 5."
+  },
+  {
+   "name": "a first write to an unset slot is none",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "reset": {
+      "head": {
+       "number": 1,
+       "timestamp": 1012
+      },
+      "state": {
+       "pool": {
+        "storage": {
+         "8": 5
+        }
+       }
+      },
+      "access_lists": [
+       {
+        "pool": {
+         "storage_changes": {
+          "8": [
+           [
+            1,
+            5
+           ]
+          ]
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "expect_declarations": {
+      "root-pool": {
+       "violations": 0,
+       "state": "ACTIVE"
+      }
+     }
+    }
+   ],
+   "derivation": "Its value before it is 0."
+  },
+  {
+   "name": "a balance drop beyond the outflow bound is a violation, and one within it is none",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "reset": {
+      "head": {
+       "number": 1,
+       "timestamp": 1012
+      },
+      "state": {
+       "tpm": {
+        "balance": 30000000
+       }
+      },
+      "access_lists": [
+       {
+        "tpm": {
+         "balance_changes": [
+          [
+           1,
+           30000000
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "expect_declarations": {
+      "ticket-pm": {
+       "violations": 0,
+       "state": "ACTIVE"
+      }
+     }
+    },
+    {
+     "reset": {
+      "head": {
+       "number": 2,
+       "timestamp": 1024
+      },
+      "state": {
+       "tpm": {
+        "balance": 10000000
+       }
+      },
+      "access_lists": [
+       {
+        "tpm": {
+         "balance_changes": [
+          [
+           1,
+           10000000
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "expect_declarations": {
+      "ticket-pm": {
+       "violations": 1,
+       "state": "THROTTLED"
+      }
+     }
+    }
+   ],
+   "derivation": "40,000,000 to 30,000,000 is 10,000,000, within 12731300; 30,000,000 to 10,000,000 is 20,000,000, beyond it (RM-6 item 2)."
+  },
+  {
+   "name": "a throttled code is relied on by throttled_count relaxed transactions",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "reset": {
+      "head": {
+       "number": 1,
+       "timestamp": 1012
+      },
+      "state": {
+       "pool": {
+        "storage": {
+         "7": 43
+        }
+       }
+      },
+      "access_lists": [
+       {
+        "pool": {
+         "storage_changes": {
+          "7": [
+           [
+            1,
+            43
+           ]
+          ]
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "pool",
+           7,
+           43
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "pool",
+           7,
+           43
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "C",
+       "type": 6,
+       "sender": "carol",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "pool",
+           7,
+           43
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "D",
+       "type": 6,
+       "sender": "dave",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "pool",
+           7,
+           43
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "E",
+       "type": 6,
+       "sender": "erin",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "pool",
+           7,
+           43
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ok",
+      "ok",
+      "ok",
+      "ErrDeclarationThrottled"
+     ]
+    }
+   ],
+   "derivation": "root-pool is throttled; four relaxed readers are throttled_count, and the fifth is refused."
+  },
+  {
+   "name": "three violations ban the code, and decay lifts the ban step by step",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "reset": {
+      "head": {
+       "number": 1,
+       "timestamp": 1012
+      },
+      "state": {
+       "pool": {
+        "storage": {
+         "7": 45
+        }
+       }
+      },
+      "access_lists": [
+       {
+        "pool": {
+         "storage_changes": {
+          "7": [
+           [
+            1,
+            43
+           ],
+           [
+            2,
+            44
+           ],
+           [
+            3,
+            45
+           ]
+          ]
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "expect_declarations": {
+      "root-pool": {
+       "violations": 3,
+       "state": "BANNED"
+      }
+     }
+    },
+    {
+     "tick": 3600
+    },
+    {
+     "expect_declarations": {
+      "root-pool": {
+       "violations": 2,
+       "state": "THROTTLED"
+      }
+     }
+    },
+    {
+     "tick": 7200
+    },
+    {
+     "expect_declarations": {
+      "root-pool": {
+       "violations": 1,
+       "state": "THROTTLED"
+      }
+     }
+    },
+    {
+     "tick": 10800
+    },
+    {
+     "expect_declarations": {
+      "root-pool": {
+       "violations": 0,
+       "state": "ACTIVE"
+      }
+     }
+    }
+   ],
+   "derivation": "3 * 23 // 24 = 2, 2 * 23 // 24 = 1, 1 * 23 // 24 = 0, one refresh every 3600 seconds."
+  },
+  {
+   "name": "canonical transactions are not counted",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "reset": {
+      "head": {
+       "number": 1,
+       "timestamp": 1012
+      },
+      "state": {
+       "np": {
+        "storage": {
+         "16": 6
+        }
+       }
+      },
+      "access_lists": [
+       {
+        "np": {
+         "storage_changes": {
+          "16": [
+           [
+            1,
+            6
+           ]
+          ]
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "expect_declarations": {
+      "note-pool": {
+       "violations": 1,
+       "state": "THROTTLED"
+      }
+     }
+    },
+    {
+     "add": [
+      {
+       "label": "K1",
+       "type": 6,
+       "sender": "np",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "np",
+           16,
+           6
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "nonce_keys": [
+        1
+       ]
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "np",
+           16,
+           6
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "np",
+           16,
+           6
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "C",
+       "type": 6,
+       "sender": "carol",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "np",
+           16,
+           6
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "D",
+       "type": 6,
+       "sender": "dave",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "np",
+           16,
+           6
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      },
+      {
+       "label": "E",
+       "type": 6,
+       "sender": "erin",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "np",
+           16,
+           6
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok",
+      "ok",
+      "ok",
+      "ok",
+      "ErrDeclarationThrottled"
+     ]
+    }
+   ],
+   "derivation": "note-pool is throttled. K1, np's first transaction reading its own slot, is canonical and relies on nothing (RM-2); the four relaxed readers after it reach throttled_count."
+  }
+ ]
+}

@@ -1,6 +1,7 @@
 /**
  * FP-1: the `eip-8141` and `hegota-testnet` profiles; MA-1: the `matcha`
- * proposal; AG-1: `eip-8288`; RR-1: `eip-8272`; EN-1: `eip-8266`.
+ * proposal; AG-1: `eip-8288`; RR-1: `eip-8272`; EN-1: `eip-8266`; RM-1:
+ * `relaxed`.
  */
 
 function hexAddress(i: number): string {
@@ -18,6 +19,13 @@ export const EXPIRY_VERIFIER_TESTNET =
   "0x0000000000000000000000000000000000008141";
 export const RECENT_ROOT_ADDRESS = "0x0000000000000000000000000000000000008272";
 export const EXPIRING_KEY = 2n ** 256n - 1n;
+
+/** RM-1: a declaration, for a code: its write-once slot ranges as [first, count], and its outflow bound or none. */
+export interface Declaration {
+  readonly code: string;
+  readonly writeOnce: readonly (readonly [bigint, bigint])[];
+  readonly maxOutflow: bigint | null;
+}
 
 export interface FramePoolConfig {
   readonly name: string;
@@ -112,6 +120,17 @@ export interface FramePoolConfig {
   readonly maxTxsAllowedUnstakedEntity: number;
   readonly sameNonceKeyMempoolCount: number;
   readonly sameSenderMempoolCount: number;
+  // 15-relaxed-mempool.md, RM-1
+  readonly relaxed: boolean; // RM-2 to RM-8
+  readonly declarations: readonly Declaration[]; // RM-3
+  readonly senderBound: boolean; // RM-4 item 2
+  readonly outflowBound: boolean; // RM-4 item 3, RM-5
+  readonly banViolations: number; // RM-6
+  readonly throttledCount: number; // RM-6
+  readonly declarationRefreshSeconds: number; // RM-6
+  readonly tier: "relay" | "verifier" | "aggregator"; // RM-8: a node's setting
+  // 05-aggregation.md, AG-11
+  readonly prover: string | null; // a node's setting: the command of a real prover, or null for the model's flags
 }
 
 export const EIP_8141: FramePoolConfig = Object.freeze({
@@ -198,6 +217,15 @@ export const EIP_8141: FramePoolConfig = Object.freeze({
   maxTxsAllowedUnstakedEntity: 10000,
   sameNonceKeyMempoolCount: 4,
   sameSenderMempoolCount: 64,
+  relaxed: false,
+  declarations: [],
+  senderBound: true,
+  outflowBound: true,
+  banViolations: 3,
+  throttledCount: 4,
+  declarationRefreshSeconds: 3600,
+  tier: "verifier",
+  prover: null,
 });
 
 export function withChanges(
@@ -259,6 +287,34 @@ export const CLAIM_GATED = withChanges(EIP_8288, {
     "0x52c656815e560bb189c3fb362c9628432ca1ed6b720e239857775236c18bc1d3",
 });
 
+// RM-1: claim-gated's parameters, the canonical FP-11 and FP-12 kept, and the relaxations behind RM-2's gate
+export const RELAXED = withChanges(CLAIM_GATED, {
+  name: "relaxed",
+  relaxed: true,
+});
+
+/**
+ * RM-1's declarations as a pool holds them, from a descriptor's list of
+ * objects (`code`, `write_once` as [hex first, count], `max_outflow` as a
+ * decimal string or null).
+ */
+export function declarations(value: readonly unknown[]): Declaration[] {
+  return value.map((d) => {
+    const o = d as {
+      code: string;
+      write_once: [string, number][];
+      max_outflow: string | null;
+    };
+    return {
+      code: o.code,
+      writeOnce: o.write_once.map(
+        ([first, count]) => [BigInt(first), BigInt(count)] as const
+      ),
+      maxOutflow: o.max_outflow === null ? null : BigInt(o.max_outflow),
+    };
+  });
+}
+
 export const PROFILES: ReadonlyMap<string, FramePoolConfig> = new Map(
   [
     EIP_8141,
@@ -269,5 +325,6 @@ export const PROFILES: ReadonlyMap<string, FramePoolConfig> = new Map(
     EIP_8272,
     EIP_8266,
     CLAIM_GATED,
+    RELAXED,
   ].map((c) => [c.name, c])
 );

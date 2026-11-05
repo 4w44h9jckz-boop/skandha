@@ -1,0 +1,995 @@
+{
+ "clause": "RM-2",
+ "document": "15-relaxed-mempool.md",
+ "version": 1,
+ "also": [
+  "CG-12",
+  "FP-8",
+  "RM-3"
+ ],
+ "operation": "pool",
+ "distinguishes": "A transaction the canonical modules admit is admitted as they admit it, whatever else the descriptor holds: an unbound ticket the claim-gated rules refuse, and a read of its sender's own unset declared slot beside a relaxed reader. One they refuse for a reason no relaxation answers keeps the canonical code, and one with a dependency is judged under the claims. A pool that runs its alternative modules on canonical transactions fails here.",
+ "cases": [
+  {
+   "name": "an unbound ticket the claim-gated rules refuse is admitted as the canonical rules admit it",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1",
+        "bound": false
+       }
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "A"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "The canonical modules admit A, so no CG module reads its claim (RM-2): CG-12 would refuse it as unbound (ErrClaimUnbound) under claim-gated."
+  },
+  {
+   "name": "the same transaction under claim-gated is refused",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "A",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "claim": {
+        "sender": "alice",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t1",
+        "binder": "b1",
+        "bound": false
+       }
+      }
+     ],
+     "expect": [
+      "ErrClaimUnbound"
+     ]
+    }
+   ],
+   "derivation": "Contrast: claim-gated runs CG-12 on every claim it reads.",
+   "profile": "claim-gated"
+  },
+  {
+   "name": "a canonical reader of its own sender's unset declared slot is admitted beside a relaxed reader",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "R",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "np",
+           17,
+           0
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "C",
+       "type": 6,
+       "sender": "np",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "np",
+           17,
+           0
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "nonce_keys": [
+        1
+       ]
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "alice": [
+        "R"
+       ],
+       "np": [
+        "C"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "R reads np's slot 17, outside its sender: FP-9 refuses, RM-3 admits it as np's code declares 16 to 19 and 17 is unset. C is np's first pending transaction and reads its own slot, which FP-9 allows, so the canonical modules admit it and RM-3's unset-slot rule is not applied to it."
+  },
+  {
+   "name": "a relaxed reader of an unset slot a canonical transaction reads is busy",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "C",
+       "type": 6,
+       "sender": "np",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "np",
+           17,
+           0
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "nonce_keys": [
+        1
+       ]
+      }
+     ],
+     "expect": [
+      "ok"
+     ]
+    },
+    {
+     "add": [
+      {
+       "label": "R",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "np",
+           17,
+           0
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrWriteOnceBusy"
+     ]
+    },
+    {
+     "expect_pool": {
+      "pending": {
+       "np": [
+        "C"
+       ]
+      }
+     }
+    }
+   ],
+   "derivation": "C, canonical, reads np's unset slot 17. R is relaxed (RM-3) and the slot already has a pending reader, so RM-3 refuses R."
+  },
+  {
+   "name": "a refusal no relaxation answers keeps its canonical code",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": []
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "max_fee": 1000000000000,
+       "claim": {
+        "sender": "bob",
+        "nonce_seq": 0,
+        "epoch": 2,
+        "salt": "t2",
+        "binder": "b1",
+        "bound": false
+       }
+      }
+     ],
+     "expect": [
+      "ErrInsufficientFunds"
+     ]
+    }
+   ],
+   "derivation": "B reads nothing outside bob, carries an unbound claim, and its max_cost, 96838 * 10^12, is above bob's balance. The canonical modules read no claim and refuse at FP-8, a code no relaxation answers, so it stands (RM-2). The whole descriptor would have refused first at CG-12, with ErrClaimUnbound."
+  },
+  {
+   "name": "after a relaxable refusal, the second judgement's code is the answer",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "B",
+       "type": 6,
+       "sender": "bob",
+       "frames": [
+        {
+         "mode": 1,
+         "flags": 3,
+         "exec_gas": 30000,
+         "approves": 3,
+         "reads": [
+          [
+           "pool",
+           7,
+           42
+          ]
+         ]
+        },
+        {
+         "mode": 2,
+         "exec_gas": 50000
+        }
+       ],
+       "max_fee": 1000000000000
+      }
+     ],
+     "expect": [
+      "ErrInsufficientFunds"
+     ]
+    }
+   ],
+   "derivation": "The canonical modules refuse B at FP-9, for its read of pool's slot 7. The second judgement allows the read (RM-3) and refuses at FP-8's payment check, which is the answer (RM-2)."
+  },
+  {
+   "name": "a transaction with a dependency is judged under the claims",
+   "descriptor": "relaxed",
+   "config": {
+    "frame": {
+     "declarations": [
+      {
+       "code": "root-pool",
+       "write_once": [
+        [
+         "0x7",
+         2
+        ]
+       ],
+       "max_outflow": null
+      },
+      {
+       "code": "note-pool",
+       "write_once": [
+        [
+         "0x10",
+         4
+        ]
+       ],
+       "max_outflow": "9683800"
+      },
+      {
+       "code": "ticket-pm",
+       "write_once": [],
+       "max_outflow": "12731300"
+      }
+     ]
+    }
+   },
+   "state": {
+    "alice": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "bob": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "carol": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "dave": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "erin": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "frank": {
+     "balance": 1000000000,
+     "code": "account-v1"
+    },
+    "pool": {
+     "balance": 1000000000,
+     "code": "root-pool",
+     "storage": {
+      "7": 42
+     }
+    },
+    "np": {
+     "balance": 1000000000,
+     "code": "note-pool",
+     "storage": {
+      "1": 5,
+      "16": 5
+     }
+    },
+    "tpm": {
+     "balance": 40000000,
+     "code": "ticket-pm"
+    },
+    "upm": {
+     "balance": 40000000,
+     "code": "plain-pm"
+    },
+    "eoa": {
+     "balance": 1000000000
+    },
+    "deleg": {
+     "balance": 1000000000,
+     "code": "0xef01001111111111111111111111111111111111111111"
+    }
+   },
+   "steps": [
+    {
+     "add": [
+      {
+       "label": "D",
+       "type": 6,
+       "sender": "alice",
+       "frames": [
+        {
+         "mode": 3,
+         "deps": [
+          [
+           17,
+           "pub-a",
+           "vk-1"
+          ]
+         ],
+         "exec_gas": 30000,
+         "data_size": 96
+        },
+        {
+         "mode": 1,
+         "flags": 3,
+         "approves": 3
+        }
+       ]
+      }
+     ],
+     "expect": [
+      "ErrClaimMissing"
+     ]
+    }
+   ],
+   "derivation": "The canonical modules have no dependency frames, so the second judgement runs, as claim-gated admission does: CG-2 step 1 refuses a dependency without a claim."
+  }
+ ]
+}

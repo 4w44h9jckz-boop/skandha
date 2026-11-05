@@ -26,6 +26,18 @@ replaced. The node loads a descriptor with `--frames.descriptor`; ERC-8421's
 needs a tracer the execution client does not offer, so the node refuses it
 and only the vectors play it.
 
+Since `15-relaxed-mempool.md` there is a fourth descriptor, `relaxed.json`,
+an alternative mempool behind the canonical rules (RM-2): `FramePool` judges
+a transaction under the canonical modules first, and under the whole
+descriptor only when they refuse it for a read outside its sender, a busy
+payer or a busy sender, or when it has a dependency. `src/relaxed.ts` holds
+the declarations, and `src/pool.ts` the write-once reads (RM-3), several
+pending per declared contract (RM-4), the payer's reserve (RM-5),
+reputation per declared code read from each block's access list (RM-6),
+groups for builders (RM-7) and the relay tier (RM-8). The node refuses the
+descriptor, since the client returns no reads, and only the vectors play
+it.
+
 Since exp-mempool-l2s's `05-aggregation.md` version 4 it also has the
 aggregator, `Aggregator` in `src/aggregation.ts`: a node's side of EIP-8288,
 which receives wrappers (AG-5, AG-6) and folds, once an interval, every
@@ -41,20 +53,21 @@ fold (below).
 
 | exp-mempool-l2s document | Clauses |
 | --- | --- |
-| `00-model.md` | MD-2 to MD-4, version 12: an account's stake, and MD-6 with `zero_bytes`, `verdict`, a slot's association and a claim's `binder` and `bound`, MD-7, MD-8 with `reset`'s verdicts, FEE-1 to FEE-4 |
+| `00-model.md` | MD-2 to MD-4, version 13: an account's stake, and MD-6 with `zero_bytes`, `verdict`, a slot's association and a claim's `binder` and `bound`, MD-7, MD-8 with `reset`'s verdicts and the blocks' access lists, FEE-1 to FEE-4 |
 | `02-frame-pool.md` | FP-2 to FP-16, profiles `eip-8141` and `hegota-testnet`, with the `reuse_balance`, `evict_first`, `expiry_margin` and `static_first` variants, and FP-8 to FP-10 and FP-15 through a client's verdict |
 | `04-matcha.md` | MA-2 to MA-14, profile `matcha` (a proposal) |
-| `05-aggregation.md` | AG-2 to AG-7, AG-9 and AG-10, version 4, profiles `eip-8288` and `eip-8288-master`: dependency frames, receiving a wrapper and admitting its transactions, and the aggregator's fold with its proving time and memory (`src/aggregation.ts`); not AG-8's charge to a block, which is block building |
+| `05-aggregation.md` | AG-2 to AG-7 and AG-9 to AG-11, version 5, profiles `eip-8288` and `eip-8288-master`: dependency frames, receiving a wrapper and admitting its transactions, and the aggregator's fold with its proving time and memory (`src/aggregation.ts`); not AG-8's charge to a block, which is block building; and AG-11's real prover, a command with the contract of exp-e2e-frames experiment 19's prover, in place of the flags (`Prover` in `src/aggregation.ts`) |
 | `08-recent-roots.md` | RR-3 to RR-7, profiles `eip-8272` and, since its version 2, `hegota-testnet` |
 | `09-expiring-nonces.md` | EN-2 to EN-6, profile `eip-8266` |
-| `11-surface.md` | SF-1 to SF-9, version 4: decoding, the model transaction, the verdict, `eth_sendRawTransaction`, relay, what is taken from peers, head changes and hand-off (`src/surface.ts`, `src/keccak.ts`); the signature hash of the bytes received, for CG-12 |
+| `11-surface.md` | SF-1 to SF-10, version 5, profiles `eip-8141`, `hegota-testnet` and `eip-8288-master`: decoding, the model transaction with a dependency frame's triples, the verdict, `eth_sendRawTransaction`, relay, which holds back a transaction with dependencies, what is taken from peers, head changes, hand-off and `frames_sendWrapper`, a client's mode 0 wrapper with each leanSPHINCS proof checked by the prover's `verify-sphincs` (`src/surface.ts`, `src/keccak.ts`); the signature hash of the bytes received, for CG-12 and a zero `data_hash` |
 | `12-replay.md` | RP-1 to RP-6: a profile's verdict on a transaction a chain mined (`src/replay.ts`, and `replay/` over every fixture) |
 | `07-focil.md` | IL-1 to IL-6 for frame transactions, version 2: an includer's list from the pool (IL-2), Profile 2 candidates (IL-3), the budget fill per list or per payload, profiles `eip-8369` and `ethrex` (IL-4), and, with validity at the end of the payload as a client's verdict, whether a payload satisfies the lists (IL-5, IL-6) (`src/focil.ts`) |
 | `06-lucid.md` | LU-2 to LU-11 and LU-14 to LU-19, profile `eip-8184`, version 3: the sealed pool beside the frame pool behind one reservation tracker, with every `policy` and `evict_first` (`src/sealed.ts`, `src/sealedpool.ts`), and the key round between the block that commits and the block that runs: the commitment, a key message's validity, the key-publisher role's release rule, a committee member's vote, the next slot's tally and what the record says of a missing key (`src/lucidkeys.ts`) |
 | `03-block-building.md` | BB-2's order, for frame transactions only |
 | `10-claim-gated-admission.md` | CG-2 to CG-12, profile `claim-gated` (a proposal), version 6: claims checked after FP-6, the checks before a wrapper's proofs, what a node remembers after a proof fails, relays, a ticket's bytes, its BLS12-381 check and the paymaster frame that carries it (`src/claimticket.ts`), and the bond on the ticket paymaster, ERC-8421's stake and reputation, with the counters `FramePool` keeps for both (`src/pool.ts`), and the binding of a ticket to its transaction, a one-time key's `secp256k1` signature over EIP-8141's signature hash (CG-12, `src/claimticket.ts`, `src/surface.ts`) |
-| `13-descriptors.md` | DS-1 to DS-8, version 3: a ruleset as a file, its strict parse, canonical encoding and CIDv1 identifier, modules, inheritance, completeness, the profile it compiles to, and the rule and descriptor a refusal names (`src/descriptor.ts`) |
+| `13-descriptors.md` | DS-1 to DS-8, version 5: a ruleset as a file, its strict parse, canonical encoding and CIDv1 identifier, modules, inheritance, completeness, the profile it compiles to, and the rule and descriptor a refusal names (`src/descriptor.ts`) |
 | `14-erc-8421.md` | AM-2 to AM-14 and AM-16: ERC-8421's standard alternative mempool as a pool, entities, stake, per-entity budgets, `pre_verify` frames, trace and storage rules, keyed-nonce lifecycle and limits, local rules, solvency, reputation and blame (`src/erc8421.ts`, `StandardPool`) |
+| `15-relaxed-mempool.md` | RM-2 to RM-8, version 1, profile `relaxed` (a proposal): the canonical modules first and the relaxations behind them, write-once reads declared per code, several pending per declared contract, the payer's reserve, reputation per declared code from the blocks' access lists, groups for builders and the relay tier (`src/relaxed.ts`, `src/pool.ts`) |
 
 It does not have the account-nonce pool of `01-nonce-pool.md`, which belongs
 to an execution client, or block building, so not IL-7's appending, LU-12's
@@ -159,6 +172,41 @@ The two nodes are two pools in one process. Two running nodes cannot
 exchange a fold yet: `AGGREGATED_VK` and `DEPS_HASH` are still to be chosen
 in EIP-8288, so no recursive STARK can be made or checked to it. The
 model's recursive STARK is the list of dependencies it covers.
+
+### Under a real prover
+
+`bun test/run-two-folds.ts --prover <command>` plays the exchange under
+exp-mempool-l2s AG-11 (`05-aggregation.md` version 5). `<command>` is a
+prover with the contract of `exp-e2e-frames` experiment 19's prover at
+`47f5496`:
+- **`aggregate <claims> <out>`** folds leanSPHINCS signatures with leanVM's
+  own aggregation;
+- **`verify-aggregate <proof> <claims>`** checks the bytes;
+- **`sphincs <seed> <message>`** makes a key and a signature, so that the
+  six users' spends carry signatures the prover accepts.
+
+Each node folds only the signatures it holds: leanVM at `3cbac04` recurses
+over its own bytecode only, and the prover passes no earlier aggregate as an
+input. So each round's two folds differ, and each node admits the other's
+spends without folding them. Round 4 changes one byte of a fold, and the
+other node refuses it with `ErrWrapperProof`. Each line gives the proof's
+bytes and the prover's measured time and peak memory.
+
+`test/prover-stub.ts` keeps that contract with stand-in hashes, not leanVM's
+cryptography, and prints `sphincs`'s key and signature as bare hex, as the
+prover does. `test/unit/two-folds.test.ts` runs the exchange on it, and
+`--prover ./test/prover-stub.ts` prints it. A real prover is built outside
+this repository, by `exp-e2e-frames`.
+
+On experiment 19's prover built natively, the exchange ran as on the stub
+(`exp-e2e-frames` experiment 22, `992094b`):
+- **size:** each fold of two or three signatures was 268,409 to 274,905
+  bytes;
+- **time and memory:** each took 2.7 to 3.4 s with the prover started for
+  the call, at about 413 to 417 MB at peak.
+
+That is over AG-7's 1,000 ms interval. A node that folds every interval
+needs its prover resident, which a command run for each call is not.
 
 ## Running
 

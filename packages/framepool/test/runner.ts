@@ -11,6 +11,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  AccessList,
   Dependency,
   EIP_8141,
   FOCIL_PROFILES,
@@ -63,6 +64,7 @@ import {
   ticketMessage,
   ticketValid,
   union,
+  declarations,
   withChanges,
   SEALED_PROFILES,
   headNextBaseFee,
@@ -585,6 +587,10 @@ function makeWrapper(d: Json, cfg: FramePoolConfig | null = null): Wrapper {
           covers:
             d.stark?.covers !== undefined ? makeDeps(d.stark.covers) : deps,
           valid: d.stark?.valid ?? true,
+          proof:
+            d.stark?.proof !== undefined
+              ? new Uint8Array(Buffer.from(d.stark.proof.slice(2), "hex"))
+              : null, // AG-11
         };
   return {
     txs: entries,
@@ -593,6 +599,7 @@ function makeWrapper(d: Json, cfg: FramePoolConfig | null = null): Wrapper {
     proofs: d.mode === 0 ? d.proofs ?? deps.map(() => true) : [],
     stark,
     signed: d.signed ?? [],
+    witnesses: d.witnesses ?? [], // AG-11
   };
 }
 
@@ -669,10 +676,16 @@ function frameConfig(
       ? bigOrNull(value)
       : key === "precompiles"
       ? new Set(value)
+      : key === "declarations"
+      ? declarations(value)
+      : key === "prover" && value === "stub"
+      ? PROVER_STUB // AG-11: the stub of the prover's contract (exp-mempool-l2s decision record 0083)
       : value;
   }
   return withChanges(profile, changes);
 }
+
+const PROVER_STUB = new URL("./prover-stub.ts", import.meta.url).pathname;
 
 /** The IL-1 profile a case names, with its `focil` overrides, written with IL-1's parameter names. */
 function focilConfig(c: Json): FocilConfig {
@@ -887,6 +900,21 @@ function runPool(c: Json): void {
           aggregator.memory,
           `${where} aggregate memory`
         );
+      if ("expect_proof" in step) {
+        // AG-11
+        const proof = w.stark?.proof ?? null;
+        same(
+          step.expect_proof,
+          proof === null ? null : "0x" + Buffer.from(proof).toString("hex"),
+          `${where} aggregate proof`
+        );
+      }
+      if ("expect_measured" in step)
+        same(
+          step.expect_measured,
+          aggregator.measured ?? [],
+          `${where} aggregate measured`
+        );
     } else if ("reset" in step) {
       now = step.now ?? now;
       Object.assign(headD, step.reset.head ?? {});
@@ -902,7 +930,28 @@ function runPool(c: Json): void {
           v as string,
         ])
       ); // MD-8
-      pool.reset(head, state, now, verdicts);
+      const accessLists: AccessList[] = (step.reset.access_lists ?? []).map(
+        (block: Json) =>
+          new Map(
+            Object.entries(block).map(([addr, a]: [string, Json]) => [
+              addr,
+              {
+                storageChanges: new Map(
+                  Object.entries(a.storage_changes ?? {}).map(
+                    ([slot, writes]: [string, Json]) => [
+                      BigInt(slot),
+                      writes.map((w: Json) => [num(w[0]), big(w[1])] as const),
+                    ]
+                  )
+                ),
+                balanceChanges: (a.balance_changes ?? []).map(
+                  (b: Json) => [num(b[0]), big(b[1])] as const
+                ),
+              },
+            ])
+          )
+      ); // MD-8, RM-6
+      pool.reset(head, state, now, verdicts, accessLists);
       sealed.reset(head, state);
     } else if ("expect_selection" in step) {
       const sel = step.expect_selection; // LU-7
@@ -934,6 +983,22 @@ function runPool(c: Json): void {
         ]
       );
       pool.finalize(blocks, now);
+    } else if ("expect_declarations" in step) {
+      // RM-6
+      const got = Object.fromEntries(
+        Object.keys(step.expect_declarations).map((code) => [
+          code,
+          pool.declarationStatus(code),
+        ])
+      );
+      same(step.expect_declarations, got, `${where} declarations`);
+    } else if ("expect_groups" in step) {
+      // RM-7
+      same(
+        step.expect_groups,
+        pool.groups().map((g) => g.map(label)),
+        `${where} groups`
+      );
     } else if ("expect_width" in step) {
       const got = Object.fromEntries(
         Object.keys(step.expect_width).map((s) => [s, pool.width(s)])
@@ -1030,6 +1095,7 @@ function modelJson(tx: FrameTx): Json {
       data_size: f.dataSize,
       deadline: f.deadline,
       roots: f.roots.map((r) => [...r]),
+      deps: f.deps.map((d) => [d.scheme, d.dataHash, d.vkHash]),
     })),
     signatures: tx.signatures.map((s) => ({
       scheme: s.scheme,
@@ -1142,6 +1208,21 @@ function runSurface(c: Json): void {
         alias.set(
           step.as,
           (got.hash as string) ?? decode(raw, cfg, scfg).label
+        );
+      }
+      partial(step.expect, got, where);
+    } else if ("wrapper" in step) {
+      // SF-10
+      let got: Json;
+      try {
+        got = node.sendWrapper(
+          step.wrapper,
+          step.client === undefined ? undefined : step.client.map(answerOf),
+          now
+        );
+      } catch (err) {
+        throw new Mismatch(
+          `${where} ${err instanceof Error ? err.message : err}`
         );
       }
       partial(step.expect, got, where);

@@ -1,0 +1,434 @@
+{
+ "clause": "SF-10",
+ "document": "11-surface.md",
+ "version": 5,
+ "also": [
+  "SF-5",
+  "SF-6",
+  "SF-7",
+  "AG-5",
+  "AG-6",
+  "AG-11"
+ ],
+ "operation": "surface",
+ "distinguishes": "frames_sendWrapper takes a client's mode 0 wrapper: each transaction decoded and asked about as eth_sendRawTransaction does, each leanSPHINCS proof checked by the node's prover's verify-sphincs, the wrapper judged by AG-5 and AG-6; one answer for each transaction, and nothing relayed. A wrapper whose proof does not verify, whose deps are not the union, or whose transaction does not decode is refused whole; one not of the method's shape is invalid params; a node with no prover refuses every wrapper with a dependency; and the same transaction alone over eth_sendRawTransaction is unproven.",
+ "cases": [
+  {
+   "name": "a wrapper's transaction is admitted on a proof the prover verifies, and not relayed",
+   "profile": "eip-8288-master",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   },
+   "state": {
+    "0x5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e": {
+     "balance": 1000000000000000000
+    }
+   },
+   "peers": [
+    "p1",
+    "p2"
+   ],
+   "steps": [
+    {
+     "wrapper": {
+      "transactions": [
+       "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3026480c0"
+      ],
+      "mode": 0,
+      "deps": [
+       [
+        16,
+        "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "0x1111111111111111111111111111111111111111111111111111111111111111"
+       ]
+      ],
+      "proofs": [
+       "0xa39683098123d82d1942cc97dd0667378d770f97c62a444a612bf227213fa625"
+      ]
+     },
+     "client": [
+      {
+       "valid": true
+      }
+     ],
+     "expect": {
+      "result": [
+       "0x58aee773302c15b0187c03513691ba452f7ede35726c119ba20cffe1f4d5ce6e"
+      ],
+      "asked_client": [
+       true
+      ],
+      "relay_to": []
+     }
+    },
+    {
+     "rpc": "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3026480c0",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ErrAlreadyKnown",
+      "asked_client": false,
+      "relay_to": []
+     }
+    },
+    {
+     "rpc": "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3036e80c0",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok",
+      "hash": "0x356601e48c506ae0b7e0d77e2983ff12827354267599f3afe76bb158df641e74",
+      "asked_client": true,
+      "relay_to": []
+     }
+    },
+    {
+     "peer": "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3047980c0",
+     "from": "p1",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ok",
+      "gossip": "ignore",
+      "disconnect": false,
+      "asked_client": true,
+      "relay_to": []
+     }
+    }
+   ],
+   "derivation": "verify-sphincs prints verified for the stub's signature over the key and message, so AG-5 accepts, AG-6 admits T, and the node relays nothing (SF-6). Sent again alone, T is known (FP-2). T2 replaces T with the same dependency, now proven (AG-6), and a 10 percent bump; it is admitted over eth_sendRawTransaction and still relayed to no peer (SF-6). T3 replaces T2 the same way from peer p1: admitted, relayed to no one, and ignored rather than accepted under gossipsub, which would forward it (SF-7)."
+  },
+  {
+   "name": "a zero data_hash's proof is over the signature hash",
+   "profile": "eip-8288-master",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   },
+   "state": {
+    "0x5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e": {
+     "balance": 1000000000000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "transactions": [
+       "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b860000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3036480c0"
+      ],
+      "mode": 0,
+      "deps": [
+       [
+        16,
+        "0xe668119dcc1c10cfbeebb6e33b7499bd4b4001f4630351fbb931926c0cd0e4c5",
+        "0x1111111111111111111111111111111111111111111111111111111111111111"
+       ]
+      ],
+      "proofs": [
+       "0x589316314b98eb38970fb8990d1ec94a09de82651e6096a8f1e673d050e91236"
+      ]
+     },
+     "client": [
+      {
+       "valid": true
+      }
+     ],
+     "expect": {
+      "result": [
+       "0xe668119dcc1c10cfbeebb6e33b7499bd4b4001f4630351fbb931926c0cd0e4c5"
+      ]
+     }
+    }
+   ],
+   "derivation": "T0's dependency is over its signature hash (SF-3), which the wrapper's deps and proof name."
+  },
+  {
+   "name": "a proof that does not verify refuses the wrapper",
+   "profile": "eip-8288-master",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   },
+   "state": {
+    "0x5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e": {
+     "balance": 1000000000000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "transactions": [
+       "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3026480c0"
+      ],
+      "mode": 0,
+      "deps": [
+       [
+        16,
+        "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "0x1111111111111111111111111111111111111111111111111111111111111111"
+       ]
+      ],
+      "proofs": [
+       "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ]
+     },
+     "client": [
+      {
+       "valid": true
+      }
+     ],
+     "expect": {
+      "result": "ErrWrapperProof",
+      "error_code": -32000,
+      "asked_client": [
+       true
+      ],
+      "relay_to": []
+     }
+    },
+    {
+     "rpc": "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3026480c0",
+     "client": {
+      "valid": true
+     },
+     "expect": {
+      "result": "ErrFrameDepsUnproven"
+     }
+    }
+   ],
+   "derivation": "verify-sphincs prints not verified, so AG-5 step 5 refuses the wrapper; nothing is proven, and T alone is refused by AG-6."
+  },
+  {
+   "name": "a node with no prover refuses every wrapper with a dependency",
+   "profile": "eip-8288-master",
+   "state": {
+    "0x5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e": {
+     "balance": 1000000000000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "transactions": [
+       "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3026480c0"
+      ],
+      "mode": 0,
+      "deps": [
+       [
+        16,
+        "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "0x1111111111111111111111111111111111111111111111111111111111111111"
+       ]
+      ],
+      "proofs": [
+       "0xa39683098123d82d1942cc97dd0667378d770f97c62a444a612bf227213fa625"
+      ]
+     },
+     "client": [
+      {
+       "valid": true
+      }
+     ],
+     "expect": {
+      "result": "ErrWrapperProof",
+      "error_code": -32000
+     }
+    }
+   ],
+   "derivation": "A proof the node cannot check does not verify (SF-10 item 3)."
+  },
+  {
+   "name": "deps other than the union refuse the wrapper",
+   "profile": "eip-8288-master",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   },
+   "state": {
+    "0x5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e": {
+     "balance": 1000000000000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "transactions": [
+       "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3026480c0"
+      ],
+      "mode": 0,
+      "deps": [
+       [
+        16,
+        "0x1111111111111111111111111111111111111111111111111111111111111111",
+        "0x1111111111111111111111111111111111111111111111111111111111111111"
+       ]
+      ],
+      "proofs": [
+       "0x3b0ed2c46acd28d9ad71e472aa9dcbfb9f9574806aacd6299030f553e82d5fa5"
+      ]
+     },
+     "client": [
+      {
+       "valid": true
+      }
+     ],
+     "expect": {
+      "result": "ErrWrapperDeps",
+      "error_code": -32000
+     }
+    }
+   ],
+   "derivation": "AG-5 step 3: deps must be T's own triple."
+  },
+  {
+   "name": "a transaction that does not decode refuses the whole wrapper, before the client is asked",
+   "profile": "eip-8288-master",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   },
+   "state": {
+    "0x5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e": {
+     "balance": 1000000000000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "transactions": [
+       "0x05c0",
+       "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3026480c0"
+      ],
+      "mode": 0,
+      "deps": [
+       [
+        16,
+        "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "0x1111111111111111111111111111111111111111111111111111111111111111"
+       ]
+      ],
+      "proofs": [
+       "0xa39683098123d82d1942cc97dd0667378d770f97c62a444a612bf227213fa625"
+      ]
+     },
+     "expect": {
+      "result": "ErrTxTypeNotSupported",
+      "error_code": -32000,
+      "asked_client": [],
+      "relay_to": []
+     }
+    }
+   ],
+   "derivation": "SF-10 item 1: the first transaction's type byte is 0x05 (SF-2 step 1)."
+  },
+  {
+   "name": "a parameter not of the method's shape is invalid params",
+   "profile": "eip-8288-master",
+   "config": {
+    "frame": {
+     "prover": "stub"
+    }
+   },
+   "state": {
+    "0x5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e": {
+     "balance": 1000000000000000000
+    }
+   },
+   "steps": [
+    {
+     "wrapper": {
+      "transactions": [
+       "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3026480c0"
+      ],
+      "mode": 1,
+      "deps": [
+       [
+        16,
+        "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "0x1111111111111111111111111111111111111111111111111111111111111111"
+       ]
+      ],
+      "proofs": [
+       "0xa39683098123d82d1942cc97dd0667378d770f97c62a444a612bf227213fa625"
+      ]
+     },
+     "expect": {
+      "error_code": -32602,
+      "asked_client": [],
+      "relay_to": []
+     }
+    },
+    {
+     "wrapper": {
+      "transactions": [
+       "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3026480c0"
+      ],
+      "mode": 0,
+      "deps": [
+       [
+        16,
+        "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "0x1111111111111111111111111111111111111111111111111111111111111111"
+       ]
+      ]
+     },
+     "expect": {
+      "error_code": -32602
+     }
+    },
+    {
+     "wrapper": {
+      "transactions": [
+       "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3026480c0"
+      ],
+      "mode": 0,
+      "deps": [
+       [
+        16,
+        "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "0x1111111111111111111111111111111111111111111111111111111111111111"
+       ]
+      ],
+      "proofs": [
+       "0xa39683098123d82d1942cc97dd0667378d770f97c62a444a612bf227213fa625",
+       "0xa39683098123d82d1942cc97dd0667378d770f97c62a444a612bf227213fa625"
+      ]
+     },
+     "expect": {
+      "error_code": -32602,
+      "asked_client": []
+     }
+    }
+   ],
+   "derivation": "mode must be 0, the object must have exactly its four members, and proofs must hold exactly one proof for each triple of deps (SF-10)."
+  },
+  {
+   "name": "under eip-8141 the dependency frame is refused",
+   "profile": "eip-8141",
+   "state": {
+    "0x5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e": {
+     "balance": 1000000000000000000
+    }
+   },
+   "steps": [
+    {
+     "rpc": "0x06f8a401c18080945e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5ef883f86b048080c4820bb88080b8600000000000000000000000000000000000000000000000000000000000000010a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ca010380c4827530808080ca028080c4825208808080c0c3026480c0",
+     "expect": {
+      "result": "ErrFrameMalformed",
+      "asked_client": false
+     }
+    }
+   ],
+   "derivation": "Without dependency frames, FP-3 refuses a frame of mode 4."
+  }
+ ]
+}

@@ -2,7 +2,7 @@
  "clause": "DS-6",
  "also": [],
  "document": "13-descriptors.md",
- "version": 4,
+ "version": 5,
  "operation": "descriptor",
  "distinguishes": "A ruleset holds every core module, all of the ERC's modules or none, each replaceable frame pool module or its replacement but not both, no AG or CG module with the ERC's, and whole AG and CG families, checked in DS-6's order; a complete one behaves as the profile its modules carry. A loader that accepts a partial ruleset, names another module, or compiles to another profile fails here.",
  "cases": [
@@ -472,6 +472,113 @@
     "profile": "erc-8421"
    },
    "derivation": "The six FP modules replaced by every ERC module."
+  },
+  {
+   "name": "an RM module without the others",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreic7kyifykopewlbznmhicjvfrmbxhmfwaaxglrdcgrttm2qw5blb4",
+    "remove": [],
+    "rules": {
+     "RM-2": {}
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorIncomplete",
+    "rule": "AG-2"
+   },
+   "derivation": "DS-6 step 6: with an RM module every AG, CG and RM module must be present; AG-2 is the first missing in the table's order."
+  },
+  {
+   "name": "relaxed.json less RM-7",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/relaxed.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreihtmp7crppkivpr3rb4nmivfhniecsw6xhqj5n2ysxdobssj4k54i",
+    "remove": [
+     "RM-7"
+    ],
+    "rules": {}
+   },
+   "expect": {
+    "result": "ErrDescriptorIncomplete",
+    "rule": "RM-7"
+   },
+   "derivation": "DS-6 step 6."
+  },
+  {
+   "name": "the RM modules beside a per-sender rule that is not canonical",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/relaxed.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreihtmp7crppkivpr3rb4nmivfhniecsw6xhqj5n2ysxdobssj4k54i",
+    "remove": [],
+    "rules": {
+     "FP-12": {
+      "per_sender": "disjoint-keys",
+      "price_bump": 10
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorConflict",
+    "rule": "FP-12"
+   },
+   "derivation": "DS-6 step 6: RM-2 judges by FP-12's one; RM-4 is the relaxation."
+  },
+  {
+   "name": "the RM modules beside a payer count that is not canonical",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/relaxed.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreihtmp7crppkivpr3rb4nmivfhniecsw6xhqj5n2ysxdobssj4k54i",
+    "remove": [],
+    "rules": {
+     "FP-11": {
+      "max_pending_noncanonical": 2,
+      "cap_codeless_payers": false
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorConflict",
+    "rule": "FP-11"
+   },
+   "derivation": "DS-6 step 6: RM-2 judges by FP-11's 1; RM-5 is the relaxation."
   }
  ]
 }

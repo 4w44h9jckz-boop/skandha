@@ -12,6 +12,9 @@ export interface IFramesArgs {
   "frames.log"?: string;
   "frames.name"?: string;
   "frames.descriptor"?: string;
+  "frames.tier": string;
+  "frames.chainId"?: number;
+  "frames.prover"?: string;
 }
 
 export const options: ICliCommandOptions<IFramesArgs> = {
@@ -25,7 +28,7 @@ export const options: ICliCommandOptions<IFramesArgs> = {
   "frames.profile": {
     type: "string",
     description:
-      "The frame pool and surface profile: hegota-testnet or eip-8141",
+      "The frame pool and surface profile: hegota-testnet, eip-8141 or eip-8288-master",
     default: "hegota-testnet",
     group: "frames",
   },
@@ -77,6 +80,26 @@ export const options: ICliCommandOptions<IFramesArgs> = {
     type: "string",
     description:
       "A descriptor file (exp-mempool-l2s docs/spec/13-descriptors.md) whose ruleset the frame pool runs in place of the profile's, loaded with the parents beside it; refusals name the descriptor and the rule",
+    group: "frames",
+  },
+  "frames.tier": {
+    type: "string",
+    choices: ["relay", "verifier", "aggregator"],
+    default: "verifier",
+    description:
+      "The node's tier under the relaxed alternative mempool (exp-mempool-l2s docs/spec/15-relaxed-mempool.md, RM-8); a node refuses that descriptor at start, since the client returns no reads, and so refuses any tier but verifier",
+    group: "frames",
+  },
+  "frames.chainId": {
+    type: "number",
+    description:
+      "The node's own chain id, in place of the profile's (SF-1), for a chain the profile does not name, such as a local one",
+    group: "frames",
+  },
+  "frames.prover": {
+    type: "string",
+    description:
+      "The command of a real prover with the contract of exp-e2e-frames experiment 19's (AG-11): frames_sendWrapper checks each leanSPHINCS proof with its verify-sphincs, and the aggregator folds with it; without one, every wrapper with a dependency is refused (SF-10)",
     group: "frames",
   },
 };

@@ -13,6 +13,7 @@ export * from "./model.js";
 export * from "./pool.js";
 export * from "./prefix.js";
 export * as recentroots from "./recentroots.js";
+export * from "./relaxed.js";
 export * from "./reserver.js";
 export * from "./surface.js";
 export * from "./replay.js";

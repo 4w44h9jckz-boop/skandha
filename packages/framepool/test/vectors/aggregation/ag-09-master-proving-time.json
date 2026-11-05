@@ -4,7 +4,7 @@
   "AG-7"
  ],
  "document": "05-aggregation.md",
- "version": 4,
+ "version": 5,
  "operation": "pool",
  "distinguishes": "Under eip-8288-master an aggregate's proving time counts prove_sig for each leanSPHINCS triple it verifies directly, and a budget stops the fold where the next would not fit; an implementation that counts otherwise fails here.",
  "cases": [

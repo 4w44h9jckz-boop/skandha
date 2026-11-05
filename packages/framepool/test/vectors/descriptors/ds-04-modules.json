@@ -2,7 +2,7 @@
  "clause": "DS-4",
  "also": [],
  "document": "13-descriptors.md",
- "version": 4,
+ "version": 5,
  "operation": "descriptor",
  "distinguishes": "Every module is one a node implements, with exactly its parameters, each of its type, checked in the byte order of the names: a loader that ignores an unknown module, fills a default, accepts an extra parameter or a value of another type, or checks in another order, fails here.",
  "cases": [
@@ -328,6 +328,244 @@
     "rule": "CG-12"
    },
    "derivation": "CG-12 takes no parameters; the bound template is CG-10's."
+  },
+  {
+   "name": "a declaration naming a contract",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/relaxed.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreihtmp7crppkivpr3rb4nmivfhniecsw6xhqj5n2ysxdobssj4k54i",
+    "remove": [],
+    "rules": {
+     "RM-3": {
+      "declarations": [
+       {
+        "code": "0xabababababababababababababababababababababababababababababababab",
+        "write_once": [
+         [
+          "0x7",
+          2
+         ]
+        ],
+        "max_outflow": "1000"
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "result": "ok",
+    "modules": 40
+   },
+   "derivation": "RM-1's three members, each of its type; the child replaces RM-3 (DS-5)."
+  },
+  {
+   "name": "a declaration of another shape",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/relaxed.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreihtmp7crppkivpr3rb4nmivfhniecsw6xhqj5n2ysxdobssj4k54i",
+    "remove": [],
+    "rules": {
+     "RM-3": {
+      "declarations": [
+       {
+        "code": "0xabababababababababababababababababababababababababababababababab",
+        "write_once": []
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorParams",
+    "rule": "RM-3"
+   },
+   "derivation": "max_outflow is missing; RM-1 lists three members."
+  },
+  {
+   "name": "two declarations for one code",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/relaxed.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreihtmp7crppkivpr3rb4nmivfhniecsw6xhqj5n2ysxdobssj4k54i",
+    "remove": [],
+    "rules": {
+     "RM-3": {
+      "declarations": [
+       {
+        "code": "0xabababababababababababababababababababababababababababababababab",
+        "write_once": [
+         [
+          "0x7",
+          2
+         ]
+        ],
+        "max_outflow": "1000"
+       },
+       {
+        "code": "0xabababababababababababababababababababababababababababababababab",
+        "write_once": [
+         [
+          "0x7",
+          2
+         ]
+        ],
+        "max_outflow": "1000"
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorParams",
+    "rule": "RM-3"
+   },
+   "derivation": "RM-1: two declarations for one code."
+  },
+  {
+   "name": "a range of no slots",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/relaxed.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreihtmp7crppkivpr3rb4nmivfhniecsw6xhqj5n2ysxdobssj4k54i",
+    "remove": [],
+    "rules": {
+     "RM-3": {
+      "declarations": [
+       {
+        "code": "0xabababababababababababababababababababababababababababababababab",
+        "write_once": [
+         [
+          "0x7",
+          0
+         ]
+        ],
+        "max_outflow": "1000"
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorParams",
+    "rule": "RM-3"
+   },
+   "derivation": "RM-1: a count from 1 to 2^32."
+  },
+  {
+   "name": "a first slot that is not hexadecimal",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/relaxed.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreihtmp7crppkivpr3rb4nmivfhniecsw6xhqj5n2ysxdobssj4k54i",
+    "remove": [],
+    "rules": {
+     "RM-3": {
+      "declarations": [
+       {
+        "code": "0xabababababababababababababababababababababababababababababababab",
+        "write_once": [
+         [
+          "7",
+          1
+         ]
+        ],
+        "max_outflow": "1000"
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorParams",
+    "rule": "RM-3"
+   },
+   "derivation": "RM-1: the first slot is 0x and 1 to 64 hexadecimal digits."
+  },
+  {
+   "name": "an outflow bound that is not an amount",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    },
+    {
+     "file": "docs/spec/descriptors/relaxed.json"
+    }
+   ],
+   "descriptor": {
+    "format": 1,
+    "name": "a child",
+    "source": "a vector",
+    "parent": "bafkreihtmp7crppkivpr3rb4nmivfhniecsw6xhqj5n2ysxdobssj4k54i",
+    "remove": [],
+    "rules": {
+     "RM-3": {
+      "declarations": [
+       {
+        "code": "0xabababababababababababababababababababababababababababababababab",
+        "write_once": [
+         [
+          "0x7",
+          2
+         ]
+        ],
+        "max_outflow": 1000
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "result": "ErrDescriptorParams",
+    "rule": "RM-3"
+   },
+   "derivation": "RM-1: an amount (DS-1), a string of decimal digits, or null."
   }
  ]
 }

@@ -4,7 +4,7 @@
   "AG-6"
  ],
  "document": "05-aggregation.md",
- "version": 4,
+ "version": 5,
  "operation": "pool",
  "distinguishes": "Under eip-8288-master a mode 1 wrapper's deps must hold every dependency of each transaction it carries or the node holds by hash, and nothing more once every entry resolves; under eip-8288 its transactions are not checked against its deps. An implementation that skips check 5 under the master profile, or refuses for a hash it cannot resolve, fails here.",
  "cases": [

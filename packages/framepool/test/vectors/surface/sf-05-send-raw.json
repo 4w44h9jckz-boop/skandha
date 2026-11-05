@@ -6,7 +6,7 @@
   "CG-2"
  ],
  "document": "11-surface.md",
- "version": 4,
+ "version": 5,
  "operation": "surface",
  "distinguishes": "eth_sendRawTransaction answers the chain's hash for what the pool admits and relays it, answers a refusal as an error carrying its code and relays nothing, and asks the client only about a transaction that SF-2 and FP-2 to FP-7 let through, and, under claims, that CG-2, CG-4 and CG-6 let through: a node that asks the client about a junk ticket, or refuses a valid one, fails here.",
  "cases": [

@@ -12,7 +12,12 @@
  */
 import { createHash } from "node:crypto";
 import { NAMESPACE, TEMPLATE_KECCAK, TEMPLATE_LENGTH } from "./claimticket.js";
-import { EIP_8141, FramePoolConfig, withChanges } from "./config.js";
+import {
+  EIP_8141,
+  FramePoolConfig,
+  declarations,
+  withChanges,
+} from "./config.js";
 
 const MAX_INT = 2 ** 53 - 1;
 const QUOTE = String.fromCharCode(34); // a double quote
@@ -206,6 +211,7 @@ type ParamType =
   | "str"
   | "str[]"
   | "amount"
+  | "declarations" // RM-1
   | readonly (string | number)[];
 
 interface Module {
@@ -495,10 +501,26 @@ export const ERC: Readonly<Record<string, Module>> = Object.fromEntries(
   ])
 );
 
+/** RM-2 to RM-8 (`15-relaxed-mempool.md`). */
+export const RELAXATIONS: Readonly<Record<string, Module>> = {
+  "RM-2": m("rule"),
+  "RM-3": m("rule", ["ErrWriteOnceBusy"], { declarations: "declarations" }),
+  "RM-4": m("rule", [], { sender_bound: "bool" }),
+  "RM-5": m("rule", [], { outflow_bound: "bool" }),
+  "RM-6": m("rule", ["ErrDeclarationThrottled", "ErrDeclarationBanned"], {
+    ban_violations: "int",
+    throttled_count: "int",
+    declaration_refresh_seconds: "int",
+  }),
+  "RM-7": m("rule"),
+  "RM-8": m("rule", ["ErrRelayUnchecked"]),
+};
+
 export const MODULES: Readonly<Record<string, Module>> = {
   ...FRAME_POOL,
   ...AGGREGATION,
   ...CLAIMS,
+  ...RELAXATIONS,
   ...ERC,
 };
 
@@ -525,8 +547,41 @@ function typeOk(t: ParamType, v: Value): boolean {
       return Array.isArray(v) && v.every((x) => typeof x === "string");
     case "amount":
       return typeof v === "string" && /^(0|[1-9]\d*)$/.test(v);
+    case "declarations":
+      return (
+        Array.isArray(v) &&
+        v.every(declarationOk) &&
+        new Set(v.map((d: Value) => d.code)).size === v.length
+      );
   }
   return false;
+}
+
+/** RM-1: a declaration's three members, each of its type. */
+function declarationOk(d: Value): boolean {
+  if (
+    d === null ||
+    typeof d !== "object" ||
+    Array.isArray(d) ||
+    Object.keys(d).sort().join(",") !== "code,max_outflow,write_once" ||
+    typeof d.code !== "string" ||
+    !Array.isArray(d.write_once)
+  )
+    return false;
+  for (const r of d.write_once)
+    if (
+      !(
+        Array.isArray(r) &&
+        r.length === 2 &&
+        typeof r[0] === "string" &&
+        /^0x[0-9a-fA-F]{1,64}$/.test(r[0]) &&
+        Number.isInteger(r[1]) &&
+        r[1] >= 1 &&
+        r[1] <= 2 ** 32
+      )
+    )
+      return false;
+  return d.max_outflow === null || typeOk("amount", d.max_outflow);
 }
 
 /** DS-4, in the byte order of the module names, each name before its parameters. */
@@ -607,11 +662,22 @@ function complete(effective: ReadonlyMap<string, unknown>): void {
   for (const [family, needs] of [
     ["AG", AGGREGATION],
     ["CG", { ...AGGREGATION, ...CLAIMS }],
+    ["RM", { ...AGGREGATION, ...CLAIMS, ...RELAXATIONS }],
   ] as const) {
     if ([...effective.keys()].some((n) => n.startsWith(family + "-")))
       for (const name of Object.keys(needs))
         if (!effective.has(name))
           throw new DescriptorError("ErrDescriptorIncomplete", name);
+  }
+  if (Object.keys(RELAXATIONS).some((name) => effective.has(name))) {
+    // DS-6 step 6: the canonical values RM-2 judges by
+    const params = (name: string): Value =>
+      (effective.get(name) as [Value, string])[0];
+    const fp11 = params("FP-11");
+    if (fp11.max_pending_noncanonical !== 1 || fp11.cap_codeless_payers)
+      throw new DescriptorError("ErrDescriptorConflict", "FP-11");
+    if (params("FP-12").per_sender !== "one")
+      throw new DescriptorError("ErrDescriptorConflict", "FP-12");
   }
 }
 
@@ -689,6 +755,8 @@ export function compileConfig(d: Descriptor): FramePoolConfig {
           : BigInt(v)
         : key === "precompiles"
         ? new Set(v)
+        : key === "declarations"
+        ? declarations(v)
         : v;
     }
   }
@@ -699,6 +767,8 @@ export function compileConfig(d: Descriptor): FramePoolConfig {
   if (erc) changes.ruleset = "erc-8421";
   changes.name = erc
     ? "erc-8421"
+    : eff.has("RM-2")
+    ? "relaxed"
     : eff.has("CG-2")
     ? "claim-gated"
     : eff.has("AG-2")
@@ -708,5 +778,6 @@ export function compileConfig(d: Descriptor): FramePoolConfig {
   changes.claims = eff.has("CG-2");
   changes.bond = eff.has("CG-11");
   changes.binding = eff.has("CG-12");
+  changes.relaxed = eff.has("RM-2");
   return withChanges(EIP_8141, changes as Partial<FramePoolConfig>);
 }

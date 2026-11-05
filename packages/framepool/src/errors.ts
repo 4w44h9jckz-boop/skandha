@@ -98,6 +98,12 @@ export const ErrRelayAggregate = "ErrRelayAggregate";
 export const ErrIssuerUnbonded = "ErrIssuerUnbonded"; // CG-11
 export const ErrClaimUnbound = "ErrClaimUnbound"; // CG-12
 
+// This repository's, for the relaxed alternative mempool (`docs/spec/15-relaxed-mempool.md`)
+export const ErrWriteOnceBusy = "ErrWriteOnceBusy"; // RM-3
+export const ErrDeclarationThrottled = "ErrDeclarationThrottled"; // RM-6
+export const ErrDeclarationBanned = "ErrDeclarationBanned"; // RM-6
+export const ErrRelayUnchecked = "ErrRelayUnchecked"; // RM-8
+
 // This repository's, for ERC-8421's standard ruleset (`docs/spec/14-erc-8421.md`)
 export const ErrFramePreVerifyNoCode = "ErrFramePreVerifyNoCode";
 export const ErrFrameStrayDefault = "ErrFrameStrayDefault";

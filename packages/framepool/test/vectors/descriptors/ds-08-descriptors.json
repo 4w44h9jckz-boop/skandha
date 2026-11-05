@@ -2,7 +2,7 @@
  "clause": "DS-8",
  "also": [],
  "document": "13-descriptors.md",
- "version": 4,
+ "version": 5,
  "operation": "descriptor",
  "distinguishes": "The three descriptors of docs/spec/descriptors/ load with their stated identifiers and module counts.",
  "cases": [
@@ -48,6 +48,22 @@
     "modules": 15
    },
    "derivation": "FP-2 to FP-16."
+  },
+  {
+   "name": "relaxed.json's effective modules",
+   "store": [
+    {
+     "file": "docs/spec/descriptors/eip-8141.json"
+    }
+   ],
+   "file": "docs/spec/descriptors/relaxed.json",
+   "expect": {
+    "result": "ok",
+    "id": "bafkreihtmp7crppkivpr3rb4nmivfhniecsw6xhqj5n2ysxdobssj4k54i",
+    "modules": 40,
+    "profile": "relaxed"
+   },
+   "derivation": "15 frame pool modules, 7 AG, 11 CG and 7 RM (RM-2 to RM-8); with the RM modules the profile is relaxed (DS-6)."
   }
  ]
 }
