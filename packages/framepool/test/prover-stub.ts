@@ -9,6 +9,7 @@
  *   prover-stub.ts verify-aggregate <proof.bin> <claims.json>
  *   prover-stub.ts sphincs <seed hex> <message hex>
  *   prover-stub.ts verify-sphincs <publicKey hex> <message hex> <signature hex>
+ *     (exp-mempool-l2s SF-10; the prover's mode since exp-e2e-frames `3209255`)
  *
  * Each prints one JSON line; a refusal is `{"error": ...}` and exit status 2.
  * Like the prover, it reads hex with or without 0x, and `sphincs` prints its
@@ -107,6 +108,7 @@ if (args.length === 3 && args[0] === "aggregate") {
       verified: signature.equals(
         sha(Buffer.from("stub-leanSPHINCS"), key, message)
       ),
+      verifyMs: 0,
     })
   );
 } else if (args.length === 3 && args[0] === "sphincs") {

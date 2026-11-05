@@ -166,10 +166,12 @@ Two settings go with the profile:
   with it, and the aggregator folds with it. A node with no prover cannot
   check a proof, so it refuses every wrapper with a dependency with
   `ErrWrapperProof` (exp-mempool-l2s decision record 0084). Experiment 19's
-  prover has no `verify-sphincs` mode at `47f5496`, so until it does, a node
-  naming it refuses those wrappers too. `packages/framepool/test/prover-stub.ts`
-  has the mode, for tests only: it checks a stand-in signature, not a real
-  one.
+  prover has `verify-sphincs` since exp-e2e-frames `3209255`: a 32-byte key,
+  a 32-byte message and a 7,740-byte signature, and any other length is a
+  refusal, which the node counts as not verified. An earlier build of the
+  prover has no such mode, and a node naming it refuses those wrappers too.
+  `packages/framepool/test/prover-stub.ts` has the mode, for tests only: it
+  checks a stand-in signature, not a real one.
 - `--frames.chainId <n>` sets the node's own chain id in place of the
   profile's, which is 1 under `eip-8288-master`, for a chain the profile does
   not name, such as a local one (SF-1). The gossip topic follows it.
