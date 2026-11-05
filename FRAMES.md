@@ -12,7 +12,10 @@ A node does what the clauses say, in this order:
 1. Decodes the bytes (SF-2, SF-3) and names the transaction by keccak256 of
    them.
 2. Reads, at its head, the sender's nonce sequences, balance and code, and
-   the payer's, from its execution client.
+   the payer's, from its execution client. It first asks the client for its
+   latest head and takes it, as SF-8 says, if it is newer than the last one
+   the node polled: a sender may send its next transaction as soon as its
+   last is mined, which on a chain with 1 s blocks is before the next poll.
 3. Runs FP-2 to FP-7 itself, and only then asks the client to simulate the
    validation prefix at the same head, `ethrex_simulateFrameTransaction`
    (SF-4). The client's answer is the verdict on the prefix; everything else

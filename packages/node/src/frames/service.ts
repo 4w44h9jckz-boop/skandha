@@ -366,6 +366,7 @@ export class FrameService {
     claim?: Record<string, unknown>;
   }> {
     return this.serial(async () => {
+      await this.catchUp();
       const rawHex = "0x" + Buffer.from(raw).toString("hex");
       let tx: FrameTx;
       try {
@@ -472,6 +473,7 @@ export class FrameService {
     param: unknown
   ): Promise<{ result?: string[]; error?: SendResult["error"] }> {
     return this.serial(async () => {
+      await this.catchUp();
       const block = this.block();
       const codes = new Map<string, Uint8Array>();
       const raws =
@@ -631,8 +633,20 @@ export class FrameService {
     }
   }
 
-  /** SF-8. */
+  /**
+   * SF-8 before an admission: the client's latest head, taken first when it
+   * is newer than the node's. A sender may send its next transaction as soon
+   * as its last is mined, and the node's poll can be a block behind, so
+   * without this the node would judge it at a state the sender has left.
+   */
+  private async catchUp(): Promise<void> {
+    const latest = await this.client.head();
+    if (latest.number > this.head.number) await this.newHead(latest);
+  }
+
+  /** SF-8; a head the node has already passed, as a poll can bring late, is ignored. */
   private async newHead(h: ClientHead): Promise<void> {
+    if (h.number <= this.head.number) return;
     const block = "0x" + h.number.toString(16);
     const next = this.pool.state.copy();
     const pending = this.surface.pending();
